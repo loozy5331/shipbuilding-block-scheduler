@@ -62,6 +62,16 @@ test('진입 화면: 모드 선택 → 田자 메뉴 → 엑셀 업로드', asyn
   await dlg.getByRole('button', { name: '닫기' }).click();
   await expect(page.locator('.mode-chip')).toHaveText('숙련자');
 
+  // 엑셀 양식 도움말: 필수 열과 예시, 양식 내려받기
+  await page.getByTestId('excel-help').click();
+  const help = page.getByRole('dialog', { name: '엑셀 업로드 양식' });
+  for (const col of ['블록 ID', '납기일', '필요 작업 시간', '자재준비 여부']) await expect(help).toContainText(col);
+  const template = page.waitForEvent('download');
+  await help.getByRole('button', { name: '양식 내려받기' }).click();
+  expect((await template).suggestedFilename()).toBe('블록_입력_양식.xlsx');
+  await shot(page, '14-excel-help');
+  await help.getByRole('button', { name: '닫기' }).click();
+
   await page.getByTestId('home-excel-input').setInputFiles(path.resolve('public/sample-tutorial.xlsx'));
   await expect(page.locator('.toast')).toContainText('블록 5개 읽음');
   await expect(page.locator('[data-tour="summary"]')).toContainText('80');

@@ -2036,3 +2036,37 @@ button.brand {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- 엑셀 양식 도움말 ---------- */
+.help-table td {
+  white-space: normal;
+}
+
+.sheet-example {
+  width: auto;
+}
+
+.sheet-example th {
+  width: 28px;
+  text-align: center;
+}
+
+.sheet-example td {
+  min-width: 96px;
+  border-left: 1px solid var(--line);
+}
+
+.help-notes {
+  margin: 14px 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.dialog h4 {
+  margin: 16px 0 6px;
+}
+
+.dialog {
+  text-align: left;
+}

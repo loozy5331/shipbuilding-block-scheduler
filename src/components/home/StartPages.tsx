@@ -4,6 +4,7 @@ import { useStore } from '../../store/schedulerStore';
 import { readBlocksFromFile } from '../../io/excel';
 import { LineIcon } from '../icons/LineIcons';
 import { Modal } from '../common/Modal';
+import { ExcelHelpButton } from '../common/ExcelHelp';
 
 const MODE: Record<UserMode, { name: string; desc: string }> = {
   expert: { name: '숙련자', desc: '최적 배치 버튼으로 바로 계산' },
@@ -95,7 +96,7 @@ export function MenuPage() {
     if (!file) return;
     try {
       const r = await readBlocksFromFile(file, planStart);
-      if (r.blocks.length === 0) return showToast(`${file.name}: 읽은 블록이 없습니다. ${r.errors[0]?.message ?? ''}`);
+      if (r.blocks.length === 0) return showToast(`${file.name}: 읽은 블록이 없습니다. ${r.errors[0]?.message ?? ''} '엑셀 양식 도움말'을 확인하세요.`);
       setBlocks(r.blocks);
       showToast(`${file.name}: 블록 ${r.blocks.length}개 읽음${r.errors.length ? ` · 오류 ${r.errors.length}건` : ''}`);
       setPage('setup');
@@ -146,6 +147,7 @@ export function MenuPage() {
           e.target.value = '';
         }}
       />
+      <ExcelHelpButton className="link-btn" />
       <button type="button" className="btn ghost" onClick={() => setPage('setup')}>
         {blocks.length ? `이어서 하기 (블록 ${blocks.length}개) →` : '직접 입력하기 →'}
       </button>
