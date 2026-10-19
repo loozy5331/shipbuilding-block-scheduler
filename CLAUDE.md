@@ -3,14 +3,17 @@
 React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 브라우저(Web Worker). 서버는 Python FastAPI(`backend/`, 로그인 API + SQLite)뿐.
 사용자 문서·배치 규칙·최적화 설명은 README.md. 여기에는 코드를 고칠 때 필요한 것만 둔다.
 
-## 명령
-- `npx tsc --noEmit` 타입 검사(테스트 포함, 안 쓰는 import도 오류)
-- `npx vitest run` 단위 테스트 (`tests/*.test.ts`)
-- `npx playwright test --reporter=dot` e2e (`tests/e2e/*.spec.ts`, headless, 기본 reducedMotion=reduce라 조립 애니메이션은 건너뜀)
-- `npm run test:py` 백엔드 pytest (`backend/tests/`), 설치는 `npm run setup:py`
-- `npm run build` 빌드
+## 폴더
+`frontend/`(React 앱: `src`·`public`·`tests`·vite·tsconfig·playwright 설정) · `backend/`(FastAPI·pytest, 회원 DB `backend/data/`) · `docs/` · `scripts/`(샘플 엑셀 생성). `package.json`·`node_modules`·`.venv`는 루트에 하나씩, npm 명령은 루트에서 실행한다.
 
-## 코드 지도 (찾는 것 → 파일)
+## 명령
+- `npm run typecheck` 타입 검사(테스트 포함, 안 쓰는 import도 오류)
+- `npm test` 단위 테스트 (`frontend/tests/*.test.ts`)
+- `npm run e2e -- --reporter=dot` e2e (`frontend/tests/e2e/*.spec.ts`, headless, 기본 reducedMotion=reduce라 조립 애니메이션은 건너뜀)
+- `npm run test:py` 백엔드 pytest (`backend/tests/`), 설치는 `npm run setup:py`
+- `npm run build` 빌드 (`frontend/dist/`)
+
+## 코드 지도 (찾는 것 → 파일, 프론트 경로는 `frontend/` 기준)
 | 무엇 | 어디 |
 |---|---|
 | 타입·기본 자원 | `src/domain/types.ts` |
@@ -22,7 +25,7 @@ React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 
 | 현재 배치 평가(메모이즈) | `src/store/evaluation.ts` → `useEvaluation()` |
 | 최적화 실행·결과 저장 | `src/store/actions.ts` `runSolve()` |
 | 엑셀/Numbers/CSV 읽기·쓰기, 붙여넣기 파싱 | `src/io/{excel,parse}.ts` |
-| 로그인 API | 호출 `src/io/auth.ts` ↔ FastAPI `backend/app/main.py`(라우트), `backend/app/users.py`(SQLite·scrypt). 개발 시 `vite.config.ts`가 uvicorn을 띄우고 /api 프록시 |
+| 로그인 API | 호출 `src/io/auth.ts` ↔ FastAPI `backend/app/main.py`(라우트), `backend/app/users.py`(SQLite·scrypt). 개발 시 `frontend/vite.config.ts`가 uvicorn을 띄우고 /api 프록시 |
 | 페이지 | `components/home/{LoginPage,MenuPage}` → `input/InputPage` → `board/BoardPage` → `result/ResultPage` (`App.tsx`가 전환) |
 | 간트 | `board/GanttChart.tsx`(줄·작업장), `board/GanttBars.tsx`(막대·아이콘), 드래그 `board/useBoardDnd.ts`, 칸 폭 `board/ganttLayout.ts` |
 | 튜토리얼 가이드 | 단계 `src/tutorial/steps.ts`, 화면 `Tour.tsx`, 예시 데이터 `scenario.ts` |
@@ -32,7 +35,7 @@ React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 
 
 ## 규칙
 - UI 문구·주석·커밋 메시지는 한국어. 주석은 "왜"만 짧게, 주변 코드 밀도에 맞춘다.
-- 작업은 단계마다 커밋(기능 브랜치, 통합 브랜치는 `develop`). 커밋 전 tsc·vitest·playwright 통과.
+- 작업은 단계마다 커밋(기능 브랜치, 통합 브랜치는 `develop`). 커밋 전 typecheck·test·e2e 통과.
 - 버전: 유의적 버전. 기능 브랜치를 합칠 때 `CHANGELOG.md`의 `[Unreleased]`에 한 줄 추가. 릴리스는 `develop`에서 `release/X.Y.Z` → `package.json` 버전·CHANGELOG 갱신 → `main`에 `--no-ff` 머지 → `vX.Y.Z` 태그(annotated) → `develop`에 되머지.
 - 배치를 바꾸는 상태 변경은 `plan.ts`의 `withLanes`로 작업 자리를 채운다.
 - 평가가 필요하면 `evaluate()`를 새로 부르지 말고 `useEvaluation()`/`selectEvaluation()`.
