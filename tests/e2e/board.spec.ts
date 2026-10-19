@@ -107,8 +107,9 @@ test('숙련자는 최적 배치로 시작하고, 다시 누르면 차선·차�
 test('최적 배치로 줄이 재정렬되면 줄이 새 자리로 미끄러진다', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await start(page, 'expert');
-  const reset = page.getByRole('button', { name: '초기화' });
-  if (await reset.isEnabled()) await reset.click();
+  // 숙련자는 최적 배치로 시작하므로, 적용된 뒤 초기화해야 다음 클릭이 다시 최적 배치(1안)가 된다
+  await expect(page.getByTestId('plan-option')).toBeVisible();
+  await page.getByRole('button', { name: '초기화' }).click();
   await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
   // 애니메이션이 짧아 끝난 뒤엔 안 보이므로 animate 호출을 센다
   await page.evaluate(() => {
