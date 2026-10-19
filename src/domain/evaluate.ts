@@ -225,6 +225,20 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
   };
 }
 
+/**
+ * 최소 요건: 간트에 올린 블록은 모두 착수 가능해야 한다 — 자재(준비 또는 비상 자재), 크레인, 작업자.
+ * 자원이 용량을 넘는 날도 없어야 한다. 납기 지연은 허용한다 (차선책의 판단 기준).
+ */
+export function meetsMinimum(blocks: Block[], r: Resources, assignments: Assignments, ev: Evaluation = evaluate(blocks, r, assignments)): boolean {
+  if (ev.kpi.overloadCells > 0) return false;
+  return blocks.every((b) => {
+    const a = assignments[b.id];
+    if (!a || a.startDay === null) return true;
+    const x = ev.blocks[b.id];
+    return x.status !== 'blocked' && x.status !== 'conflict' && a.crane && a.general + a.skilled > 0 && (b.materialReady || a.emergency);
+  });
+}
+
 /** 사전식 비교용 목적값. 작을수록 좋다. */
 export function objective(k: Kpi): number[] {
   return [k.notRunnable, k.overloadCells, k.lateBlocks, k.totalLateDays, k.emergencyUsed, k.wasteMH, k.makespan];

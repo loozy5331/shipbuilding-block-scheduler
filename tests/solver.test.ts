@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareObjective, evaluate, objective } from '../src/domain/evaluate';
+import { compareObjective, evaluate, meetsMinimum, objective } from '../src/domain/evaluate';
 import { solveAll } from '../src/solver';
 import { checkCapacity } from '../src/solver/feasibility';
 import { buildModes } from '../src/solver/modes';
@@ -97,5 +97,44 @@ describe('차선책', () => {
     const orders = [sol, ...alts].map((p) => order(p.assignments));
     expect(new Set(orders).size).toBe(orders.length);
     for (let i = 1; i < alts.length; i++) expect(compareObjective(objective(alts[i - 1].kpi), objective(alts[i].kpi))).toBeLessThanOrEqual(0);
+  });
+});
+
+describe('차선책 최소 요건', () => {
+  const check = (blocks: Block[], r = TUTORIAL_RESOURCES) => {
+    const sol = solvePolicy('optimal', blocks, r, { budgetMs: 300 });
+    for (const alt of sol.alternatives!) {
+      expect(meetsMinimum(blocks, r, alt.assignments)).toBe(true);
+      expect(alt.kpi.overloadCells).toBe(0);
+      expect(alt.kpi.notRunnable).toBeLessThanOrEqual(sol.kpi.notRunnable);
+      for (const b of blocks) {
+        const a = alt.assignments[b.id];
+        if (a?.startDay == null) continue;
+        // 자재는 무조건 갖춘다: 준비됐거나 비상 자재
+        expect(b.materialReady || a.emergency).toBe(true);
+        expect(a.crane).toBe(true);
+        expect(a.general + a.skilled).toBeGreaterThan(0);
+      }
+    }
+    return sol;
+  };
+
+  it('튜토리얼 5블록', () => {
+    check(TUTORIAL_BLOCKS);
+  });
+
+  it('자재 미준비 블록이 비상 자재보다 많아도 자재 없는 블록은 착수하지 않는다', () => {
+    const sol = check(TUTORIAL_BLOCKS.map((b, i) => ({ ...b, materialReady: i % 2 === 0 })));
+    expect(sol.alternatives!.length).toBeGreaterThan(0);
+  });
+
+  it('자원이 빠듯해도 요건을 어기는 차선책은 내지 않는다', () => {
+    check(TUTORIAL_BLOCKS, { ...TUTORIAL_RESOURCES, generalWorkers: 2, skilledWorkers: 0 });
+  });
+
+  it('meetsMinimum: 자재 없이 올린 블록이 있으면 불만족', () => {
+    const c115 = { blockId: 'C-115', startDay: 1, general: 2, skilled: 0, crane: true, emergency: false };
+    expect(meetsMinimum(TUTORIAL_BLOCKS, TUTORIAL_RESOURCES, { 'C-115': c115 })).toBe(false);
+    expect(meetsMinimum(TUTORIAL_BLOCKS, TUTORIAL_RESOURCES, { 'C-115': { ...c115, emergency: true } })).toBe(true);
   });
 });

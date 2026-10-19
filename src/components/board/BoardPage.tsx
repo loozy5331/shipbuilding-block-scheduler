@@ -203,7 +203,11 @@ export function BoardPage() {
             <b>{applied === 0 ? '최적 배치' : `차선책 ${applied}`}</b> ({applied + 1}/{options.length}) · 납기 준수 {options[applied].kpi.onTime}/{options[applied].kpi.total} · 지연{' '}
             {options[applied].kpi.totalLateDays}일 · 착수 순서: {startOrder(options[applied].assignments).join(' → ')}
           </p>
-          {options.length > 1 && <small className="muted">버튼을 다시 누르면 착수 순서가 다른 안을 봅니다. 현장 사정으로 먼저 해야 할 블록이 있으면 차선책을 고르세요.</small>}
+          <small className="muted">
+            {options.length > 1
+              ? '버튼을 다시 누르면 착수 순서가 다른 안을 봅니다. 차선책도 모두 최소 요건(자재·크레인·작업자, 자원 초과 없음)을 만족합니다. 현장 사정으로 먼저 해야 할 블록이 있으면 차선책을 고르세요.'
+              : '최소 요건(자재·크레인·작업자, 자원 초과 없음)을 만족하는 차선책이 없습니다.'}
+          </small>
         </div>
       )}
 
