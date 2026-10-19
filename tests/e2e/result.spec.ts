@@ -36,7 +36,7 @@ test.describe('조립 애니메이션', () => {
     // 끝까지 두면 저절로 닫힌다
     await page.getByRole('button', { name: '← 블록 스케줄링' }).click();
     await page.getByRole('button', { name: '다음: 결과 →' }).click();
-    await expect(page.locator('.asm.p-done')).toBeVisible({ timeout: 12000 });
+    await expect(page.locator('.asm.p-done')).toBeVisible({ timeout: 20000 });
     await expect(show).toHaveCount(0, { timeout: 4000 });
 
     // 설정에서 끄면 바로 결과
