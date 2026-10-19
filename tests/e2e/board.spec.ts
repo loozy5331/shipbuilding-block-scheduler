@@ -89,19 +89,19 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   await expect(page.getByTestId('verdict')).toContainText('전 블록 납기 준수 가능');
   const reset = page.getByRole('button', { name: '초기화' });
   if (await reset.isEnabled()) await reset.click();
-  await expect(page.locator('.wait-chip')).toHaveCount(5);
+  await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
 
   // 대기 블록에 크레인을 놓으면 1일차 빈 작업장에 올라간다
-  await drag(page, '[data-testid="chip-crane"]', '[data-testid="wait-A-101"]');
-  await expect(page.getByTestId('lane-0').getByTestId('bar-A-101')).toBeVisible();
-  await drag(page, '[data-testid="chip-general"]', '[data-testid="bar-A-101"]');
-  await drag(page, '[data-testid="chip-general"]', '[data-testid="bar-A-101"]');
+  await drag(page, '[data-testid="chip-crane"]', '[data-testid="row-A-101"]');
+  await expect(page.getByTestId('wp-0').getByTestId('bar-A-101')).toBeVisible();
+  await drag(page, '[data-testid="chip-general"]', '[data-testid="row-A-101"]');
+  await drag(page, '[data-testid="chip-general"]', '[data-testid="row-A-101"]');
   await expect(page.getByTestId('bar-A-101')).toContainText('16MH');
 
   // B-203도 1일차(작업장 2)에 3명 → 일반 작업자 5명으로 초과(빨간 칸)
-  await drag(page, '[data-testid="chip-crane"]', '[data-testid="wait-B-203"]');
-  await expect(page.getByTestId('lane-1').getByTestId('bar-B-203')).toBeVisible();
-  for (let i = 0; i < 3; i++) await drag(page, '[data-testid="chip-general"]', '[data-testid="bar-B-203"]');
+  await drag(page, '[data-testid="chip-crane"]', '[data-testid="row-B-203"]');
+  await expect(page.getByTestId('wp-1').getByTestId('bar-B-203')).toBeVisible();
+  for (let i = 0; i < 3; i++) await drag(page, '[data-testid="chip-general"]', '[data-testid="row-B-203"]');
   await expect(page.getByTestId('load-general-1')).toHaveClass(/over/);
   await shot(page, '03-manual-overload');
 
@@ -111,9 +111,12 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   await expect(page.getByTestId('bar-B-203')).toHaveAttribute('title', /^B-203: 2일 착수/);
 
   // 위로 끌어 작업장 1로 옮긴다 (A-101은 1일에 끝나므로 겹치지 않음)
-  const laneGap = (await page.getByTestId('lane-1').boundingBox())!.y - (await page.getByTestId('lane-0').boundingBox())!.y;
-  await drag(page, '[data-testid="bar-B-203"]', { dy: -laneGap });
-  await expect(page.getByTestId('lane-0').getByTestId('bar-B-203')).toBeVisible();
+  const wp0 = (await page.getByTestId('wp-0').boundingBox())!;
+  const bar = (await page.getByTestId('bar-B-203').boundingBox())!;
+  await drag(page, '[data-testid="bar-B-203"]', { dy: wp0.y + wp0.height / 2 - (bar.y + bar.height / 2) }, async () => {
+    await expect(page.getByTestId('wp-0')).toHaveClass(/wp-over/);
+  });
+  await expect(page.getByTestId('wp-0').getByTestId('bar-B-203')).toBeVisible();
   await expect(page.getByTestId('bar-B-203')).toHaveAttribute('title', /^B-203: 2일 착수/);
 
   // 같은 작업장에서 날짜가 겹치면 작업장 겹침
@@ -121,18 +124,18 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   await page.keyboard.press('ArrowLeft');
   await expect(page.getByTestId('bar-B-203')).toContainText('작업장 겹침');
   await page.keyboard.press('ArrowDown');
-  await expect(page.getByTestId('lane-1').getByTestId('bar-B-203')).toBeVisible();
+  await expect(page.getByTestId('wp-1').getByTestId('bar-B-203')).toBeVisible();
   await expect(page.getByTestId('bar-B-203')).not.toContainText('작업장 겹침');
 
-  // 대기 블록을 작업장 줄로 끌어 놓기
-  await drag(page, '[data-testid="wait-E-320"]', '[data-testid="lane-0"] .g-track', async () => {
-    await expect(page.getByTestId('lane-0')).toHaveClass(/lane-over/);
+  // 대기 블록을 작업장 테두리 안으로 끌어 놓기
+  await drag(page, '[data-testid="row-E-320"] .g-left', '[data-testid="wp-0"] .wp-title', async () => {
+    await expect(page.getByTestId('wp-0')).toHaveClass(/wp-over/);
   });
-  await expect(page.getByTestId('lane-0').getByTestId('bar-E-320')).toBeVisible();
+  await expect(page.getByTestId('wp-0').getByTestId('row-E-320')).toBeVisible();
 
   await page.getByTestId('optimize-btn').click();
   await expect(page.locator('[data-tour="kpi"]')).toContainText('5 / 5');
-  await expect(page.locator('.wait-chip')).toHaveCount(0);
+  await expect(page.getByTestId('waiting')).toHaveCount(0);
   await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
   await shot(page, '04-optimized');
 
@@ -175,13 +178,13 @@ test('최적 배치를 다시 누르면 착수 순서가 다른 차선책을 차
 
 test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·숫자 편집', async ({ page }) => {
   await start(page, 'expert');
-  await expect(page.locator('.wait-chip')).toHaveCount(5);
+  await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
 
-  await drag(page, '[data-testid="chip-crane"]', '[data-testid="wait-A-101"]');
+  await drag(page, '[data-testid="chip-crane"]', '[data-testid="row-A-101"]');
   // 이미 크레인이 있는 블록 위로 끌면 빨간 표시와 이유, 놓으면 안내
-  await drag(page, '[data-testid="chip-crane"]', '[data-testid="bar-A-101"]', async () => {
-    await expect(page.getByTestId('bar-A-101')).toHaveClass(/drop-no/);
-    await expect(page.getByTestId('bar-A-101')).toContainText('이미 크레인이 있습니다');
+  await drag(page, '[data-testid="chip-crane"]', '[data-testid="row-A-101"]', async () => {
+    await expect(page.getByTestId('row-A-101')).toHaveClass(/drop-no/);
+    await expect(page.getByTestId('row-A-101')).toContainText('이미 크레인이 있습니다');
     // fullPage 캡처는 창 크기를 바꿔 드래그를 취소시키므로 화면만 찍는다
     await page.screenshot({ path: 'test-results/shots/08-drop-no.png' });
   });
@@ -191,7 +194,7 @@ test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·�
   for (let i = 0; i < 2; i++) {
     await page.getByTestId('chip-general').click();
     await expect(page.getByTestId('chip-general')).toHaveAttribute('aria-pressed', 'true');
-    await page.getByTestId('bar-A-101').locator('strong').click();
+    await page.getByTestId('row-A-101').locator('.b-title strong').click();
   }
   await expect(page.getByTestId('bar-A-101')).toContainText('16MH');
 
@@ -208,7 +211,7 @@ test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·�
   await expect(dlg).toHaveCount(0);
 
   // 1일에 일반 5명 > 4명 → 자원 겹침, 겹친 날 공수 불인정
-  await expect(page.getByTestId('lane-1').getByTestId('bar-B-203')).toHaveClass(/conflict/);
+  await expect(page.getByTestId('wp-1').getByTestId('bar-B-203')).toHaveClass(/conflict/);
   await expect(page.getByTestId('bar-B-203')).toHaveAttribute('title', /납기까지 0\/24 MH/);
   await shot(page, '09-conflict');
 

@@ -1,9 +1,9 @@
 import { useDndContext, useDraggable, useDroppable } from '@dnd-kit/core';
-import type { Assignment, Assignments, Block, ResourceKind, Resources } from '../../domain/types';
+import type { Assignment, Assignments, Block, ResourceKind } from '../../domain/types';
 import type { BlockResult, Evaluation } from '../../domain/evaluate';
 import { REASON_LABEL } from '../../domain/labels';
 import { assignBlockedReason } from '../../domain/assign';
-import { laneCount } from '../../domain/lanes';
+import { laneCount, workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { dayToDate, formatMD } from '../../io/dates';
 import { CraneIcon, MaterialIcon, SkilledIcon, WorkerIcon } from '../icons/ResourceIcons';
@@ -12,37 +12,16 @@ export const COL = 96;
 /** 이보다 긴 일정은 "전체 기간 표시"를 눌러야 다 보인다 */
 export const MAX_DAYS = 90;
 
-interface DayHeaderProps {
-  days: number;
-  planStart: string;
-  label: string;
-  /** 고른 날 (TBM 메시지 대상) */
-  focus?: number;
-  onPick?(day: number): void;
-}
-
-export function DayHeader({ days, planStart, label, focus, onPick }: DayHeaderProps) {
+export function DayHeader({ days, planStart, label }: { days: number; planStart: string; label: string }) {
   return (
     <div className="g-row g-header" style={{ gridTemplateColumns: `var(--left) repeat(${days}, ${COL}px)` }}>
       <div className="g-left">{label}</div>
-      {Array.from({ length: days }, (_, i) => {
-        const cls = `g-day ${i === 0 ? 'today' : ''} ${focus === i + 1 ? 'focus' : ''}`;
-        const body = (
-          <>
-            <b>{i === 0 ? '오늘' : `${i + 1}일`}</b>
-            <small>{formatMD(dayToDate(planStart, i + 1))}</small>
-          </>
-        );
-        return onPick ? (
-          <button key={i} type="button" className={cls} onClick={() => onPick(i + 1)} title={`${i + 1}일 작업·TBM 보기`} aria-pressed={focus === i + 1}>
-            {body}
-          </button>
-        ) : (
-          <div key={i} className={cls}>
-            {body}
-          </div>
-        );
-      })}
+      {Array.from({ length: days }, (_, i) => (
+        <div key={i} className={`g-day ${i === 0 ? 'today' : ''}`}>
+          <b>{i === 0 ? '오늘' : `${i + 1}일`}</b>
+          <small>{formatMD(dayToDate(planStart, i + 1))}</small>
+        </div>
+      ))}
     </div>
   );
 }
@@ -101,70 +80,44 @@ function AssignedIcons({ block, a, size = 16 }: { block: Block; a: Assignment | 
   );
 }
 
-/** 자원 아이콘을 끌어 올 때의 판정 (놓을 수 있는지와 이유) */
-function useResourceDrop(block: Block, a: Assignment | undefined, assignments: Assignments) {
-  const { setNodeRef, isOver } = useDroppable({ id: `blk:${block.id}`, data: { blockId: block.id } });
-  const { active } = useDndContext();
-  const resources = useStore((s) => s.resources);
-  const dragKind = active?.data.current?.kind as ResourceKind | undefined;
-  const reason = isOver && dragKind ? assignBlockedReason(block, a, dragKind, resources, assignments) : null;
-  const dropCls = isOver && dragKind ? (reason ? 'drop-no' : 'drop-ok') : '';
-  return { setNodeRef, reason, dropCls };
-}
-
 interface BarProps {
   block: Block;
   res: BlockResult;
   a: Assignment;
-  assignments: Assignments;
   days: number;
-  lanes: number;
-  hinted: boolean;
+  workplaces: number;
   onEdit(id: string): void;
 }
 
-function Bar({ block, res, a, assignments, days, lanes, hinted, onEdit }: BarProps) {
+/** 작업 기간 막대. 좌우로 끌면 착수일, 위아래로 다른 작업장 테두리 안에 놓으면 작업장이 바뀐다. */
+function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
+  const moveToWorkplace = useStore((s) => s.moveToWorkplace);
   const moveBlock = useStore((s) => s.moveBlock);
-  const selected = useStore((s) => s.selectedToken);
-  const assign = useStore((s) => s.assign);
+  const resources = useStore((s) => s.resources);
   const start = res.start ?? 1;
   const drag = useDraggable({ id: `bar:${block.id}`, data: { blockId: block.id, start } });
-  const drop = useResourceDrop(block, a, assignments);
   const length = Math.max(1, Math.min(res.duration ?? 1, days - start + 1));
   const shift = drag.transform ? Math.round(drag.transform.x / COL) : 0;
   const status = statusText(res);
-  const cls = [
-    'g-bar',
-    res.status,
-    res.lateDays > 0 && 'is-late',
-    res.overloaded && 'overloaded',
-    drag.isDragging && 'dragging',
-    length === 1 && 'short',
-    selected && 'selectable',
-    hinted && 'hinted',
-    drop.dropCls,
-  ]
+  const cls = ['g-bar', res.status, res.lateDays > 0 && 'is-late', res.overloaded && 'overloaded', drag.isDragging && 'dragging', length === 1 && 'short']
     .filter(Boolean)
     .join(' ');
 
   if (start > days) {
     return (
       <div className="g-bar out-of-range" style={{ left: (days - 1) * COL + 3, width: COL - 6 }}>
-        {block.id} {start}일 착수 →
+        {start}일 착수 →
       </div>
     );
   }
 
   return (
     <div
-      ref={(el) => {
-        drag.setNodeRef(el);
-        drop.setNodeRef(el);
-      }}
+      ref={drag.setNodeRef}
       className={cls}
       data-testid={`bar-${block.id}`}
       data-day={drag.isDragging ? `${Math.max(1, start + shift)}일 착수` : undefined}
-      title={`${blockTitle(block, res)}. 끌어서 착수일·작업장을 옮깁니다`}
+      title={`${blockTitle(block, res)}. 좌우로 끌면 착수일, 다른 작업장으로 끌면 작업장이 바뀝니다`}
       style={{
         left: (start - 1) * COL + 3,
         width: length * COL - 6,
@@ -174,136 +127,123 @@ function Bar({ block, res, a, assignments, days, lanes, hinted, onEdit }: BarPro
       {...drag.attributes}
       aria-label={`${block.id} ${start}일 착수. 좌우 방향키로 착수일, 위아래로 작업장 이동, Enter로 편집`}
       tabIndex={0}
-      onClick={() => selected && assign(block.id, selected)}
       onKeyDown={(e) => {
         if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
           e.preventDefault();
           moveBlock(block.id, start + (e.key === 'ArrowRight' ? 1 : -1));
         } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && a.lane !== undefined) {
           e.preventDefault();
-          const lane = a.lane + (e.key === 'ArrowDown' ? 1 : -1);
-          if (lane >= 0 && lane < lanes) moveBlock(block.id, start, lane);
+          const wp = workplaceOf(a.lane, resources) + (e.key === 'ArrowDown' ? 1 : -1);
+          if (wp >= 0 && wp < workplaces) moveToWorkplace(block.id, start, wp);
         } else if (e.key === 'Enter') {
           e.preventDefault();
-          if (selected) assign(block.id, selected);
-          else onEdit(block.id);
+          onEdit(block.id);
         }
       }}
     >
-      <span className="bar-top">
-        <strong>{block.id}</strong>
-        {status ? (
-          <span className="bar-status">{status}</span>
-        ) : (
-          <span className="bar-meta">
-            {length === 1 ? `${res.dailyMH}MH` : `${res.duration}일 · 하루 ${res.dailyMH} MH`}
-          </span>
-        )}
-        <button
-          type="button"
-          className="bar-edit"
-          title="숫자 편집"
-          aria-label={`${block.id} 숫자 편집`}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(block.id);
-          }}
-        >
-          ✎
-        </button>
-      </span>
-      <AssignedIcons block={block} a={a} />
-      {drop.reason && <span className="drop-reason">{drop.reason}</span>}
+      {status ?? (length === 1 ? `${res.duration}일 · ${res.dailyMH}MH` : `${res.duration}일 · 하루 ${res.dailyMH} MH`)}
     </div>
   );
 }
 
-/** 아직 간트에 올리지 않은 블록. 작업장 줄로 끌어 놓거나 자원 아이콘을 놓으면 배치된다. */
-function WaitingChip({ block, a, assignments, hinted, onEdit }: { block: Block; a: Assignment | undefined; assignments: Assignments; hinted: boolean; onEdit(id: string): void }) {
-  const drag = useDraggable({ id: `wait:${block.id}`, data: { blockId: block.id } });
-  const drop = useResourceDrop(block, a, assignments);
+interface RowProps {
+  block: Block;
+  res: BlockResult;
+  a: Assignment | undefined;
+  assignments: Assignments;
+  days: number;
+  workplaces: number;
+  hinted: boolean;
+  onEdit(id: string): void;
+}
+
+/** 블록 한 줄: 왼쪽은 블록 정보와 배정된 자원, 오른쪽은 날짜 칸과 막대 */
+function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit }: RowProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: `blk:${block.id}`, data: { blockId: block.id } });
+  const { active } = useDndContext();
+  const resources = useStore((s) => s.resources);
   const selected = useStore((s) => s.selectedToken);
   const assign = useStore((s) => s.assign);
+  // 아직 배치하지 않은 블록은 왼쪽 칸을 끌어 작업장에 놓는다
+  const waiting = res.start === null;
+  const drag = useDraggable({ id: `wait:${block.id}`, data: { blockId: block.id }, disabled: !waiting });
+
+  const dragKind = active?.data.current?.kind as ResourceKind | undefined;
+  const reason = isOver && dragKind ? assignBlockedReason(block, a, dragKind, resources, assignments) : null;
+  const dropCls = isOver && dragKind ? (reason ? 'drop-no' : 'drop-ok') : '';
+
   return (
     <div
-      ref={(el) => {
-        drag.setNodeRef(el);
-        drop.setNodeRef(el);
-      }}
-      className={`wait-chip ${drop.dropCls} ${drag.isDragging ? 'dragging' : ''} ${selected ? 'selectable' : ''} ${hinted ? 'hinted' : ''}`}
-      data-testid={`wait-${block.id}`}
-      {...drag.listeners}
-      {...drag.attributes}
-      tabIndex={0}
-      aria-label={`${block.id} 대기 블록. 작업장 줄로 끌어 놓거나 Enter로 편집`}
-      onClick={() => selected && assign(block.id, selected)}
-      onKeyDown={(e) => {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        if (selected) assign(block.id, selected);
-        else onEdit(block.id);
-      }}
+      ref={setNodeRef}
+      className={`g-row g-block ${dropCls} ${selected ? 'selectable' : ''} ${hinted ? 'hinted' : ''}`}
+      data-testid={`row-${block.id}`}
+      style={{ gridTemplateColumns: `var(--left) repeat(${days}, ${COL}px)` }}
     >
-      <span className="bar-top">
-        <strong>{block.id}</strong>
-        <button
-          type="button"
-          className="bar-edit"
-          title="숫자 편집"
-          aria-label={`${block.id} 숫자 편집`}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(block.id);
-          }}
-        >
-          ✎
-        </button>
-      </span>
-      <small className="muted">
-        남은 {block.dueDay}일 · {block.requiredMH} MH
-      </small>
-      {!block.materialReady && <span className="tag warn">자재 미준비</span>}
-      {drop.reason && <span className="drop-reason">{drop.reason}</span>}
-    </div>
-  );
-}
-
-function Lane({ lane, label, wpStart, children, overDays, days }: { lane: number; label: React.ReactNode; wpStart: boolean; children: React.ReactNode; overDays: number[]; days: number }) {
-  const { setNodeRef, isOver, active } = useDroppable({ id: `lane:${lane}`, data: { lane } });
-  const moving = isOver && /^(bar|wait):/.test(String(active?.id));
-  return (
-    <div className={`g-row g-lane ${wpStart ? 'wp-start' : ''} ${moving ? 'lane-over' : ''}`} data-testid={`lane-${lane}`} style={{ gridTemplateColumns: `var(--left) repeat(${days}, ${COL}px)` }}>
-      <div className="g-left lane-label">{label}</div>
-      <div ref={setNodeRef} className="g-track" style={{ gridColumn: `2 / span ${days}` }}>
+      <div
+        ref={drag.setNodeRef}
+        className={`g-left ${waiting ? 'waiting' : ''} ${drag.isDragging ? 'dragging' : ''}`}
+        tabIndex={0}
+        title={waiting ? '작업장 테두리 안으로 끌어 놓으면 그 날짜에 배치됩니다' : blockTitle(block, res)}
+        aria-label={`${block.id} 배치 영역`}
+        {...(waiting ? drag.listeners : {})}
+        onClick={(e) => {
+          if (selected && !(e.target as HTMLElement).closest('button')) assign(block.id, selected);
+        }}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
+          e.preventDefault();
+          if (selected) assign(block.id, selected);
+          else onEdit(block.id);
+        }}
+      >
+        <div className="b-title">
+          <strong>{block.id}</strong>
+          <span className="muted">
+            남은 {block.dueDay}일 · {block.requiredMH} MH
+          </span>
+          {!block.materialReady && <span className="tag warn">자재 미준비</span>}
+          <button
+            type="button"
+            className="bar-edit"
+            title="숫자 편집"
+            aria-label={`${block.id} 숫자 편집`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => onEdit(block.id)}
+          >
+            ✎
+          </button>
+        </div>
+        <AssignedIcons block={block} a={a} size={18} />
+        {reason && <span className="drop-reason">{reason}</span>}
+      </div>
+      <div className="g-track" style={{ gridColumn: `2 / span ${days}` }}>
         {Array.from({ length: days }, (_, i) => (
           <div key={i} className="g-cell" style={{ left: i * COL, width: COL }} />
         ))}
-        {overDays
+        {res.overDays
           .filter((d) => d <= days)
           .map((d) => (
             <span key={d} className="over-day" style={{ left: (d - 1) * COL, width: COL }} title={`${d}일 자원 용량 초과·겹침`} />
           ))}
-        {children}
+        {block.dueDay <= days && <div className="due-line" style={{ left: block.dueDay * COL }} title={`납기: ${block.dueDay}일 끝`} />}
+        {res.start !== null && a && <Bar block={block} res={res} a={a} days={days} workplaces={workplaces} onEdit={onEdit} />}
       </div>
     </div>
   );
 }
 
-/** 간트 위 대기 블록 줄 */
-export function WaitingTray({ blocks, assignments, ev, hintBlock, onEdit }: Pick<Props, 'blocks' | 'assignments' | 'ev' | 'hintBlock' | 'onEdit'>) {
-  const waiting = blocks.filter((b) => ev.blocks[b.id].start === null);
+/** 작업장 하나를 테두리로 묶는다. 막대·대기 블록을 이 안에 놓으면 이 작업장으로 옮겨진다. */
+function WorkplaceGroup({ wp, count, children }: { wp: number; count: number; children: React.ReactNode }) {
+  const { setNodeRef, isOver, active } = useDroppable({ id: `wp:${wp}`, data: { wp } });
+  const moving = isOver && /^(bar|wait):/.test(String(active?.id));
   return (
-    <div className="wait-tray" data-tour="waiting">
-      <span className="wait-title">
-        대기 블록 <b>{waiting.length}</b>
-      </span>
-      {waiting.length === 0 ? (
-        <span className="muted">모든 블록이 작업장에 배치되었습니다.</span>
-      ) : (
-        waiting.map((b) => <WaitingChip key={b.id} block={b} a={assignments[b.id]} assignments={assignments} hinted={hintBlock === b.id} onEdit={onEdit} />)
-      )}
+    <div ref={setNodeRef} className={`wp-group ${moving ? 'wp-over' : ''}`} data-testid={`wp-${wp}`}>
+      <div className="wp-title">
+        <strong>작업장 {wp + 1}</strong>
+        <span className="muted">블록 {count}</span>
+      </div>
+      {count === 0 && <div className="wp-empty muted">비어 있음 · 막대나 대기 블록을 여기로 끌어 놓으세요</div>}
+      {children}
     </div>
   );
 }
@@ -314,56 +254,53 @@ interface Props {
   ev: Evaluation;
   days: number;
   hintBlock: string | null;
-  /** 주면 날짜 머리를 눌러 그날을 고를 수 있다 */
-  focusDay?: number;
-  onFocusDay?(day: number): void;
   onEdit(id: string): void;
 }
 
-export function GanttChart({ blocks, assignments, ev, days, focusDay, hintBlock, onFocusDay, onEdit }: Props) {
+export function GanttChart({ blocks, assignments, ev, days, hintBlock, onEdit }: Props) {
   const planStart = useStore((s) => s.planStart);
-  const r: Resources = useStore((s) => s.resources);
+  const r = useStore((s) => s.resources);
   const n = laneCount(r);
-  const placed = blocks.filter((b) => ev.blocks[b.id].start !== null);
-  const laneOf = (b: Block) => {
+  const workplaces = r.workplaces;
+  const wpOf = (b: Block) => {
     const lane = assignments[b.id]?.lane;
-    return lane !== undefined && lane < n ? lane : -1;
+    return ev.blocks[b.id].start !== null && lane !== undefined && lane < n ? workplaceOf(lane, r) : -1;
   };
-
-  const bars = (lane: number) =>
-    placed
-      .filter((b) => laneOf(b) === lane)
-      .map((b) => (
-        <span key={b.id}>
-          {b.dueDay <= days && <div className="due-tick" style={{ left: b.dueDay * COL }} title={`${b.id} 납기: ${b.dueDay}일 끝`} />}
-          <Bar block={b} res={ev.blocks[b.id]} a={assignments[b.id]} assignments={assignments} days={days} lanes={n} hinted={hintBlock === b.id} onEdit={onEdit} />
-        </span>
-      ));
-  const overDaysOf = (lane: number) => [...new Set(placed.filter((b) => laneOf(b) === lane).flatMap((b) => ev.blocks[b.id].overDays))];
-  const unplacedLane = placed.some((b) => laneOf(b) === -1);
+  const byStart = (x: Block, y: Block) => (ev.blocks[x.id].start ?? 0) - (ev.blocks[y.id].start ?? 0) || x.id.localeCompare(y.id);
+  const row = (b: Block) => (
+    <BlockRow
+      key={b.id}
+      block={b}
+      res={ev.blocks[b.id]}
+      a={assignments[b.id]}
+      assignments={assignments}
+      days={days}
+      workplaces={workplaces}
+      hinted={hintBlock === b.id}
+      onEdit={onEdit}
+    />
+  );
+  const waiting = blocks.filter((b) => wpOf(b) === -1);
 
   return (
     <div className="gantt" data-tour="gantt">
-      <DayHeader days={days} planStart={planStart} label="작업장 · 작업 자리" focus={focusDay} onPick={onFocusDay} />
-      {Array.from({ length: n }, (_, lane) => {
-        const wp = Math.floor(lane / r.blocksPerWorkplace);
-        const seat = lane % r.blocksPerWorkplace;
-        const label = (
-          <>
-            <strong>작업장 {wp + 1}</strong>
-            {r.blocksPerWorkplace > 1 && <span className="muted">자리 {seat + 1}</span>}
-          </>
-        );
+      <DayHeader days={days} planStart={planStart} label="블록 · 배정 자원" />
+      {Array.from({ length: workplaces }, (_, wp) => {
+        const rows = blocks.filter((b) => wpOf(b) === wp).sort(byStart);
         return (
-          <Lane key={lane} lane={lane} label={label} wpStart={lane > 0 && seat === 0} overDays={overDaysOf(lane)} days={days}>
-            {bars(lane)}
-          </Lane>
+          <WorkplaceGroup key={wp} wp={wp} count={rows.length}>
+            {rows.map(row)}
+          </WorkplaceGroup>
         );
       })}
-      {unplacedLane && (
-        <Lane lane={-1} label={<strong>작업장 없음</strong>} wpStart overDays={overDaysOf(-1)} days={days}>
-          {bars(-1)}
-        </Lane>
+      {waiting.length > 0 && (
+        <div className="wp-group waiting-group" data-testid="waiting" data-tour="waiting">
+          <div className="wp-title">
+            <strong>대기 블록</strong>
+            <span className="muted">자원 아이콘을 놓거나, 블록을 작업장으로 끌어 놓으세요</span>
+          </div>
+          {waiting.map(row)}
+        </div>
       )}
     </div>
   );

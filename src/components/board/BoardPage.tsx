@@ -16,13 +16,13 @@ import {
 import type { Assignments, ResourceKind } from '../../domain/types';
 import { evaluate } from '../../domain/evaluate';
 import { nextHint, type Hint } from '../../domain/hint';
-import { samePlan } from '../../domain/lanes';
+import { samePlan, workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { runSolve } from '../../store/actions';
 import { ResourceIcon } from '../icons/ResourceIcons';
 import { LineIcon } from '../icons/LineIcons';
 import { ResourcePalette } from './ResourcePalette';
-import { COL, GanttChart, MAX_DAYS, WaitingTray } from './GanttChart';
+import { COL, GanttChart, MAX_DAYS } from './GanttChart';
 import { Legend, LoadGrid } from './LoadGrid';
 import { KpiCards, PolicyCompare, WhatIfCard } from './Insights';
 import { BlockEditor } from './BlockEditor';
@@ -34,9 +34,9 @@ const barModifier: Modifier = ({ transform, active }) => {
   return { ...transform, x: Math.max((1 - start) * COL, Math.round(transform.x / COL) * COL) };
 };
 
-/** 자원 아이콘은 블록(막대·대기 블록)에, 막대·대기 블록은 작업장 줄에만 놓인다 */
+/** 자원 아이콘은 블록 줄에, 막대·대기 블록은 작업장 테두리 안에만 놓인다 */
 const collide: CollisionDetection = (args) => {
-  const prefix = String(args.active.id).startsWith('res:') ? 'blk:' : 'lane:';
+  const prefix = String(args.active.id).startsWith('res:') ? 'blk:' : 'wp:';
   const scoped = { ...args, droppableContainers: args.droppableContainers.filter((c) => String(c.id).startsWith(prefix)) };
   const hits = pointerWithin(scoped);
   return hits.length ? hits : rectIntersection(scoped);
@@ -67,6 +67,7 @@ export function BoardPage() {
   const touring = useStore((s) => s.tutorialStep !== null);
   const assign = useStore((s) => s.assign);
   const moveBlock = useStore((s) => s.moveBlock);
+  const moveToWorkplace = useStore((s) => s.moveToWorkplace);
   const clear = useStore((s) => s.clearAssignments);
   const showFull = useStore((s) => s.showFull);
   const setShowFull = useStore((s) => s.setShowFull);
@@ -107,7 +108,7 @@ export function BoardPage() {
   const onDragEnd = (e: DragEndEvent) => {
     setDrag(null);
     const id = String(e.active.id);
-    const lane = e.over?.data.current?.lane as number | undefined;
+    const wp = e.over?.data.current?.wp as number | undefined;
     if (id.startsWith('res:')) {
       const target = e.over?.data.current?.blockId as string | undefined;
       if (target) assign(target, id.slice(4) as ResourceKind);
@@ -115,12 +116,15 @@ export function BoardPage() {
       const blockId = id.slice(4);
       const a = assignments[blockId];
       if (!a?.startDay) return;
-      const shift = Math.round(e.delta.x / COL);
-      const toLane = lane !== undefined && lane >= 0 ? lane : a.lane;
-      if (shift !== 0 || toLane !== a.lane) moveBlock(blockId, a.startDay + shift, toLane);
-    } else if (id.startsWith('wait:') && e.over && lane !== undefined && lane >= 0) {
+      const start = a.startDay + Math.round(e.delta.x / COL);
+      const fromWp = a.lane === undefined ? -1 : workplaceOf(a.lane, resources);
+      if (wp !== undefined && wp !== fromWp) moveToWorkplace(blockId, start, wp);
+      else if (start !== a.startDay) moveBlock(blockId, start);
+    } else if (id.startsWith('wait:') && wp !== undefined) {
+      // 놓은 자리의 날짜: 첫 날짜 칸 기준
+      const firstDay = document.querySelector('.g-header .g-day')?.getBoundingClientRect().left ?? 0;
       const x = pointerX(e.activatorEvent) + e.delta.x;
-      moveBlock(id.slice(5), Math.floor((x - e.over.rect.left) / COL) + 1, lane);
+      moveToWorkplace(id.slice(5), Math.floor((x - firstDay) / COL) + 1, wp);
     }
   };
 
@@ -240,7 +244,6 @@ export function BoardPage() {
 
       <DndContext sensors={sensors} collisionDetection={collide} modifiers={[barModifier]} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDrag(null)}>
         <ResourcePalette />
-        <WaitingTray blocks={blocks} assignments={assignments} ev={ev} hintBlock={hint?.blockId ?? null} onEdit={setEditing} />
         <div className="gantt-scroll">
           <GanttChart
             blocks={blocks}
