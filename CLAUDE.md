@@ -31,7 +31,7 @@ React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 
 | 튜토리얼 가이드 | 단계 `src/tutorial/steps.ts`, 화면 `Tour.tsx`, 예시 데이터 `scenario.ts` |
 | 조립 애니메이션 | 장면 데이터 `assembly/scene.ts`, 시간표 `timeline.ts`, three.js 연출 `three/runShow.ts`(카메라·빛·장면별 동작), 모델(선박 블록 단면·이음부 경로 포함) `three/models.ts`, 용접 비드 `three/weldBead.ts`, 불꽃·먼지 `three/effects.ts`, 오버레이 `AssemblyShow.tsx`(three.js는 재생 때만 로드) |
 | 스타일 | `src/styles/parts/NN-*.css` — **번호 순서가 우선순위**(app.css가 순서대로 @import). 새 스타일은 해당 구역 파일에 |
-| 계획 문서 | `docs/ocr-plan.md` |
+| 계획 문서 | 로드맵(지난·남은 작업) `docs/roadmap.md`, OCR `docs/ocr-plan.md` |
 
 ## 규칙
 - UI 문구·주석·커밋 메시지는 한국어. 주석은 "왜"만 짧게, 주변 코드 밀도에 맞춘다.
