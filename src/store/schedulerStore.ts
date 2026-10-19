@@ -8,11 +8,11 @@ import { assignBlockedReason } from '../domain/assign';
 import { assignLanes, seatIn } from '../domain/lanes';
 import { TUTORIAL_BLOCKS, TUTORIAL_RESOURCES } from '../tutorial/scenario';
 
-/** 유저 여정: 모드 선택 → 메뉴 → 공통 설정 입력 → 블록 스케줄링 → 결과 */
-export type Page = 'mode' | 'menu' | 'setup' | 'schedule' | 'result';
+/** 유저 여정: 로그인 → 메뉴 → 공통 설정 입력 → 블록 스케줄링 → 결과 */
+export type Page = 'login' | 'menu' | 'setup' | 'schedule' | 'result';
 
 export const PAGES: { page: Page; label: string }[] = [
-  { page: 'mode', label: '모드 선택' },
+  { page: 'login', label: '로그인' },
   { page: 'menu', label: '메뉴' },
   { page: 'setup', label: '공통 설정 입력' },
   { page: 'schedule', label: '블록 스케줄링' },
@@ -24,9 +24,17 @@ export interface Settings {
   animation: boolean;
 }
 
+/** 로그인한 사용자. guest면 체험하기로 들어온 것 */
+export interface User {
+  id: string;
+  guest: boolean;
+}
+
 interface State {
   page: Page;
-  mode: UserMode | null;
+  user: User | null;
+  /** 상단 토글로 언제든 바꾼다 (기본 숙련자) */
+  mode: UserMode;
   settings: Settings;
   /** 신입 모드에서 힌트를 받은 횟수 (평가서에 표시) */
   hintCount: number;
@@ -51,7 +59,10 @@ interface State {
   toast: { id: number; message: string } | null;
 
   setPage(p: Page): void;
-  setMode(m: UserMode | null): void;
+  setMode(m: UserMode): void;
+  /** 로그인(또는 체험하기) 후 처음이면 튜토리얼, 아니면 메뉴로 */
+  login(user: User): void;
+  logout(): void;
   setSettings(patch: Partial<Settings>): void;
   countHint(): void;
   setPlanStart(d: string): void;
@@ -96,8 +107,9 @@ const storage = createJSONStorage(() => {
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
-      page: 'mode',
-      mode: null,
+      page: 'login',
+      user: null,
+      mode: 'expert',
       settings: { animation: true },
       hintCount: 0,
       planStart: todayISO(),
@@ -116,6 +128,12 @@ export const useStore = create<State>()(
 
       setPage: (page) => set({ page }),
       setMode: (mode) => set({ mode }),
+      login: (user) => {
+        set({ user });
+        if (get().tutorialSeen) set({ page: 'menu' });
+        else get().startTutorial();
+      },
+      logout: () => set({ user: null, page: 'login', tutorialActive: false, tutorialPage: null, tutorialStep: null, tutorialGuided: [] }),
       setSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
       countHint: () => set((s) => ({ hintCount: s.hintCount + 1 })),
       setPlanStart: (planStart) => set({ planStart }),
@@ -216,16 +234,17 @@ export const useStore = create<State>()(
     }),
     {
       name: 'block-scheduler',
-      version: 4,
+      version: 5,
       storage,
-      // v1 → v2: 모드·설정·작업 자리 추가 (자리는 화면에서 채운다). v2 → v3: 페이지 이름 변경. v3 → v4: 튜토리얼 전용 페이지 없앰
+      // v1 → v2: 모드·설정·작업 자리 추가 (자리는 화면에서 채운다). v2 → v3: 페이지 이름 변경. v3 → v4: 튜토리얼 전용 페이지 없앰. v4 → v5: 모드 선택 → 로그인
       migrate: (persisted) => {
-        const s = persisted as State & { page: string };
-        const renamed: Record<string, Page> = { home: 'menu', input: 'setup', board: 'schedule', tutorial: 'menu' };
-        return { ...s, page: renamed[s.page] ?? s.page } as State;
+        const s = persisted as State & { page: string; mode: UserMode | null };
+        const renamed: Record<string, Page> = { home: 'menu', input: 'setup', board: 'schedule', tutorial: 'menu', mode: 'login' };
+        return { ...s, page: renamed[s.page] ?? s.page, mode: s.mode ?? 'expert', user: s.user ?? null } as State;
       },
       partialize: (s) => ({
         page: s.page,
+        user: s.user,
         mode: s.mode,
         settings: s.settings,
         hintCount: s.hintCount,

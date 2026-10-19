@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { UserMode } from '../../domain/types';
 import { useStore } from '../../store/schedulerStore';
 import { readBlocksFromFile } from '../../io/excel';
+import { requestAuth } from '../../io/auth';
 import { LineIcon } from '../icons/LineIcons';
 import { Modal } from '../common/Modal';
 import { ExcelHelpButton } from '../common/ExcelHelp';
@@ -11,11 +12,24 @@ const MODE: Record<UserMode, { name: string; desc: string }> = {
   novice: { name: '신입', desc: '직접 배치하고 힌트로 배우기' },
 };
 
+/** 숙련자·신입 토글. 로그인 페이지의 상단 바에서만 고른다 */
+export function ModeToggle() {
+  const mode = useStore((s) => s.mode);
+  const setMode = useStore((s) => s.setMode);
+  return (
+    <div className={`seg mode-toggle ${mode}`} role="group" aria-label="사용자 모드">
+      {(Object.keys(MODE) as UserMode[]).map((m) => (
+        <button key={m} type="button" className={mode === m ? 'on' : ''} aria-pressed={mode === m} onClick={() => setMode(m)} data-testid={`mode-${m}`}>
+          {MODE[m].name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function SettingsDialog({ onClose }: { onClose(): void }) {
   const settings = useStore((s) => s.settings);
   const setSettings = useStore((s) => s.setSettings);
-  const mode = useStore((s) => s.mode);
-  const setMode = useStore((s) => s.setMode);
   return (
     <Modal title="설정" onClose={onClose}>
       <div className="settings">
@@ -26,19 +40,6 @@ function SettingsDialog({ onClose }: { onClose(): void }) {
           </span>
           <input type="checkbox" role="switch" checked={settings.animation} onChange={(e) => setSettings({ animation: e.target.checked })} />
         </label>
-        <div className="switch-row">
-          <span>
-            <strong>사용자 모드</strong>
-            <small className="muted">{mode ? MODE[mode].desc : '모드를 고르세요'}</small>
-          </span>
-          <div className="seg">
-            {(Object.keys(MODE) as UserMode[]).map((m) => (
-              <button key={m} type="button" className={mode === m ? 'on' : ''} aria-pressed={mode === m} onClick={() => setMode(m)}>
-                {MODE[m].name}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
       <div className="dialog-actions">
         <button type="button" className="btn primary" onClick={onClose}>
@@ -49,40 +50,95 @@ function SettingsDialog({ onClose }: { onClose(): void }) {
   );
 }
 
-/** ① 모드 선택 (로그인은 추후) */
-export function ModePage() {
-  const setMode = useStore((s) => s.setMode);
-  const setPage = useStore((s) => s.setPage);
-  const tutorialSeen = useStore((s) => s.tutorialSeen);
-  const startTutorial = useStore((s) => s.startTutorial);
+/** ① 로그인 (아이디·비밀번호) · 회원가입 · 체험하기 */
+export function LoginPage() {
+  const login = useStore((s) => s.login);
+  const showToast = useStore((s) => s.showToast);
+  const [signup, setSignup] = useState(false);
+  const [id, setId] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const choose = (m: UserMode) => {
-    setMode(m);
-    // 처음이면 튜토리얼부터
-    if (tutorialSeen) setPage('menu');
-    else startTutorial();
+  const switchForm = () => {
+    setSignup(!signup);
+    setPassword('');
+    setConfirm('');
+    setError('');
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id.trim() || !password) return setError('아이디와 비밀번호를 입력하세요.');
+    if (signup && password !== confirm) return setError('비밀번호가 서로 다릅니다.');
+    setBusy(true);
+    try {
+      const user = await requestAuth(signup ? 'signup' : 'login', id.trim(), password);
+      if (signup) showToast(`${user}님, 가입을 환영합니다.`);
+      login({ id: user, guest: false });
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <div className="home">
       <span className="eyebrow-label">— 조립 공정 생산관리</span>
-      <h1>누가 배치하나요?</h1>
-      <div className="mode-pick">
-        {(Object.keys(MODE) as UserMode[]).map((m) => (
-          <button key={m} type="button" className={`mode-btn ${m}`} onClick={() => choose(m)} data-testid={`mode-${m}`}>
-            <strong>{MODE[m].name}</strong>
-            <small>{MODE[m].desc}</small>
+      <h1>{signup ? '회원가입' : '로그인'}</h1>
+      <form className="login-form" onSubmit={submit} noValidate>
+        <label>
+          아이디
+          <input value={id} onChange={(e) => setId(e.target.value)} autoComplete="username" placeholder={signup ? '영문·숫자·밑줄 3~20자' : undefined} data-testid="login-id" />
+        </label>
+        <label>
+          비밀번호
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete={signup ? 'new-password' : 'current-password'}
+            placeholder={signup ? '6자 이상' : undefined}
+            data-testid="login-password"
+          />
+        </label>
+        {signup && (
+          <label>
+            비밀번호 확인
+            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" data-testid="login-confirm" />
+          </label>
+        )}
+        {error && (
+          <p className="login-error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" className="btn primary" disabled={busy} data-testid="login-submit">
+          {signup ? '가입하고 시작하기' : '로그인'}
+        </button>
+        <p className="login-switch muted">
+          {signup ? '이미 계정이 있나요? ' : '계정이 없나요? '}
+          <button type="button" className="link-btn" onClick={switchForm} data-testid="login-switch">
+            {signup ? '로그인' : '회원가입'}
           </button>
-        ))}
+        </p>
+      </form>
+      <div className="login-divider">
+        <span>또는</span>
       </div>
-      <p className="muted">로그인은 추후 지원 예정입니다.</p>
+      <button type="button" className="btn ghost login-guest" onClick={() => login({ id: '체험', guest: true })} data-testid="try-btn">
+        체험하기
+      </button>
+      <p className="muted">숙련자·신입 모드는 오른쪽 위에서 고릅니다 (로그인 후에는 바꿀 수 없음).</p>
     </div>
   );
 }
 
 /** ② 田자 메뉴 */
 export function MenuPage() {
-  const mode = useStore((s) => s.mode) ?? 'expert';
+  const mode = useStore((s) => s.mode);
   const setPage = useStore((s) => s.setPage);
   const setBlocks = useStore((s) => s.setBlocks);
   const planStart = useStore((s) => s.planStart);
@@ -107,12 +163,7 @@ export function MenuPage() {
 
   return (
     <div className="home">
-      <span className="eyebrow-label">
-        — {MODE[mode].name} 모드 ·{' '}
-        <button type="button" className="link-btn" onClick={() => setPage('mode')}>
-          모드 변경
-        </button>
-      </span>
+      <span className="eyebrow-label">— {MODE[mode].name} 모드</span>
       <h1>무엇부터 할까요?</h1>
       <div className="tile-grid">
         <button type="button" className="tile" onClick={() => fileRef.current?.click()} data-testid="tile-upload">
@@ -133,7 +184,7 @@ export function MenuPage() {
         <button type="button" className="tile" onClick={() => setSettings(true)} data-testid="tile-settings">
           <LineIcon name="gear" size={34} />
           <strong>설정</strong>
-          <small>애니메이션 · 모드</small>
+          <small>애니메이션</small>
         </button>
       </div>
       <input

@@ -1121,6 +1121,13 @@ button.brand {
   cursor: pointer;
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
 .mode-chip {
   padding: 3px 10px;
   border-radius: 999px;
@@ -1133,6 +1140,25 @@ button.brand {
 .mode-chip.novice {
   background: #fff5e6;
   color: var(--orange);
+}
+
+.mode-toggle button {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.mode-toggle.novice button.on {
+  background: var(--orange);
+}
+
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  white-space: nowrap;
 }
 
 .home {
@@ -1152,44 +1178,75 @@ button.brand {
   font-size: 28px;
 }
 
-.mode-pick {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
-  width: 100%;
-}
-
-.mode-btn {
+.login-form {
   display: flex;
   flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.login-form label {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
   gap: 6px;
-  padding: 28px 20px;
-  border: 2px solid var(--green);
-  border-radius: var(--radius);
-  background: #fff;
+  font-weight: 600;
   color: var(--navy);
-  cursor: pointer;
 }
 
-.mode-btn strong {
-  font-size: 26px;
+.login-form input {
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  background: #fff;
 }
 
-.mode-btn small {
-  color: var(--muted);
+.login-form input:focus {
+  outline: 2px solid var(--green);
+  outline-offset: -1px;
+}
+
+.login-form .btn,
+.login-guest {
+  justify-content: center;
+  padding: 12px 16px;
+  font-size: 16px;
+}
+
+.login-guest {
+  width: 100%;
+  max-width: 360px;
+}
+
+.login-error {
+  margin: 0;
+  color: var(--red);
   font-size: 14px;
 }
 
-.mode-btn.novice {
-  border-color: var(--orange);
+.login-switch {
+  margin: 0;
+  font-size: 14px;
+  text-align: center;
 }
 
-.mode-btn:hover {
-  background: var(--green-50);
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
-.mode-btn.novice:hover {
-  background: #fff5e6;
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
 }
 
 .link-btn {
