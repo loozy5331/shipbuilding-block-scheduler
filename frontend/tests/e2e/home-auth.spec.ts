@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
-import path from 'node:path';
-import { shot, step } from './helpers';
+import { fromFrontend, shot, step } from './helpers';
 
 test('진입 화면: 로그인 · 체험하기 → 田자 메뉴 → 엑셀 업로드', async ({ page }) => {
   await page.goto('/');
@@ -35,7 +34,7 @@ test('진입 화면: 로그인 · 체험하기 → 田자 메뉴 → 엑셀 업�
   await shot(page, '14-excel-help');
   await help.getByRole('button', { name: '닫기' }).click();
 
-  await page.getByTestId('home-excel-input').setInputFiles(path.resolve('public/sample-tutorial.xlsx'));
+  await page.getByTestId('home-excel-input').setInputFiles(fromFrontend('public/sample-tutorial.xlsx'));
   await expect(page.locator('.toast')).toContainText('블록 5개 읽음');
   await expect(page.locator('[data-tour="summary"]')).toContainText('80');
 });

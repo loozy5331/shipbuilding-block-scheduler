@@ -1,6 +1,10 @@
 import { expect, type Page } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 
-export const shot = (page: Page, name: string) => page.screenshot({ path: `test-results/shots/${name}.png`, fullPage: true });
+/** frontend/ 기준 경로 (playwright를 어느 폴더에서 실행하든 같은 파일을 가리키도록) */
+export const fromFrontend = (rel: string) => fileURLToPath(new URL(`../../${rel}`, import.meta.url));
+
+export const shot = (page: Page, name: string) => page.screenshot({ path: fromFrontend(`test-results/shots/${name}.png`), fullPage: true });
 
 /** from 요소를 끌어 to 요소 가운데(또는 dx·dy만큼 옆)에 놓는다. hold: 놓기 전에 실행 */
 export async function drag(page: Page, from: string, to: string | { dx?: number; dy?: number }, hold?: () => Promise<void>) {

@@ -8,7 +8,7 @@ const write = (name, rows) => {
   ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '블록');
-  writeFileSync(`public/${name}`, XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
+  writeFileSync(`frontend/public/${name}`, XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
 };
 
 // 튜토리얼: 납기는 "남은 기간(일)" 숫자로

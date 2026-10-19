@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import * as XLSX from 'xlsx';
-import { drag, shot, start } from './helpers';
+import { drag, fromFrontend, shot, start } from './helpers';
 
 test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작업장 변경 → 최적 배치 → 내보내기', async ({ page }) => {
   await start(page, 'expert');
@@ -142,7 +141,7 @@ test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·�
     await expect(page.getByTestId('row-A-101')).toHaveClass(/drop-no/);
     await expect(page.getByTestId('row-A-101')).toContainText('이미 크레인이 있습니다');
     // fullPage 캡처는 창 크기를 바꿔 드래그를 취소시키므로 화면만 찍는다
-    await page.screenshot({ path: 'test-results/shots/08-drop-no.png' });
+    await page.screenshot({ path: fromFrontend('test-results/shots/08-drop-no.png') });
   });
   await expect(page.locator('.toast')).toContainText('이미 크레인이 있습니다');
 
@@ -222,7 +221,7 @@ test('자원 부족 시 즉시 불가 판정과 추가 자원 제안', async ({ 
 test('30블록 엑셀', async ({ page }) => {
   await start(page, 'expert', false);
   await page.getByRole('button', { name: /이어서 하기|직접 입력하기/ }).click();
-  await page.getByTestId('excel-input').setInputFiles(path.resolve('public/sample-30-blocks.xlsx'));
+  await page.getByTestId('excel-input').setInputFiles(fromFrontend('public/sample-30-blocks.xlsx'));
   await expect(page.locator('.parse-result')).toContainText('블록 30개 읽음');
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
   await page.getByTestId('optimize-btn').click();
