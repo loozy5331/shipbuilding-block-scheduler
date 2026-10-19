@@ -182,7 +182,7 @@ export function BoardPage() {
           </button>
           {expert ? (
             <button type="button" className="btn primary" onClick={optimize} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="optimize-btn">
-              {busy ? '계산 중…' : applied < 0 || options.length < 2 ? '최적 배치' : `다음 안 보기 (${applied + 1}/${options.length})`}
+              {busy ? '계산 중…' : applied < 0 || options.length < 2 ? '최적 배치' : `다음 최적배치 후보 (${applied + 1}/${options.length})`}
             </button>
           ) : (
             <button type="button" className="btn primary" onClick={askHint} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="hint-btn">

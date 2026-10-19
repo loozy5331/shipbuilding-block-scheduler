@@ -7,6 +7,10 @@ import { tbmMessage } from '../domain/tbm';
 import { dayToDate, toISO } from './dates';
 import { parseTable, type ParseResult } from './parse';
 
+/** 업로드 받는 파일 형식. 맥 Numbers(.numbers)도 SheetJS가 바로 읽는다 */
+export const FILE_ACCEPT = '.xlsx,.xls,.csv,.numbers';
+export const FILE_TYPES = '.xlsx / .xls / .csv / .numbers';
+
 /** SheetJS는 무거우므로 엑셀을 다룰 때만 불러온다 */
 const loadXLSX = () => import('xlsx');
 

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useStore } from '../../store/schedulerStore';
-import { downloadTemplate, readBlocksFromFile } from '../../io/excel';
+import { downloadTemplate, FILE_ACCEPT, FILE_TYPES, readBlocksFromFile } from '../../io/excel';
 import { parsePasted, type ParseResult } from '../../io/parse';
 import { LineIcon } from '../icons/LineIcons';
 import { TUTORIAL_TITLE } from '../../tutorial/scenario';
@@ -28,7 +28,7 @@ export function BlockSource() {
     try {
       accept(await readBlocksFromFile(file, planStart), file.name);
     } catch {
-      setResult({ blocks: [], errors: [{ row: 0, message: '엑셀 파일을 읽지 못했습니다. .xlsx / .xls / .csv 파일인지 확인하세요.' }], source: file.name });
+      setResult({ blocks: [], errors: [{ row: 0, message: `엑셀 파일을 읽지 못했습니다. ${FILE_TYPES} 파일인지 확인하세요.` }], source: file.name });
     }
   };
 
@@ -55,7 +55,7 @@ export function BlockSource() {
           ref={fileRef}
           type="file"
           hidden
-          accept=".xlsx,.xls,.csv"
+          accept={FILE_ACCEPT}
           data-testid="excel-input"
           onChange={(e) => {
             onFile(e.target.files?.[0]);

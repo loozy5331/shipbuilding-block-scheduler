@@ -26,7 +26,7 @@ export function ResourceForm({ readOnly = false }: { readOnly?: boolean }) {
     <>
       <dl className="resource-list">
         {row('workplaces', '작업장 수', '곳')}
-        {row('blocksPerWorkplace', '동시 처리 블록 수', '블록/작업장', '작업장 한 곳에 함께 올리는 블록', 1)}
+        {row('blocksPerWorkplace', '동시 처리 블록 수', '', '작업장 한 곳에 함께 올리는 블록', 1)}
         {row('generalWorkers', '일반 작업자', '명', `하루 ${r.generalMHPerDay} MH`)}
         {row('skilledWorkers', '숙련공', '명', `하루 ${r.skilledMHPerDay} MH`)}
         {row('cranes', '크레인', '대', '블록마다 1대')}

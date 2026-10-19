@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { UserMode } from '../../domain/types';
 import { useStore } from '../../store/schedulerStore';
-import { readBlocksFromFile } from '../../io/excel';
+import { FILE_ACCEPT, FILE_TYPES, readBlocksFromFile } from '../../io/excel';
 import { requestAuth } from '../../io/auth';
 import { LineIcon } from '../icons/LineIcons';
 import { Modal } from '../common/Modal';
@@ -157,7 +157,7 @@ export function MenuPage() {
       showToast(`${file.name}: 블록 ${r.blocks.length}개 읽음${r.errors.length ? ` · 오류 ${r.errors.length}건` : ''}`);
       setPage('setup');
     } catch {
-      showToast('엑셀 파일을 읽지 못했습니다. .xlsx / .xls / .csv 파일인지 확인하세요.');
+      showToast(`엑셀 파일을 읽지 못했습니다. ${FILE_TYPES} 파일인지 확인하세요.`);
     }
   };
 
@@ -191,7 +191,7 @@ export function MenuPage() {
         ref={fileRef}
         type="file"
         hidden
-        accept=".xlsx,.xls,.csv"
+        accept={FILE_ACCEPT}
         data-testid="home-excel-input"
         onChange={(e) => {
           onFile(e.target.files?.[0]);

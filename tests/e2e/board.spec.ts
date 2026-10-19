@@ -277,7 +277,7 @@ test('최적 배치를 다시 누르면 차선·차차선을 차례로 본다', 
   const total = Number(first.match(/\(1\/(\d)\)/)![1]);
   expect(total).toBeGreaterThan(1);
   expect(total).toBeLessThanOrEqual(3);
-  await expect(btn).toHaveText(`다음 안 보기 (1/${total})`);
+  await expect(btn).toHaveText(`다음 최적배치 후보 (1/${total})`);
   await btn.click();
   await expect(page.getByTestId('plan-option')).toContainText(`차선 (2/${total})`);
   expect(await page.getByTestId('plan-option').innerText()).not.toBe(first);
