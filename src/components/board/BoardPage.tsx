@@ -56,8 +56,7 @@ function pointerX(e: Event | null): number {
   return (e as MouseEvent).clientX;
 }
 
-/** embedded: 튜토리얼 페이지 안에 넣을 때 (페이지 이동 버튼 숨김) */
-export function BoardPage({ embedded = false }: { embedded?: boolean }) {
+export function BoardPage() {
   const blocks = useStore((s) => s.blocks);
   const resources = useStore((s) => s.resources);
   const assignments = useStore((s) => s.assignments);
@@ -180,11 +179,9 @@ export function BoardPage({ embedded = false }: { embedded?: boolean }) {
           </h1>
         </div>
         <div className="board-actions">
-          {!embedded && (
-            <button type="button" className="btn ghost" onClick={() => setPage('setup')}>
-              ← 공통 설정 입력
-            </button>
-          )}
+          <button type="button" className="btn ghost" onClick={() => setPage('setup')}>
+            ← 공통 설정 입력
+          </button>
           <button type="button" className="btn ghost" onClick={clear} disabled={Object.keys(assignments).length === 0}>
             초기화
           </button>
@@ -197,11 +194,9 @@ export function BoardPage({ embedded = false }: { embedded?: boolean }) {
               <LineIcon name="bulb" size={16} /> {busy ? '계산 중…' : '힌트'}
             </button>
           )}
-          {!embedded && (
-            <button type="button" className="btn primary" onClick={() => setPage('result')} disabled={blocks.length === 0}>
-              다음: 결과 →
-            </button>
-          )}
+          <button type="button" className="btn primary" onClick={() => setPage('result')} disabled={blocks.length === 0}>
+            다음: 결과 →
+          </button>
         </div>
       </div>
 

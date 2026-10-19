@@ -5,16 +5,14 @@ import { InputPage } from './components/input/InputPage';
 import { BoardPage } from './components/board/BoardPage';
 import { ResultPage } from './components/result/ResultPage';
 import { Tour } from './tutorial/Tour';
-import { TutorialPage } from './tutorial/TutorialPage';
 import { Toast } from './components/common/Modal';
 
 const VIEW: Record<Page, () => React.ReactNode> = {
   mode: ModePage,
   menu: MenuPage,
   setup: InputPage,
-  schedule: () => <BoardPage />,
+  schedule: BoardPage,
   result: ResultPage,
-  tutorial: TutorialPage,
 };
 
 export function App() {
@@ -63,7 +61,7 @@ export function App() {
         </nav>
         {mode && <span className={`mode-chip ${mode}`}>{mode === 'expert' ? '숙련자' : '신입'}</span>}
       </header>
-      <main className={current === 'schedule' || current === 'result' || current === 'tutorial' ? 'main' : 'main paper-bg'}>
+      <main className={current === 'schedule' || current === 'result' ? 'main' : 'main paper-bg'}>
         <View />
       </main>
       <Tour />

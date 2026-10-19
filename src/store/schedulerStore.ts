@@ -9,7 +9,7 @@ import { assignLanes, seatIn } from '../domain/lanes';
 import { TUTORIAL_BLOCKS, TUTORIAL_RESOURCES } from '../tutorial/scenario';
 
 /** 유저 여정: 모드 선택 → 메뉴 → 공통 설정 입력 → 블록 스케줄링 → 결과 */
-export type Page = 'mode' | 'menu' | 'setup' | 'schedule' | 'result' | 'tutorial';
+export type Page = 'mode' | 'menu' | 'setup' | 'schedule' | 'result';
 
 export const PAGES: { page: Page; label: string }[] = [
   { page: 'mode', label: '모드 선택' },
@@ -191,9 +191,9 @@ export const useStore = create<State>()(
 
       startTutorial: () => {
         get().loadScenario();
-        set({ tutorialStep: 0, page: 'tutorial' });
+        set({ tutorialStep: 0, page: 'setup' });
       },
-      // 가이드를 닫아도(건너뛰기) 튜토리얼 페이지에 그대로 머문다
+      // 가이드를 닫아도(건너뛰기) 지금 페이지에 그대로 머문다
       setTutorialStep: (tutorialStep) => set(tutorialStep === null ? { tutorialStep, tutorialSeen: true } : { tutorialStep }),
       setShowFull: (showFull) => set({ showFull }),
       selectToken: (selectedToken) => set({ selectedToken }),
@@ -201,12 +201,12 @@ export const useStore = create<State>()(
     }),
     {
       name: 'block-scheduler',
-      version: 3,
+      version: 4,
       storage,
-      // v1 → v2: 모드·설정·작업 자리 추가 (자리는 화면에서 채운다). v2 → v3: 페이지 이름 변경
+      // v1 → v2: 모드·설정·작업 자리 추가 (자리는 화면에서 채운다). v2 → v3: 페이지 이름 변경. v3 → v4: 튜토리얼 전용 페이지 없앰
       migrate: (persisted) => {
         const s = persisted as State & { page: string };
-        const renamed: Record<string, Page> = { home: 'menu', input: 'setup', board: 'schedule' };
+        const renamed: Record<string, Page> = { home: 'menu', input: 'setup', board: 'schedule', tutorial: 'menu' };
         return { ...s, page: renamed[s.page] ?? s.page } as State;
       },
       partialize: (s) => ({

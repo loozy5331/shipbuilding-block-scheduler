@@ -30,16 +30,19 @@ async function drag(page: Page, from: string, to: string | { dx?: number; dy?: n
   await page.waitForTimeout(80);
 }
 
-/** 모드를 고르고(첫 방문이면 튜토리얼이 열리므로 건너뛰고 끝낸다) 샘플로 블록 스케줄링까지 */
+const step = (page: Page, label: string) => page.locator('.steps button', { hasText: label });
+
+/** 모드를 고르고(첫 방문이면 튜토리얼 가이드가 열리므로 건너뛴다) 샘플로 블록 스케줄링까지. sample이 아니면 메뉴에서 멈춘다 */
 async function start(page: Page, mode: 'expert' | 'novice', sample = true) {
   await page.goto('/');
   await page.getByTestId(`mode-${mode}`).click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
-  await page.getByRole('button', { name: '튜토리얼 끝내기' }).click();
-  await expect(page.locator('.tile')).toHaveCount(4);
-  if (!sample) return;
-  await page.getByRole('button', { name: /이어서 하기|직접 입력하기/ }).click();
   await expect(page.locator('.paper-head h1')).toHaveText('공 통 설 정 입 력');
+  if (!sample) {
+    await step(page, '메뉴').click();
+    await expect(page.locator('.tile')).toHaveCount(4);
+    return;
+  }
   await page.getByRole('button', { name: '샘플 불러오기' }).click();
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
 }
@@ -50,7 +53,7 @@ test('진입 화면: 모드 선택 → 田자 메뉴 → 엑셀 업로드', asyn
   await shot(page, '00-mode');
   await page.getByTestId('mode-novice').click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
-  await page.getByRole('button', { name: '튜토리얼 끝내기' }).click();
+  await step(page, '메뉴').click();
   await expect(page.locator('.tile')).toHaveCount(4);
   await expect(page.locator('.mode-chip')).toHaveText('신입');
   await shot(page, '00-home');
@@ -77,36 +80,47 @@ test('진입 화면: 모드 선택 → 田자 메뉴 → 엑셀 업로드', asyn
   await expect(page.locator('[data-tour="summary"]')).toContainText('80');
 });
 
-test('가이드를 건너뛰어도 튜토리얼 페이지에 머문다', async ({ page }) => {
+test('가이드를 건너뛰어도 지금 페이지에 머문다', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('mode-expert').click();
   await page.getByTestId('tour-next').click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.tutorial-page')).toBeVisible();
-  // Esc로 닫아도 마찬가지
-  await page.getByRole('button', { name: '가이드 다시 보기' }).click();
-  await expect(page.getByRole('dialog', { name: '튜토리얼' })).toBeVisible();
+  await expect(page.locator('.paper-head h1')).toHaveText('공 통 설 정 입 력');
+  // 스케줄링 단계에서 Esc로 닫아도 그 페이지에 남는다
+  await step(page, '메뉴').click();
+  await page.getByTestId('tile-tutorial').click();
+  for (let i = 0; i < 5; i++) await page.getByTestId('tour-next').click();
+  await expect(page.getByTestId('verdict')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.locator('.tutorial-page')).toBeVisible();
-  await page.getByRole('button', { name: '튜토리얼 끝내기' }).click();
-  await expect(page.locator('.tile')).toHaveCount(4);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(step(page, '블록 스케줄링')).toHaveClass(/on/);
 });
 
-test('튜토리얼 전체 진행', async ({ page }) => {
+test('튜토리얼: 공통 설정 입력(채워짐) → 블록 스케줄링 → 결과 순서로 진행', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('mode-expert').click();
   await expect(page.getByRole('dialog', { name: '튜토리얼' })).toBeVisible();
   await shot(page, '01-tour-intro');
-  // 튜토리얼은 한 페이지에서 진행하고, 엑셀 업로드 같은 입력 기능은 없다
-  for (let i = 1; i < 11; i++) {
-    await page.getByTestId('tour-next').click();
+  const order = ['공통 설정 입력', '블록 스케줄링', '결과'];
+  const seen: string[] = [];
+  for (let i = 0; i < 12; i++) {
+    if (i > 0) await page.getByTestId('tour-next').click();
     await expect(page.getByTestId('tour-next')).toBeEnabled();
-    await expect(page.locator('.tutorial-page')).toBeVisible();
-    await expect(page.getByTestId('excel-input')).toHaveCount(0);
+    const current = (await page.locator('.steps button.on .step-label').innerText()).trim();
+    seen.push(current);
+    // 공통 설정 입력에서는 채워진 블록·자원만 보이고 엑셀 업로드 같은 입력 기능은 없다
+    if (current === '공통 설정 입력') {
+      await expect(page.getByTestId('excel-input')).toHaveCount(0);
+      await expect(page.locator('.plain-table')).toContainText('C-115');
+    }
     await shot(page, `01-tour-${String(i).padStart(2, '0')}`);
   }
-  await expect(page.locator('.tour-card')).toContainText('TBM');
+  // 페이지는 앞으로만 넘어간다
+  const idx = seen.map((p) => order.indexOf(p));
+  expect(idx.every((v, k) => v >= 0 && (k === 0 || v >= idx[k - 1]))).toBe(true);
+  expect(new Set(seen)).toEqual(new Set(order));
+  await expect(page.locator('.tour-card')).toContainText('평가서');
   await expect(page.locator('[data-tour="kpi"]')).toContainText('5 / 5');
   await page.getByTestId('tour-next').click();
   await expect(page.getByRole('dialog')).toHaveCount(0);

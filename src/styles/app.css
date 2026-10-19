@@ -1885,7 +1885,7 @@ button.brand {
   font-size: 11px;
 }
 
-/* ---------- 튜토리얼 페이지 ---------- */
+/* ---------- 튜토리얼: 읽기 전용 블록·자원 표 ---------- */
 .tutorial-grid {
   display: grid;
   grid-template-columns: 3fr 2fr;
@@ -1944,11 +1944,6 @@ button.brand {
 .resource-list dd {
   margin: 0;
   font-weight: 600;
-}
-
-/* 튜토리얼 안에 넣은 배치 화면은 바깥 여백·제목을 줄인다 */
-.tutorial-page .board .board-head h1 {
-  font-size: 22px;
 }
 
 @media (max-width: 860px) {
