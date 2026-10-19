@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useDndContext, useDroppable } from '@dnd-kit/core';
 import type { Assignment, Assignments, Block, ResourceKind } from '../../domain/types';
 import type { BlockResult, Evaluation } from '../../domain/evaluate';
@@ -7,6 +8,7 @@ import { useStore } from '../../store/schedulerStore';
 import { dayToDate, formatMD } from '../../io/dates';
 import { COL } from './ganttLayout';
 import { AssignedIcons, Bar, blockTitle, GhostBar } from './GanttBars';
+import { useRowFlip } from './useRowFlip';
 
 export { COL, MAX_DAYS } from './ganttLayout';
 
@@ -137,6 +139,8 @@ export function GanttChart({ blocks, assignments, ev, days, hintBlock, onEdit }:
   const r = useStore((s) => s.resources);
   const n = laneCount(r);
   const workplaces = r.workplaces;
+  const ref = useRef<HTMLDivElement>(null);
+  useRowFlip(ref);
   const wpOf = (b: Block) => {
     const lane = assignments[b.id]?.lane;
     return ev.blocks[b.id].start !== null && lane !== undefined && lane < n ? workplaceOf(lane, r) : -1;
@@ -158,7 +162,7 @@ export function GanttChart({ blocks, assignments, ev, days, hintBlock, onEdit }:
   const waiting = blocks.filter((b) => wpOf(b) === -1);
 
   return (
-    <div className="gantt" data-tour="gantt">
+    <div ref={ref} className="gantt" data-tour="gantt">
       <DayHeader days={days} planStart={planStart} label="블록 · 배정 자원" />
       {Array.from({ length: workplaces }, (_, wp) => {
         const rows = blocks.filter((b) => wpOf(b) === wp).sort(byStart);

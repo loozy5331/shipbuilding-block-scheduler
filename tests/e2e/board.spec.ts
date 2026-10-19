@@ -103,6 +103,28 @@ test('최적 배치를 다시 누르면 차선·차차선을 차례로 본다', 
   await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
 });
 
+test('최적 배치로 줄이 재정렬되면 줄이 새 자리로 미끄러진다', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await start(page, 'expert');
+  const reset = page.getByRole('button', { name: '초기화' });
+  if (await reset.isEnabled()) await reset.click();
+  await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
+  // 애니메이션이 짧아 끝난 뒤엔 안 보이므로 animate 호출을 센다
+  await page.evaluate(() => {
+    const w = window as unknown as { rowMoves: string[] };
+    w.rowMoves = [];
+    const orig = Element.prototype.animate;
+    Element.prototype.animate = function (this: Element, ...args: Parameters<Element['animate']>) {
+      const id = (this as HTMLElement).dataset.testid;
+      if (id?.startsWith('row-')) w.rowMoves.push(id);
+      return orig.apply(this, args);
+    };
+  });
+  await page.getByTestId('optimize-btn').click();
+  await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
+  await expect.poll(() => page.evaluate(() => (window as unknown as { rowMoves: string[] }).rowMoves.length)).toBeGreaterThan(0);
+});
+
 test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·숫자 편집', async ({ page }) => {
   await start(page, 'expert');
   await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
