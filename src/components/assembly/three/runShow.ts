@@ -3,10 +3,12 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { Scene } from '../scene';
 import { END, PHASES, at, easeIn, easeInOut, easeOut, lerp, progress, type Phase } from '../timeline';
 import { BLOCK_H, CRANE_H, DEPTH, layoutOf, makeBackdrop, makeBar, makeBoard, makeCrane, makeShipBlock, makeWorker, stretch } from './models';
 import { burst, dust, smoke, sparks } from './effects';
+import { makeWeldBead } from './weldBead';
 
 interface Callbacks {
   onPhase(p: Phase): void;
@@ -42,6 +44,10 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
   world.background = APP_BG.clone();
   world.fog = new THREE.Fog(APP_BG.clone(), 400, 500);
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 300);
+  // 금속(블록·비드·크레인)이 비출 주변 환경. 없으면 금속성이 높은 재질이 검게 보인다
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  world.environment = envMap;
 
   const L = layoutOf(scene);
   const seam = new THREE.Vector3(L.seamX, BLOCK_H * 0.45, L.hero.z + 0.15);
@@ -95,14 +101,15 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
   partnerBlock.visible = false;
   world.add(heroBlock, partnerBlock);
 
-  // 용접 비드: 앞면 세로 → 윗면 앞뒤
-  const beadMat = new THREE.MeshStandardMaterial({ color: '#5c6470', emissive: '#ff8a2a', emissiveIntensity: 0, roughness: 0.4, metalness: 0.6 });
-  const beadV = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 10).translate(0, 0.5, 0), beadMat);
-  beadV.position.set(L.seamX, 0, L.front + 0.005);
-  const beadT = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 10).rotateX(Math.PI / 2).translate(0, 0, -0.5), beadMat);
-  beadT.position.set(L.seamX, BLOCK_H + 0.01, L.front);
-  beadV.scale.y = beadT.scale.z = 0.0001;
-  world.add(beadV, beadT);
+  // 용접 비드: 앞면 아래→위, 이어서 윗면 앞→뒤
+  const bead = makeWeldBead(L.seamX, L.front, BLOCK_H, DEPTH);
+  bead.group.visible = false;
+  world.add(bead.group);
+  // 용접이 끝난 뒤 용접부를 옆에서 낮게 스치는 조명 (빛나게 하지 않고 비드 물결에 그늘이 지게)
+  const seamSpot = new THREE.SpotLight('#e6eeff', 0, 8, 0.28, 0.7, 0);
+  seamSpot.position.set(L.seamX + 1.8, BLOCK_H * 0.5, L.front + 0.45);
+  seamSpot.target.position.set(L.seamX, BLOCK_H * 0.6, L.front);
+  world.add(seamSpot, seamSpot.target);
 
   // ── 크레인 (레일을 따라 뒤에서 들어온다)
   const span = L.partner.x1 + 1.6 - (L.seamX - 2.4);
@@ -156,6 +163,8 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
   // 기울인 뒤에는 주인공 블록 쪽으로 조금 옮겨 본다 (화면 가장자리에서 잘리지 않게)
   const tiltCenter = center.clone().lerp(seam.clone().setY(0), 0.4);
   const focus = seam.clone().setY(0.5);
+  // 용접부 클로즈업: 앞면 비드 가운데쯤
+  const seamView = new THREE.Vector3(L.seamX, BLOCK_H * 0.62, L.front);
   // 크레인이 블록을 매달고 오는 동안은 조금 위를 본다
   const focusHigh = seam.clone().setY(1.1);
   const views = (): [number, View][] => [
@@ -165,8 +174,9 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
     [at('walk'), { target: tiltCenter, dist: topDist, polar: 0.9, az: -0.38 }],
     [at('walk') + 1.1, { target: focusHigh, dist: 7.4, polar: 1.0, az: -0.5 }],
     [at('weld'), { target: focus, dist: 6.2, polar: 1.06, az: -0.42 }],
-    [at('seam'), { target: focus, dist: 4.9, polar: 1.1, az: -0.26 }],
-    [END, { target: focus, dist: 4.3, polar: 1.12, az: -0.2 }],
+    [at('seam'), { target: focus, dist: 4.4, polar: 1.1, az: -0.26 }],
+    [at('done'), { target: seamView, dist: 1.5, polar: 1.12, az: -0.3 }],
+    [END, { target: seamView, dist: 1.2, polar: 1.12, az: -0.26 }],
   ];
   const tmpT = new THREE.Vector3();
   const placeCamera = (t: number, shake: number) => {
@@ -199,6 +209,7 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
     floorMat.color.lerpColors(APP_BG, new THREE.Color('#2b323d'), night);
     boardMat.color.lerpColors(new THREE.Color('#ffffff'), new THREE.Color('#5d6878'), night);
     hemi.intensity = lerp(3, 0.7, night) * lerp(1, 0.35, dim);
+    world.environmentIntensity = lerp(0.04, 0.1, night) * lerp(1, 0.7, dim);
     hemi.color.lerpColors(new THREE.Color('#ffffff'), new THREE.Color('#c9d4e4'), night);
     hemi.groundColor.lerpColors(new THREE.Color('#ffffff'), new THREE.Color('#2a2320'), night);
     key.intensity = lerp(0, 2.4, night) * lerp(1, 0.35, dim);
@@ -251,7 +262,9 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
     const walk = progress(t, at('walk'), at('drop') - 0.1);
     for (const w of workers) {
       w.group.visible = t >= at('walk');
-      w.group.position.x = lerp(w.from, w.to, walk);
+      // 용접이 끝나면 용접부가 보이도록 양옆으로 한 걸음 물러난다
+      const stepBack = easeInOut(progress(t, at('seam'), at('seam') + 0.6)) * 0.42 * Math.sign(w.to - w.from);
+      w.group.position.x = lerp(w.from, w.to, walk) - stepBack;
       const moving = walk > 0 && walk < 1;
       const phase = t * 11;
       const swing = moving ? Math.sin(phase) * 0.6 : 0;
@@ -261,7 +274,7 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
       w.body.position.y = moving ? Math.abs(Math.sin(phase)) * 0.018 : 0;
       const facing = moving || walk === 0 ? (w.from < w.to ? Math.PI / 2 : -Math.PI / 2) : w.face;
       w.group.rotation.y += (facing - w.group.rotation.y) * Math.min(1, dt * 8);
-      const welding = t >= at('weld') - 0.2;
+      const welding = t >= at('weld') - 0.2 && t < at('seam');
       w.armR.rotation.x = welding ? -1.25 : -swing * 0.7 * (moving ? 1 : 0);
       w.visor.visible = welding;
     }
@@ -269,24 +282,18 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
     // 용접: 비드가 앞면을 타고 올라가 윗면을 지나며 불꽃·연기·불빛
     const weld = progress(t, at('weld') + 0.1, at('seam') - 0.1);
     const welding = t > at('weld') && t < at('seam');
-    const v = Math.min(1, weld / 0.55);
-    const top = Math.max(0, (weld - 0.55) / 0.45);
-    beadV.visible = beadT.visible = weld > 0;
-    beadV.scale.y = Math.max(0.0001, v * BLOCK_H);
-    beadT.scale.z = Math.max(0.0001, top * DEPTH);
-    tipPos.set(L.seamX, v < 1 ? v * BLOCK_H : BLOCK_H + 0.02, v < 1 ? L.front + 0.02 : L.front - top * DEPTH);
-    const pulse = t >= at('seam') ? 2 + 1.2 * Math.sin((t - at('seam')) * 7) : 0;
-    beadMat.emissiveIntensity = welding ? 2.2 : pulse;
-    beadMat.emissive.set(t >= at('seam') ? '#ffc35a' : '#ff8a2a');
+    bead.group.visible = t >= at('drop');
+    bead.update(weld, t, at('weld') + 0.1, at('seam') - 0.1);
+    tipPos.copy(bead.tipAt(weld));
+    seamSpot.intensity = 2 * dim;
     if (welding) {
       fx.sparks.emit(tipPos, Math.ceil(200 * dt), burst(2.6, new THREE.Vector3(0, 0.9, 0.7), 1.2), [0.35, 0.9]);
-      if (Math.random() < dt * 14) fx.smoke.emit(tipPos, 1, burst(0.25, new THREE.Vector3(0, 1, 0), 0.6), [1.6, 2.6]);
+      if (Math.random() < dt * 14) fx.smoke.emit(tipPos, 1, burst(0.25, new THREE.Vector3(0, 1, 0), 0.6), [0.6, 1]);
       weldLight.position.copy(tipPos).add(new THREE.Vector3(0, 0.05, 0.25));
       weldLight.intensity = 1.2 + Math.random() * 1.8;
-    } else weldLight.intensity = t >= at('seam') ? 1.2 + 0.8 * Math.sin((t - at('seam')) * 7) : 0;
-    if (t >= at('seam')) weldLight.position.set(L.seamX, BLOCK_H * 0.6, L.front + 0.4);
+    } else weldLight.intensity *= Math.max(0, 1 - dt * 6);
     // 밝은 탑뷰(종이)에서는 번짐을 끈다
-    bloom.strength = lerp(0, 0.6, night) + 0.35 * dim;
+    bloom.strength = lerp(0, 0.6, night);
 
     fx.sparks.update(dt);
     fx.dust.update(dt);
@@ -343,6 +350,8 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
         mat.dispose();
       }
     });
+    envMap.dispose();
+    pmrem.dispose();
     composer.dispose();
     renderer.dispose();
   };

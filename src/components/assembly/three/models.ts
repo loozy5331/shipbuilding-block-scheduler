@@ -202,7 +202,7 @@ export function makeWorker() {
   const suit = std('#e07a2e', 0.7);
   const stripe = new THREE.MeshStandardMaterial({ color: '#f6eaa0', emissive: '#6a6640', roughness: 0.4 });
   const skin = std('#f0c49c', 0.8);
-  const helmet = std('#f2b705', 0.35, 0.1);
+  const helmet = std('#f2b705', 0.6, 0.05);
 
   const limb = (x: number, y: number, w: number, h: number, mat: THREE.Material) => {
     const pivot = new THREE.Group();

@@ -134,14 +134,14 @@ export const dust = () =>
 /** 용접 연기 */
 export const smoke = () =>
   new Particles(120, {
-    size: 0.38,
+    size: 0.4,
     additive: false,
     gravity: -0.35,
     drag: 0.8,
     bounce: 0,
     color: (l, o) => {
       o[0] = o[1] = o[2] = 0.7;
-      o[3] = 0.18 * Math.sin(Math.PI * l);
+      o[3] = 0.05 * Math.sin(Math.PI * l);
     },
   });
 
