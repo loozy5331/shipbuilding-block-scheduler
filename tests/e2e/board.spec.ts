@@ -425,3 +425,38 @@ test('모바일 폭에서 가로 스크롤 없음', async ({ page }) => {
   expect(await overflow()).toBeLessThanOrEqual(0);
   await shot(page, '07-mobile-result');
 });
+
+test.describe('조립 애니메이션', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  test('결과로 넘어갈 때 재생하고, 건너뛰거나 설정에서 끌 수 있다', async ({ page }) => {
+    await start(page, 'expert');
+    await page.getByTestId('optimize-btn').click();
+    await expect(page.getByTestId('plan-option')).toBeVisible();
+    await page.getByRole('button', { name: '다음: 결과 →' }).click();
+    const show = page.getByTestId('assembly-show');
+    await expect(show).toBeVisible();
+    await expect(show).toContainText('블록 조립');
+    await page.waitForTimeout(3300);
+    await shot(page, '08-assembly');
+    await page.getByTestId('assembly-skip').click();
+    await expect(show).toHaveCount(0);
+    await expect(page.getByTestId('plan-table')).toBeVisible();
+
+    // 끝까지 두면 저절로 닫힌다
+    await page.getByRole('button', { name: '← 블록 스케줄링' }).click();
+    await page.getByRole('button', { name: '다음: 결과 →' }).click();
+    await expect(page.locator('.asm.p-done')).toBeVisible({ timeout: 9000 });
+    await expect(show).toHaveCount(0, { timeout: 4000 });
+
+    // 설정에서 끄면 바로 결과
+    await step(page, '메뉴').click();
+    await page.getByTestId('tile-settings').click();
+    await page.getByRole('dialog', { name: '설정' }).getByRole('switch').uncheck();
+    await page.getByRole('button', { name: '닫기' }).click();
+    await step(page, '블록 스케줄링').click();
+    await page.getByRole('button', { name: '다음: 결과 →' }).click();
+    await expect(page.getByTestId('plan-table')).toBeVisible();
+    await expect(show).toHaveCount(0);
+  });
+});

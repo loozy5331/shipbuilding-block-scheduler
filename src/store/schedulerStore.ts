@@ -20,7 +20,7 @@ export const PAGES: { page: Page; label: string }[] = [
 ];
 
 export interface Settings {
-  /** 간트 위 작업 애니메이션 (준비 중) */
+  /** 결과로 넘어갈 때 블록 조립 애니메이션 */
   animation: boolean;
 }
 
@@ -56,6 +56,8 @@ interface State {
   showFull: boolean;
   /** 클릭으로 배정하려고 고른 자원 아이콘 */
   selectedToken: ResourceKind | null;
+  /** 블록 조립 애니메이션 재생 중 */
+  assemblyShow: boolean;
   toast: { id: number; message: string } | null;
 
   setPage(p: Page): void;
@@ -94,6 +96,9 @@ interface State {
   setShowFull(v: boolean): void;
   selectToken(k: ResourceKind | null): void;
   showToast(message: string): void;
+  /** 결과 페이지로 가면서 (설정이 켜져 있고 움직임 줄이기가 아니면) 조립 애니메이션을 띄운다 */
+  goToResult(animate: boolean): void;
+  endAssembly(): void;
 }
 
 const storage = createJSONStorage(() => {
@@ -124,6 +129,7 @@ export const useStore = create<State>()(
       tutorialGuided: [],
       showFull: false,
       selectedToken: null,
+      assemblyShow: false,
       toast: null,
 
       setPage: (page) => set({ page }),
@@ -231,6 +237,8 @@ export const useStore = create<State>()(
       setShowFull: (showFull) => set({ showFull }),
       selectToken: (selectedToken) => set({ selectedToken }),
       showToast: (message) => set((s) => ({ toast: { id: (s.toast?.id ?? 0) + 1, message } })),
+      goToResult: (animate) => set((s) => ({ page: 'result', assemblyShow: animate && s.settings.animation })),
+      endAssembly: () => set({ assemblyShow: false }),
     }),
     {
       name: 'block-scheduler',

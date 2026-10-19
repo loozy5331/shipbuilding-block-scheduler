@@ -6,6 +6,7 @@ import { BoardPage } from './components/board/BoardPage';
 import { ResultPage } from './components/result/ResultPage';
 import { Tour } from './tutorial/Tour';
 import { Toast } from './components/common/Modal';
+import { AssemblyShow } from './components/assembly/AssemblyShow';
 
 const VIEW: Record<Page, () => React.ReactNode> = {
   login: LoginPage,
@@ -22,6 +23,7 @@ export function App() {
   const user = useStore((s) => s.user);
   const mode = useStore((s) => s.mode);
   const logout = useStore((s) => s.logout);
+  const assemblyShow = useStore((s) => s.assemblyShow);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -78,6 +80,7 @@ export function App() {
       </main>
       <Tour />
       <Toast />
+      {assemblyShow && current === 'result' && <AssemblyShow />}
     </>
   );
 }

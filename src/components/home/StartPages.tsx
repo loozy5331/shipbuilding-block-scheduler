@@ -35,8 +35,8 @@ function SettingsDialog({ onClose }: { onClose(): void }) {
       <div className="settings">
         <label className="switch-row">
           <span>
-            <strong>작업 애니메이션</strong>
-            <small className="muted">간트 위 작업자·크레인 애니메이션 (준비 중)</small>
+            <strong>조립 애니메이션</strong>
+            <small className="muted">결과로 넘어갈 때 블록 조립 장면 재생</small>
           </span>
           <input type="checkbox" role="switch" checked={settings.animation} onChange={(e) => setSettings({ animation: e.target.checked })} />
         </label>

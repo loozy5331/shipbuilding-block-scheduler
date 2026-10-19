@@ -1935,3 +1935,564 @@ button.brand {
   width: 44px;
   text-align: left;
 }
+
+/* ── 블록 조립 애니메이션 (결과로 넘어갈 때) ───────────────────────── */
+@property --h {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+@property --lift {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+.asm {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  background: var(--bg);
+}
+.asm.p-out {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.asm-sky,
+.asm-sky::after {
+  position: absolute;
+  inset: 0;
+}
+.asm-sky::after {
+  content: '';
+  background: radial-gradient(ellipse at 50% 35%, #2b3f5e 0%, #13213c 55%, #0a1222 100%);
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+.asm.p-tilt .asm-sky::after {
+  opacity: 1;
+}
+.asm-stage {
+  position: absolute;
+  inset: 0;
+  perspective: 1400px;
+  perspective-origin: 50% 40%;
+}
+.asm.p-drop .asm-stage {
+  animation: asm-shake 0.32s 0.44s ease-out;
+}
+.asm-cam {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  transform-style: preserve-3d;
+  transition: transform 1.1s cubic-bezier(0.45, 0, 0.2, 1);
+}
+.asm-cam > * {
+  position: absolute;
+  transform-style: preserve-3d;
+}
+
+/* 바닥 = 간트 판 */
+.asm-floor {
+  inset: 0;
+  border-radius: 10px;
+  background-color: #fff;
+  background-image:
+    linear-gradient(to right, rgba(19, 33, 60, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(19, 33, 60, 0.12) 1px, transparent 1px);
+  background-repeat: repeat;
+  box-shadow: 0 0 0 1px var(--line);
+  transition: background-color 1s ease, box-shadow 1s ease;
+}
+.asm.p-tilt .asm-floor {
+  background-color: #3a4a62;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  box-shadow: 0 0 0 2px #56657c, 0 0 80px rgba(0, 0, 0, 0.5);
+}
+.asm-days {
+  display: grid;
+  height: 36px;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  transition: color 1s ease;
+}
+.asm.p-tilt .asm-days {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* 직육면체 블록 */
+.asm-box {
+  --top: var(--green);
+  --front: #6f8399;
+  --side: #56697f;
+  transform: translateZ(var(--lift));
+  transition: --h 0.7s cubic-bezier(0.2, 0.8, 0.25, 1.25);
+}
+.asm-box .face {
+  position: absolute;
+  backface-visibility: visible;
+  transition: background-color 0.8s ease, opacity 0.6s ease;
+}
+.asm-box .top {
+  inset: 0;
+  border-radius: 4px;
+  background: var(--top);
+  transform: translateZ(var(--h));
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  overflow: hidden;
+}
+.asm-box .top span {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.asm-box .front {
+  left: 0;
+  top: 100%;
+  width: 100%;
+  height: var(--h);
+  background: var(--front);
+  transform-origin: top;
+  transform: rotateX(90deg);
+}
+.asm-box .back {
+  left: 0;
+  bottom: 100%;
+  width: 100%;
+  height: var(--h);
+  background: var(--side);
+  transform-origin: bottom;
+  transform: rotateX(-90deg);
+}
+.asm-box .right {
+  top: 0;
+  left: 100%;
+  width: var(--h);
+  height: 100%;
+  background: var(--side);
+  transform-origin: left;
+  transform: rotateY(-90deg);
+}
+.asm-box .left {
+  top: 0;
+  right: 100%;
+  width: var(--h);
+  height: 100%;
+  background: var(--side);
+  transform-origin: right;
+  transform: rotateY(90deg);
+}
+.asm.p-rise .asm-box {
+  --top: #9fb1c4;
+}
+.asm.p-rise .asm-box.other {
+  --h: 16px;
+}
+.asm.p-rise .asm-box.hero,
+.asm-box.partner {
+  --h: 46px;
+}
+.asm-box.hero,
+.asm-box.partner {
+  --front: #7a8ea5;
+  --side: #5a6d84;
+}
+.asm.p-walk .asm-box.other {
+  --h: 6px;
+}
+.asm.p-walk .asm-box.other .face {
+  opacity: 0.3;
+}
+.asm.p-walk .asm-box.origin .face {
+  opacity: 0;
+}
+
+/* 크레인이 매달고 오는 블록 */
+.asm-box.partner {
+  --top: #9fb1c4;
+  --lift: 170px;
+}
+.asm-box.partner .face,
+.asm-box.partner .cable {
+  opacity: 0;
+}
+.asm.p-walk .asm-box.partner .face,
+.asm.p-walk .asm-box.partner .cable {
+  opacity: 1;
+}
+.asm.p-drop .asm-box.partner {
+  animation: asm-drop 0.8s forwards;
+}
+.asm.p-weld .asm-box.partner {
+  --lift: 0px;
+  animation: none;
+}
+.asm.p-weld .asm-box.partner .cable {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.asm-box .cable {
+  position: absolute;
+  width: 2px;
+  background: #222b38;
+  transform-origin: bottom;
+  transform: translateZ(var(--h)) rotateZ(24deg) rotateX(-90deg);
+}
+.asm-box .hook {
+  position: absolute;
+  left: -6px;
+  bottom: -4px;
+  width: 14px;
+  height: 10px;
+  border: 3px solid #f2b705;
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+}
+
+/* 용접 이음부 (주인공 블록의 오른쪽 끝) */
+.asm-box .seam {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  opacity: 0;
+  border-radius: 3px;
+  background: linear-gradient(#ffe7a3, #ff9a2e);
+  transform: scaleY(0);
+}
+.asm-box .front .seam {
+  transform-origin: top;
+}
+.asm-box .top .seam {
+  transform-origin: bottom;
+}
+.asm-box:not(.hero) .seam {
+  display: none;
+}
+.asm.p-weld .asm-box.hero .seam {
+  opacity: 1;
+  transform: scaleY(1);
+  box-shadow: 0 0 8px 2px rgba(255, 150, 40, 0.8);
+  transition: transform 1.5s linear, opacity 0.2s ease;
+}
+.asm.p-seam .asm-box.hero .seam {
+  animation: asm-seam 0.9s ease-in-out infinite alternate;
+}
+.asm.p-seam .asm-box .face {
+  --front: #3e4d61;
+  --side: #334256;
+  --top: #56677e;
+}
+.asm.p-seam .asm-box.other .face {
+  opacity: 0;
+}
+
+/* 골리앗 크레인 */
+.asm-crane {
+  inset: 0;
+  pointer-events: none;
+}
+.asm-crane > div {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.asm.p-walk .asm-crane > div {
+  opacity: 1;
+}
+.asm.p-seam .asm-crane > div {
+  opacity: 0.18;
+}
+.crane-leg {
+  width: 18px;
+  background: repeating-linear-gradient(-45deg, #f2b705 0 10px, #d99a00 10px 20px);
+  border: 2px solid #8a6400;
+  transform-origin: bottom;
+  transform: rotateX(-90deg);
+}
+.crane-girder {
+  height: 20px;
+  background: #f2b705;
+  border: 2px solid #8a6400;
+  border-radius: 2px;
+}
+.crane-trolley {
+  width: 32px;
+  height: 28px;
+  background: #c8373a;
+  border: 2px solid #6e1c1e;
+  border-radius: 3px;
+}
+
+/* 용접공 */
+.asm-walker {
+  left: 0;
+  transform: translate3d(var(--from), 0, 0);
+}
+.asm.p-walk .asm-walker {
+  transform: translate3d(var(--to), 0, 0);
+  transition: transform 1.15s linear;
+}
+.asm-walker .figure {
+  position: absolute;
+  left: -20px;
+  top: -72px;
+  width: 40px;
+  height: 72px;
+  opacity: 0;
+  transform-origin: bottom center;
+  transform: rotateZ(24deg) rotateX(-90deg);
+  transition: opacity 0.3s ease;
+}
+.asm.p-walk .asm-walker .figure {
+  opacity: 1;
+}
+.asm.p-seam .asm-walker .figure {
+  opacity: 0.18;
+  transition: opacity 0.6s ease;
+}
+.asm-walker svg {
+  display: block;
+  overflow: visible;
+}
+.asm-walker .leg,
+.asm-walker .arm,
+.asm-walker .body {
+  transform-box: fill-box;
+}
+.asm-walker .leg {
+  transform-origin: 50% 0;
+}
+.asm-walker .arm {
+  transform-origin: 50% 10%;
+  transition: transform 0.4s ease;
+}
+.asm.p-walk:not(.p-drop) .asm-walker .leg-f {
+  animation: asm-step 0.38s ease-in-out infinite alternate;
+}
+.asm.p-walk:not(.p-drop) .asm-walker .leg-b {
+  animation: asm-step 0.38s ease-in-out infinite alternate-reverse;
+}
+.asm.p-walk:not(.p-drop) .asm-walker .body {
+  animation: asm-bob 0.19s ease-in-out infinite alternate;
+}
+.asm.p-weld .asm-walker .arm {
+  transform: rotate(-70deg);
+}
+.asm.p-weld:not(.p-seam) .asm-walker .torch {
+  animation: asm-flicker 0.08s steps(2) infinite;
+  filter: drop-shadow(0 0 4px #fff3b0);
+}
+
+/* 용접 불꽃 */
+.asm-sparks {
+  width: 140px;
+  height: 160px;
+  pointer-events: none;
+  transform-origin: bottom center;
+  transform: rotateZ(24deg) rotateX(-90deg) translateZ(4px);
+  opacity: 0;
+}
+.asm.p-weld .asm-sparks {
+  opacity: 1;
+}
+.asm.p-seam .asm-sparks {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.asm-sparks i {
+  position: absolute;
+  left: 70px;
+  bottom: 23px;
+}
+.asm-sparks .flash {
+  width: 40px;
+  height: 40px;
+  margin: 0 0 -20px -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #ffe9a8 25%, rgba(255, 160, 40, 0.5) 50%, transparent 72%);
+  animation: asm-flicker 0.09s steps(2) infinite;
+}
+.asm-sparks .spark {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff4c2;
+  box-shadow: 0 0 4px 1px #ffb12e;
+  opacity: 0;
+}
+.asm.p-weld:not(.p-seam) .asm-sparks .spark {
+  animation: asm-spark 0.55s ease-out infinite;
+}
+
+/* 화면 위 글자 */
+.asm-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  margin: 0;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(10, 18, 34, 0.55);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.asm.p-walk .asm-caption {
+  opacity: 1;
+}
+.asm.p-done .asm-caption {
+  opacity: 0;
+}
+.asm-done {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.asm-done strong {
+  font-size: clamp(72px, 16vw, 180px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  background:
+    linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.95) 48%, transparent 60%) 0 0 / 300% 100% no-repeat,
+    linear-gradient(180deg, #ffffff 0%, #ccd4de 28%, #7a8593 50%, #e9eef4 60%, #9ba6b3 80%, #f5f7fa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: blur(0) drop-shadow(0 2px 0 #39424f) drop-shadow(0 10px 30px rgba(0, 0, 0, 0.7));
+  animation:
+    asm-done-in 0.9s cubic-bezier(0.2, 0.9, 0.25, 1.15) both,
+    asm-sheen 1.1s 0.5s ease-in-out both;
+}
+.asm-black {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+.asm.p-black .asm-black {
+  opacity: 1;
+}
+.asm-skip {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(10, 18, 34, 0.5);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.asm-skip:hover {
+  background: rgba(10, 18, 34, 0.8);
+}
+
+@keyframes asm-drop {
+  0% {
+    --lift: 170px;
+    animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.5);
+  }
+  55% {
+    --lift: 0px;
+    animation-timing-function: ease-out;
+  }
+  68% {
+    --lift: 7px;
+    animation-timing-function: ease-in;
+  }
+  80%,
+  100% {
+    --lift: 0px;
+  }
+}
+@keyframes asm-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-3px, 4px);
+  }
+  50% {
+    transform: translate(3px, -2px);
+  }
+  75% {
+    transform: translate(-1px, 2px);
+  }
+}
+@keyframes asm-step {
+  from {
+    transform: rotate(-22deg);
+  }
+  to {
+    transform: rotate(22deg);
+  }
+}
+@keyframes asm-bob {
+  to {
+    transform: translateY(-1.5px);
+  }
+}
+@keyframes asm-flicker {
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes asm-spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), calc(var(--dy) + 60px));
+  }
+}
+@keyframes asm-seam {
+  from {
+    background: linear-gradient(#ffe7a3, #ff9a2e);
+    box-shadow: 0 0 8px 2px rgba(255, 150, 40, 0.8);
+  }
+  to {
+    background: linear-gradient(#fffbe8, #ffc35a);
+    box-shadow: 0 0 22px 7px rgba(255, 190, 70, 0.95);
+  }
+}
+@keyframes asm-done-in {
+  from {
+    opacity: 0;
+    transform: scale(1.35);
+    filter: blur(8px) drop-shadow(0 2px 0 #39424f) drop-shadow(0 10px 30px rgba(0, 0, 0, 0.7));
+  }
+}
+@keyframes asm-sheen {
+  from {
+    background-position: 100% 0, 0 0;
+  }
+  to {
+    background-position: 0% 0, 0 0;
+  }
+}

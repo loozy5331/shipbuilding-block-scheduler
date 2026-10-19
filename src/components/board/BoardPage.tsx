@@ -26,6 +26,7 @@ import { COL, GanttChart, MAX_DAYS } from './GanttChart';
 import { Legend, LoadGrid } from './LoadGrid';
 import { KpiCards, WhatIfCard } from './Insights';
 import { BlockEditor } from './BlockEditor';
+import { prefersReducedMotion } from '../assembly/AssemblyShow';
 
 /** 막대(대기 블록의 점선 막대 포함)는 하루 단위로 스냅하고 1일 앞으로는 못 간다. 위아래로는 다른 작업장으로 옮길 수 있다. */
 const barModifier: Modifier = ({ transform, active }) => {
@@ -60,6 +61,7 @@ export function BoardPage() {
   const mode = useStore((s) => s.mode);
   const hintCount = useStore((s) => s.hintCount);
   const setPage = useStore((s) => s.setPage);
+  const goToResult = useStore((s) => s.goToResult);
   const assign = useStore((s) => s.assign);
   const moveBlock = useStore((s) => s.moveBlock);
   const moveToWorkplace = useStore((s) => s.moveToWorkplace);
@@ -187,7 +189,7 @@ export function BoardPage() {
               <LineIcon name="bulb" size={16} /> {busy ? '계산 중…' : '힌트'}
             </button>
           )}
-          <button type="button" className="btn primary" onClick={() => setPage('result')} disabled={blocks.length === 0}>
+          <button type="button" className="btn primary" onClick={() => goToResult(!prefersReducedMotion())} disabled={blocks.length === 0}>
             다음: 결과 →
           </button>
         </div>
