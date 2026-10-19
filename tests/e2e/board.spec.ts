@@ -260,7 +260,6 @@ test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·�
 test('신입 모드: 최적 배치 대신 단계적 힌트', async ({ page }) => {
   await start(page, 'novice');
   await expect(page.getByRole('button', { name: '최적 배치' })).toHaveCount(0);
-  await expect(page.locator('[data-tour="policy"]')).toHaveCount(0);
 
   await page.getByTestId('hint-btn').click();
   await expect(page.getByTestId('hint')).toContainText('힌트 1');

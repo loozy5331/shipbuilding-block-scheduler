@@ -24,7 +24,7 @@ import { LineIcon } from '../icons/LineIcons';
 import { ResourcePalette } from './ResourcePalette';
 import { COL, GanttChart, MAX_DAYS } from './GanttChart';
 import { Legend, LoadGrid } from './LoadGrid';
-import { KpiCards, PolicyCompare, WhatIfCard } from './Insights';
+import { KpiCards, WhatIfCard } from './Insights';
 import { BlockEditor } from './BlockEditor';
 
 /** 막대는 하루 단위로 스냅하고 1일 앞으로는 못 간다. 위아래로는 다른 작업장으로 옮길 수 있다. */
@@ -65,7 +65,6 @@ export function BoardPage({ embedded = false }: { embedded?: boolean }) {
   const mode = useStore((s) => s.mode);
   const hintCount = useStore((s) => s.hintCount);
   const setPage = useStore((s) => s.setPage);
-  const touring = useStore((s) => s.tutorialStep !== null);
   const assign = useStore((s) => s.assign);
   const moveBlock = useStore((s) => s.moveBlock);
   const moveToWorkplace = useStore((s) => s.moveToWorkplace);
@@ -166,7 +165,7 @@ export function BoardPage({ embedded = false }: { embedded?: boolean }) {
       <div className="board-head">
         <div>
           <span className="eyebrow-label">— 블록 스케줄링 · {expert ? '숙련자' : '신입'} 모드</span>
-          <h1 data-testid="verdict">
+          <h1 data-testid="verdict" data-tour="verdict">
             {verdict === 'good' && (
               <>
                 현재 가용 자원으로 <em>전 블록 납기 준수 가능</em>
@@ -271,17 +270,8 @@ export function BoardPage({ embedded = false }: { embedded?: boolean }) {
       </DndContext>
       <Legend />
 
-      {solve ? (
-        <div className="insights">
-          {(expert || touring) && <PolicyCompare solve={solve} />}
-          <WhatIfCard solve={solve} />
-        </div>
-      ) : (
-        <div className="panel muted-panel">
-          <LineIcon name="bulb" />
-          <span>가용 자원으로 전 블록 납기 준수가 가능한지 계산하고 있습니다.</span>
-        </div>
-      )}
+      {/* 가능 여부는 위 제목에 있으므로, 불가능할 때만 추가 자원 제안을 보여 준다 */}
+      {solve && !solve.solutions.optimal.feasible && <WhatIfCard solve={solve} />}
 
       {editing && <BlockEditor blockId={editing} onClose={() => setEditing(null)} />}
     </div>

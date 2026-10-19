@@ -978,13 +978,6 @@ textarea {
   border-left: 2px dashed var(--ink);
 }
 
-.insights {
-  display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: 16px;
-  margin-bottom: 40px;
-}
-
 .panel {
   padding: 18px 20px;
   background: #fff;
@@ -1031,78 +1024,6 @@ textarea {
   align-items: center;
   gap: 10px;
   color: var(--muted);
-}
-
-.policy-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
-}
-
-.policy {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg);
-}
-
-.policy.active {
-  border: 2px solid var(--green);
-  background: #fff;
-}
-
-.policy-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--navy);
-}
-
-.pill {
-  margin-left: auto;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--green);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.policy-kpi {
-  font-size: 14px;
-}
-
-.policy-kpi b {
-  font-size: 22px;
-  color: var(--navy);
-}
-
-.policy.good .policy-kpi b {
-  color: var(--green);
-}
-
-.policy.bad .policy-kpi b {
-  color: var(--red);
-}
-
-.policy-warn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--red-50);
-  color: var(--red);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.policy .btn {
-  margin-top: auto;
-  align-self: flex-start;
 }
 
 .issues {
@@ -1221,8 +1142,7 @@ textarea {
     display: none;
   }
 
-  .source-grid,
-  .insights {
+  .source-grid {
     grid-template-columns: 1fr;
   }
 
