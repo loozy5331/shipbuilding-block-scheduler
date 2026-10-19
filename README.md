@@ -6,7 +6,7 @@
 2. **가용 자원 안에서 최적의 블록·작업자·크레인·비상 자재 배치**를 계산해 간트 차트로 보여 줍니다.
 
 배치는 드래그 & 드롭으로 직접 고칠 수 있고, 고칠 때마다 일별 자원 부하와 납기를 즉시 다시 검증합니다.
-계산은 브라우저에서만 하며 입력·배치는 브라우저(localStorage)에 저장됩니다. 회원 정보(아이디, scrypt로 해시한 비밀번호, 튜토리얼 가이드를 봤는지)만 Python(FastAPI) 서버의 SQLite(`data/users.db`)에 저장합니다.
+계산은 브라우저에서만 하며 입력·배치는 브라우저(localStorage)에 저장됩니다. 회원 정보(아이디, scrypt로 해시한 비밀번호, 튜토리얼 가이드를 봤는지)만 Python(FastAPI) 서버의 SQLite(`backend/data/users.db`)에 저장합니다.
 
 ## 실행
 
@@ -14,11 +14,13 @@
 npm install
 npm run setup:py  # 프로젝트 .venv(Python 3.12, uv 필요)에 FastAPI 설치
 npm run dev       # 개발 서버 (vite가 .venv의 FastAPI 서버도 함께 띄우고 /api를 넘김)
-npm run build     # 정적 빌드 (dist/)
-npm start         # 배포용: uvicorn이 dist/ + API 제공 (PORT 기본 8787, AUTH_DB 기본 data/users.db)
+npm run build     # 정적 빌드 (frontend/dist/)
+npm start         # 배포용: uvicorn이 frontend/dist/ + API 제공 (PORT 기본 8787, AUTH_DB 기본 backend/data/users.db)
 npm test          # 프런트 단위 테스트 (Vitest)
 npm run test:py   # 백엔드 테스트 (pytest)
 npm run e2e       # E2E 테스트 (Playwright, headless)
+npm run typecheck # 타입 검사
+npm run samples   # 예시 엑셀 다시 만들기 (frontend/public/)
 ```
 
 API 문서(개발 서버): `http://localhost:5173/api/docs`
@@ -35,11 +37,11 @@ API 문서(개발 서버): `http://localhost:5173/api/docs`
    - 자재: `준비/미준비`, `완료/미완료`, `Y/N`, `O/X`, `TRUE/FALSE`
    - 자원: 작업장 수, 동시 처리 블록 수, 일반 작업자(하루 8MH), 숙련공(하루 12MH), 크레인, 비상 자재
 4. **블록 스케줄링** — 들어오자마자 현재 자원으로 전 블록 납기 준수가 가능한지 위쪽에 표시합니다. 간트의 한 줄은 작업장(작업 자리) 하나이고 굵은 선이 작업장 경계입니다. 자원 아이콘을 대기 블록이나 막대에 끌어 놓아 배정하고, 막대를 좌우로 끌면 착수일, 위아래로 끌면 작업장이 바뀝니다(같은 작업장에서 날짜가 겹치면 `작업장 겹침`).
-   - 숙련자: `최적 배치`를 누르면 최적안을 적용하고, 다시 누를 때마다 착수 순서가 다른 차선·차차선을 차례로 보여 줍니다(후보는 최적 포함 3개). 주어진 정보 밖의 현장 사정으로 먼저 해야 할 블록이 있을 때 고릅니다.
+   - 숙련자: 처음 들어오면(아직 배치가 없으면) 최적 배치로 시작합니다. `초기화` 후 직접 배치할 수 있고, `최적 배치`를 누르면 최적안을 적용하고, 다시 누를 때마다 착수 순서가 다른 차선·차차선을 차례로 보여 줍니다(후보는 최적 포함 3개). 주어진 정보 밖의 현장 사정으로 먼저 해야 할 블록이 있을 때 고릅니다.
    - 신입: `힌트`를 누를 때마다 최적 배치와의 차이 중 효과가 가장 큰 블록 하나를 알려 줍니다.
 5. **결과** — 넘어갈 때 블록 조립 애니메이션(건너뛰기 가능, 설정·움직임 줄이기 시 생략). 배치표(블록·작업장·작업 기간·작업자 수), 날짜별 오늘 작업과 TBM 공유 메시지(복사/공유), 최적 배치 대비 평가서(납기 만족 블록 수·잔여 납기 여유일 등), `엑셀 저장`(배치표·일별 자원 부하·요약·TBM·평가서 시트).
 
-예시 엑셀: `public/sample-tutorial.xlsx`(발표 자료의 5블록), `public/sample-30-blocks.xlsx`.
+예시 엑셀: `frontend/public/sample-tutorial.xlsx`(발표 자료의 5블록), `frontend/public/sample-30-blocks.xlsx`.
 처음 로그인하면(계정마다 한 번, 체험하기는 브라우저마다 한 번) 튜토리얼 가이드(발표 자료 "작업 배정 실습 10일 아침의 다섯 블록")가 시작됩니다. 가이드는 페이지마다(공통 설정 입력 → 블록 스케줄링 → 결과) 따로 진행하고 각 페이지의 다음 버튼으로 넘어가며, 메뉴의 `튜토리얼 가이드` 버튼으로 다시 볼 수 있습니다.
 
 ## 배치 규칙
@@ -49,7 +51,7 @@ API 문서(개발 서버): `http://localhost:5173/api/docs`
 - 자재 미준비 블록은 비상 자재 1개를 써야 착수 가능 (비상 자재는 소모성)
 - 블록당 최대 투입 인원은 `세부 설정`에서 조정 (기본 3명)
 
-## 최적화 방식 (`src/solver/`)
+## 최적화 방식 (`frontend/src/solver/`)
 
 목적함수(사전식): 미배치 블록 수 → 자원 초과 → 납기 지연 블록 수 → 총 지연일 → 비상 자재 사용 → 낭비 MH → 전체 완료일
 
@@ -62,12 +64,18 @@ API 문서(개발 서버): `http://localhost:5173/api/docs`
 ## 구조
 
 ```
-src/domain/     타입, 배치 평가(evaluate: 부하·지연·초과 판정 — UI/솔버/테스트 공용)
-src/solver/     최적화 엔진, Web Worker
-src/io/         엑셀/붙여넣기 파싱, 내보내기
-src/store/      Zustand 상태 (localStorage 저장)
-src/components/ 입력 화면, 배치 화면(간트·자원 부하·What-if), 결과, 조립 애니메이션
-src/tutorial/   튜토리얼 시나리오와 단계
-src/styles/     구역별 CSS (번호 순서대로 적용)
-backend/        FastAPI 서버: 회원 API(SQLite) + 배포 시 dist/ 제공
+frontend/                 React 앱 (Vite)
+  src/domain/             타입, 배치 평가(evaluate: 부하·지연·초과 판정 — UI/솔버/테스트 공용)
+  src/solver/             최적화 엔진, Web Worker
+  src/io/                 엑셀/붙여넣기 파싱, 내보내기, 로그인 API 호출
+  src/store/              Zustand 상태 (localStorage 저장)
+  src/components/         입력 화면, 배치 화면(간트·자원 부하·What-if), 결과, 조립 애니메이션
+  src/tutorial/           튜토리얼 시나리오와 단계
+  src/styles/             구역별 CSS (번호 순서대로 적용)
+  public/                 예시 엑셀
+  tests/, tests/e2e/      단위 테스트(Vitest), E2E(Playwright)
+backend/                  FastAPI 서버: 회원 API(SQLite) + 배포 시 frontend/dist/ 제공
+  app/, tests/, data/     라우트·회원 저장소, pytest, 회원 DB(git 제외)
+docs/                     계획 문서
+scripts/                  예시 엑셀 생성
 ```

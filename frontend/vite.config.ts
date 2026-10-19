@@ -2,9 +2,13 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
+const FRONTEND = fileURLToPath(new URL('.', import.meta.url));
+// .venv와 backend 패키지는 저장소 루트에 있다 (vite를 어느 폴더에서 띄우든 같은 곳을 쓰도록)
+const REPO = fileURLToPath(new URL('..', import.meta.url));
 const API_PORT = Number(process.env.API_PORT ?? 8000);
-const PYTHON = '.venv/bin/python';
+const PYTHON = `${REPO}.venv/bin/python`;
 
 /** 개발·미리보기 서버를 띄울 때 프로젝트 .venv의 FastAPI 서버(backend/)도 함께 띄운다 */
 function pythonApi(): Plugin {
@@ -17,6 +21,7 @@ function pythonApi(): Plugin {
       return;
     }
     child = spawn(PYTHON, ['-m', 'uvicorn', '--factory', 'backend.app.main:create_app', '--port', String(API_PORT), '--log-level', 'warning'], {
+      cwd: REPO,
       stdio: 'inherit',
       env: process.env,
     });
@@ -38,6 +43,7 @@ function pythonApi(): Plugin {
 const proxy = { '/api': `http://127.0.0.1:${API_PORT}` };
 
 export default defineConfig({
+  root: FRONTEND,
   plugins: [react(), pythonApi()],
   server: { proxy },
   preview: { proxy },

@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import * as XLSX from 'xlsx';
-import { drag, shot, start } from './helpers';
+import { drag, fromFrontend, shot, start } from './helpers';
 
 test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작업장 변경 → 최적 배치 → 내보내기', async ({ page }) => {
   await start(page, 'expert');
@@ -83,11 +82,12 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   expect(String(XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets.TBM)[0]['TBM 메시지'])).toContain('[TBM]');
 });
 
-test('최적 배치를 다시 누르면 차선·차차선을 차례로 본다', async ({ page }) => {
+test('숙련자는 최적 배치로 시작하고, 다시 누르면 차선·차차선을 차례로 본다', async ({ page }) => {
   await start(page, 'expert');
   const btn = page.getByTestId('optimize-btn');
-  await btn.click();
+  // 들어오자마자 최적 배치가 적용되어 있다
   await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
+  await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(0);
   const first = await page.getByTestId('plan-option').innerText();
   const total = Number(first.match(/\(1\/(\d)\)/)![1]);
   expect(total).toBeGreaterThan(1);
@@ -103,8 +103,36 @@ test('최적 배치를 다시 누르면 차선·차차선을 차례로 본다', 
   await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
 });
 
+test('최적 배치로 줄이 재정렬되면 줄이 새 자리로 미끄러진다', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await start(page, 'expert');
+  // 숙련자는 최적 배치로 시작하므로, 적용된 뒤 초기화해야 다음 클릭이 다시 최적 배치(1안)가 된다
+  await expect(page.getByTestId('plan-option')).toBeVisible();
+  await page.getByRole('button', { name: '초기화' }).click();
+  await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
+  // 애니메이션이 짧아 끝난 뒤엔 안 보이므로 animate 호출을 센다
+  await page.evaluate(() => {
+    const w = window as unknown as { rowMoves: string[] };
+    w.rowMoves = [];
+    const orig = Element.prototype.animate;
+    Element.prototype.animate = function (this: Element, ...args: Parameters<Element['animate']>) {
+      const id = (this as HTMLElement).dataset.testid;
+      if (id?.startsWith('row-')) w.rowMoves.push(id);
+      return orig.apply(this, args);
+    };
+  });
+  await page.getByTestId('optimize-btn').click();
+  await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
+  await expect.poll(() => page.evaluate(() => (window as unknown as { rowMoves: string[] }).rowMoves.length)).toBeGreaterThan(0);
+});
+
 test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·숫자 편집', async ({ page }) => {
   await start(page, 'expert');
+  await expect(page.getByTestId('plan-option')).toBeVisible();
+  // 초기화하면 빈 간트에서 직접 배치한다 (최적 배치가 다시 덮어쓰지 않는다)
+  await page.getByRole('button', { name: '초기화' }).click();
+  await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
+  await page.waitForTimeout(300);
   await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
 
   await drag(page, '[data-testid="chip-crane"]', '[data-testid="row-A-101"]');
@@ -113,7 +141,7 @@ test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·�
     await expect(page.getByTestId('row-A-101')).toHaveClass(/drop-no/);
     await expect(page.getByTestId('row-A-101')).toContainText('이미 크레인이 있습니다');
     // fullPage 캡처는 창 크기를 바꿔 드래그를 취소시키므로 화면만 찍는다
-    await page.screenshot({ path: 'test-results/shots/08-drop-no.png' });
+    await page.screenshot({ path: fromFrontend('test-results/shots/08-drop-no.png') });
   });
   await expect(page.locator('.toast')).toContainText('이미 크레인이 있습니다');
 
@@ -156,6 +184,8 @@ test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·�
 test('신입 모드: 최적 배치 대신 단계적 힌트', async ({ page }) => {
   await start(page, 'novice');
   await expect(page.getByRole('button', { name: '최적 배치' })).toHaveCount(0);
+  // 신입은 빈 간트에서 직접 배치하며 시작한다
+  await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
 
   await page.getByTestId('hint-btn').click();
   await expect(page.getByTestId('hint')).toContainText('힌트 1');
@@ -191,7 +221,7 @@ test('자원 부족 시 즉시 불가 판정과 추가 자원 제안', async ({ 
 test('30블록 엑셀', async ({ page }) => {
   await start(page, 'expert', false);
   await page.getByRole('button', { name: /이어서 하기|직접 입력하기/ }).click();
-  await page.getByTestId('excel-input').setInputFiles(path.resolve('public/sample-30-blocks.xlsx'));
+  await page.getByTestId('excel-input').setInputFiles(fromFrontend('public/sample-30-blocks.xlsx'));
   await expect(page.locator('.parse-result')).toContainText('블록 30개 읽음');
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
   await page.getByTestId('optimize-btn').click();

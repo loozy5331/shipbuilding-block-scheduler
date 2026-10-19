@@ -83,6 +83,8 @@ test('튜토리얼: 가이드는 페이지 안에서만, 페이지는 직접 다
     }
   };
 
+  // 튜토리얼 중에는 위쪽 단계로 건너뛸 수 없다 (지금 페이지만)
+  for (const label of ['메뉴', '블록 스케줄링', '결과']) await expect(step(page, label)).toBeDisabled();
   // 공통 설정 입력: 1/4 ~ 4/4, 예시로 채워진 읽기 전용 표
   await expect(page.getByTestId('excel-input')).toHaveCount(0);
   await expect(page.locator('.setup .plain-table')).toContainText('C-115');
@@ -93,6 +95,9 @@ test('튜토리얼: 가이드는 페이지 안에서만, 페이지는 직접 다
 
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
   await runPage('블록 스케줄링', 6, '확인');
+  // 지나온 공통 설정 입력으로는 돌아갈 수 있고, 아직 안 간 결과는 막혀 있다
+  await expect(step(page, '공통 설정 입력')).toBeEnabled();
+  await expect(step(page, '결과')).toBeDisabled();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('[data-tour="kpi"]')).toContainText('5 / 5');
 
