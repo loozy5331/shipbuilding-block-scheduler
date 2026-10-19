@@ -1,0 +1,30 @@
+import type { Block, Policy, Resources } from '../domain/types';
+import { checkCapacity, type CapacityCheck } from './feasibility';
+import { solvePolicy, type Solution } from './search';
+import { whatIf, type WhatIfResult } from './whatif';
+
+export interface SolveRequest {
+  blocks: Block[];
+  resources: Resources;
+  budgetMs?: number;
+}
+
+export interface SolveResponse {
+  capacity: CapacityCheck;
+  solutions: Record<Policy, Solution>;
+  /** 최적화로도 전 블록 납기 준수가 안 될 때만 채워진다 */
+  whatIf: WhatIfResult[];
+}
+
+export function solveAll({ blocks, resources, budgetMs = 800 }: SolveRequest): SolveResponse {
+  const solutions = {
+    input: solvePolicy('input', blocks, resources),
+    edd: solvePolicy('edd', blocks, resources),
+    optimal: solvePolicy('optimal', blocks, resources, { budgetMs }),
+  };
+  return {
+    capacity: checkCapacity(blocks, resources),
+    solutions,
+    whatIf: solutions.optimal.feasible || blocks.length === 0 ? [] : whatIf(blocks, resources, solutions.optimal.kpi),
+  };
+}
