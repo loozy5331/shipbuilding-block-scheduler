@@ -6,18 +6,22 @@
 2. **가용 자원 안에서 최적의 블록·작업자·크레인·비상 자재 배치**를 계산해 간트 차트로 보여 줍니다.
 
 배치는 드래그 & 드롭으로 직접 고칠 수 있고, 고칠 때마다 일별 자원 부하와 납기를 즉시 다시 검증합니다.
-계산은 브라우저에서만 하며 입력·배치는 브라우저(localStorage)에 저장됩니다. 회원 정보(아이디, scrypt로 해시한 비밀번호, 튜토리얼 가이드를 봤는지)만 서버의 SQLite(`data/users.db`, Node 내장 `node:sqlite`)에 저장합니다.
+계산은 브라우저에서만 하며 입력·배치는 브라우저(localStorage)에 저장됩니다. 회원 정보(아이디, scrypt로 해시한 비밀번호, 튜토리얼 가이드를 봤는지)만 Python(FastAPI) 서버의 SQLite(`data/users.db`)에 저장합니다.
 
 ## 실행
 
 ```bash
 npm install
-npm run dev       # 개발 서버 (로그인 API 포함, Node 22.13 이상)
+npm run setup:py  # 프로젝트 .venv(Python 3.12, uv 필요)에 FastAPI 설치
+npm run dev       # 개발 서버 (vite가 .venv의 FastAPI 서버도 함께 띄우고 /api를 넘김)
 npm run build     # 정적 빌드 (dist/)
-npm start         # 배포용 서버: dist/ + 로그인 API (PORT 기본 8787, AUTH_DB 기본 data/users.db)
-npm test          # 단위 테스트 (Vitest)
+npm start         # 배포용: uvicorn이 dist/ + API 제공 (PORT 기본 8787, AUTH_DB 기본 data/users.db)
+npm test          # 프런트 단위 테스트 (Vitest)
+npm run test:py   # 백엔드 테스트 (pytest)
 npm run e2e       # E2E 테스트 (Playwright, headless)
 ```
+
+API 문서(개발 서버): `http://localhost:5173/api/docs`
 
 ## 사용법
 
@@ -62,6 +66,8 @@ src/domain/     타입, 배치 평가(evaluate: 부하·지연·초과 판정 �
 src/solver/     최적화 엔진, Web Worker
 src/io/         엑셀/붙여넣기 파싱, 내보내기
 src/store/      Zustand 상태 (localStorage 저장)
-src/components/ 입력 화면, 배치 화면(간트·자원 부하·정책 비교·What-if), 아이콘
+src/components/ 입력 화면, 배치 화면(간트·자원 부하·What-if), 결과, 조립 애니메이션
 src/tutorial/   튜토리얼 시나리오와 단계
+src/styles/     구역별 CSS (번호 순서대로 적용)
+backend/        FastAPI 서버: 회원 API(SQLite) + 배포 시 dist/ 제공
 ```

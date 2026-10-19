@@ -20,17 +20,16 @@ OCR 결과는 틀릴 수 있으므로 **사람이 검토·수정한 뒤 적용**
 ```
 [브라우저]  촬영/업로드 → 회전·축소(긴 변 2000px, JPEG) ─┐
                                                         │ POST /api/ocr (multipart, ≤10MB)
-[Node 서버] server/ocr.ts: 크기·형식 검사, 타임아웃 30초 ─┤  (개발: vite 플러그인에 같은 미들웨어)
-                                                        │ HTTP (내부망)
-[OCR 서비스] Python + PaddleOCR 3.x (Docker) ───────────┘
+[FastAPI]  backend/app/ocr.py: 크기·형식 검사, 동시 처리 제한 ┘  (로그인 API와 같은 서버, 같은 .venv)
    1) 표 인식(PP-StructureV3) → 셀 2차원 배열
    2) 표가 없으면 텍스트 박스(PaddleOCR) → 행·열로 묶기
    → { rows: string[][], cells: { text, score, box }[][] }
 [브라우저]  기존 parseTable()로 헤더·값 해석 → 검토 표 → 블록으로 적용
 ```
 
-- 계산·저장 구조(브라우저 계산, 서버는 회원 DB만)는 그대로 두고, **OCR만 별도 Python 서비스**로 분리한다.
-  Node 쪽은 프록시만 하므로 OCR 서비스가 꺼져 있어도 나머지 기능은 영향이 없다(타일에 "OCR 서버 연결 안 됨" 표시).
+- 백엔드가 이미 FastAPI(`backend/`)이므로 **OCR도 같은 서버의 라우트**로 붙인다. 별도 프록시가 필요 없다.
+- PaddleOCR는 무거우므로 첫 요청 때 모델을 불러오고(lazy), `paddleocr`는 `backend/requirements-ocr.txt`로 분리해
+  OCR이 필요 없는 환경은 가볍게 설치한다. 설치되지 않았으면 `/api/ocr`이 503과 안내 문구를 돌려준다.
 - 표 해석은 엑셀 업로드와 같은 `src/io/parse.ts`의 `parseTable()`을 재사용한다. 헤더 별칭·날짜 환산·자재 표기 인식이 한 곳에 모인다.
 
 ## 3. 처리 단계
@@ -47,15 +46,15 @@ OCR 결과는 틀릴 수 있으므로 **사람이 검토·수정한 뒤 적용**
 | 단계 | 내용 | 완료 기준 |
 |---|---|---|
 | M0 PoC | 실제 사진 20장 이상 수집(인쇄 표·손글씨·화이트보드·모니터 촬영), Python 스크립트로 셀 정확도 측정 | 인쇄 표 셀 정확도 95% 이상이면 진행. 손글씨는 결과 보고 범위 결정 |
-| M1 OCR 서비스 | `ocr-service/` (Python, PaddleOCR 3.x, Dockerfile, 모델을 이미지에 포함), `POST /ocr`, `/health` | 샘플 이미지로 rows/cells JSON 반환 |
-| M2 Node 연동 | `server/ocr.ts` 프록시(크기·형식·타임아웃), vite 개발 서버에도 연결, `OCR_URL` 환경변수 | 서비스 꺼짐/시간 초과 시 명확한 오류 메시지 |
+| M1 OCR 라우트 | `backend/app/ocr.py` (PaddleOCR 3.x, `.venv`, `requirements-ocr.txt`), `POST /api/ocr` | 샘플 이미지로 rows/cells JSON 반환, pytest |
+| M2 운영 | 크기·형식 검사, 동시 처리 제한, 미설치·시간 초과 시 명확한 오류, Dockerfile(모델 포함) | 오류 경로 pytest |
 | M3 표 변환 | 행·열 묶기, 헤더 추정, 오인식 보정 → `parseTable()` 연결 | 고정 OCR JSON 픽스처로 단위 테스트 |
 | M4 화면 | 메뉴 타일 활성화, 촬영/업로드, 진행 표시, 검토 표, 적용 | 모바일 폭에서 가로 스크롤 없음 |
-| M5 테스트·문서 | OCR 응답을 모킹한 e2e, README 실행 방법(`docker compose up ocr`) | 기존 테스트 포함 전부 통과 |
+| M5 테스트·문서 | OCR 응답을 모킹한 e2e, README 실행 방법 | 기존 테스트 포함 전부 통과 |
 
 ## 5. 배포
 
-- `docker compose`에 `ocr` 서비스 추가(내부망 전용 포트). 모델은 빌드 때 받아 이미지에 넣어 첫 요청 지연을 없앤다.
+- 백엔드 Docker 이미지에 OCR 모델을 빌드 때 받아 넣어 첫 요청 지연을 없앤다.
 - 권장 사양(가정, M0에서 측정 후 확정): CPU 4코어·메모리 8GB, 사진 1장 수 초. GPU가 있으면 `device="gpu"`.
 - PP-StructureV3 전체 파이프라인은 무겁다 → 수식·도표 인식 등 쓰지 않는 기능은 끄고 모바일(경량) 모델을 우선 쓴다.
 

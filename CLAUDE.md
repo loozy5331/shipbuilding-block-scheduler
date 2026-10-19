@@ -1,12 +1,13 @@
 # 조선소 블록 일정 스케줄러 — 작업 안내
 
-React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 브라우저(Web Worker). 서버는 로그인 API + SQLite뿐.
+React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 브라우저(Web Worker). 서버는 Python FastAPI(`backend/`, 로그인 API + SQLite)뿐.
 사용자 문서·배치 규칙·최적화 설명은 README.md. 여기에는 코드를 고칠 때 필요한 것만 둔다.
 
 ## 명령
 - `npx tsc --noEmit` 타입 검사(테스트 포함, 안 쓰는 import도 오류)
 - `npx vitest run` 단위 테스트 (`tests/*.test.ts`)
 - `npx playwright test --reporter=dot` e2e (`tests/e2e/*.spec.ts`, headless, 기본 reducedMotion=reduce라 조립 애니메이션은 건너뜀)
+- `npm run test:py` 백엔드 pytest (`backend/tests/`), 설치는 `npm run setup:py`
 - `npm run build` 빌드
 
 ## 코드 지도 (찾는 것 → 파일)
@@ -21,7 +22,7 @@ React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 
 | 현재 배치 평가(메모이즈) | `src/store/evaluation.ts` → `useEvaluation()` |
 | 최적화 실행·결과 저장 | `src/store/actions.ts` `runSolve()` |
 | 엑셀/Numbers/CSV 읽기·쓰기, 붙여넣기 파싱 | `src/io/{excel,parse}.ts` |
-| 로그인 API 호출 | `src/io/auth.ts` ↔ 서버 `server/auth.ts` (vite 플러그인 `vite.config.ts`, 배포 `server/index.ts`) |
+| 로그인 API | 호출 `src/io/auth.ts` ↔ FastAPI `backend/app/main.py`(라우트), `backend/app/users.py`(SQLite·scrypt). 개발 시 `vite.config.ts`가 uvicorn을 띄우고 /api 프록시 |
 | 페이지 | `components/home/{LoginPage,MenuPage}` → `input/InputPage` → `board/BoardPage` → `result/ResultPage` (`App.tsx`가 전환) |
 | 간트 | `board/GanttChart.tsx`(줄·작업장), `board/GanttBars.tsx`(막대·아이콘), 드래그 `board/useBoardDnd.ts`, 칸 폭 `board/ganttLayout.ts` |
 | 튜토리얼 가이드 | 단계 `src/tutorial/steps.ts`, 화면 `Tour.tsx`, 예시 데이터 `scenario.ts` |
@@ -35,4 +36,4 @@ React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 
 - 배치를 바꾸는 상태 변경은 `plan.ts`의 `withLanes`로 작업 자리를 채운다.
 - 평가가 필요하면 `evaluate()`를 새로 부르지 말고 `useEvaluation()`/`selectEvaluation()`.
 - 큰 파일 통째 읽기 피하기: 위 지도로 파일을 고르고 `grep -n`으로 위치를 찾은 뒤 필요한 범위만 읽는다.
-- Python(예정: FastAPI 백엔드·PaddleOCR)은 프로젝트 `.venv`에서만 실행한다.
+- Python은 프로젝트 `.venv`(Python 3.12, uv)에서만 실행한다. 의존성은 `backend/requirements*.txt`에 버전 고정.
