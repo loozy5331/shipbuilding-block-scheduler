@@ -124,6 +124,43 @@ test('회원가입 → 로그아웃 → 아이디·비밀번호로 로그인', a
   await expect(page.locator('.user-chip')).toContainText(id);
 });
 
+test('튜토리얼 가이드는 계정마다 처음 한 번만 (DB 저장), 튜토리얼 가이드 버튼으로 다시 받는다', async ({ page, browser }) => {
+  const id = `tour_${Date.now() % 1e8}`;
+  await page.goto('/');
+  await page.getByTestId('login-switch').click();
+  await page.getByTestId('login-id').fill(id);
+  await page.getByTestId('login-password').fill('secret1');
+  await page.getByTestId('login-confirm').fill('secret1');
+  await page.getByTestId('login-submit').click();
+  // 처음이면 가이드
+  await expect(page.locator('.tour-card')).toContainText('1 / ');
+  await page.getByRole('button', { name: '건너뛰기' }).click();
+
+  // 다른 브라우저(저장소가 빈 상태)에서 로그인해도 가이드 없이 메뉴로
+  const other = await browser.newContext({ reducedMotion: 'reduce' });
+  const p2 = await other.newPage();
+  await p2.goto('/');
+  await p2.getByTestId('login-id').fill(id);
+  await p2.getByTestId('login-password').fill('secret1');
+  await p2.getByTestId('login-submit').click();
+  await expect(p2.locator('.tile')).toHaveCount(4);
+  await expect(p2.locator('.tour-card')).toHaveCount(0);
+
+  // 튜토리얼 타일: 가이드 없이 예시만, 편집 가능
+  await p2.getByTestId('tile-tutorial').click();
+  await expect(p2.getByTestId('setup-title')).toBeVisible();
+  await expect(p2.locator('.tour-card')).toHaveCount(0);
+  await expect(p2.locator('.edit-table input[aria-label="블록 ID"]').first()).toHaveValue('A-101');
+  await shot(p2, '16-tutorial-no-guide');
+
+  // 튜토리얼 가이드 버튼: 다시 가이드
+  await step(p2, '메뉴').click();
+  await shot(p2, '16-menu-tutorial-guide');
+  await p2.getByTestId('tutorial-guide-btn').click();
+  await expect(p2.locator('.tour-card')).toContainText('1 / ');
+  await other.close();
+});
+
 test('가이드를 건너뛰면 튜토리얼이 끝나고 지금 페이지에 머문다', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('try-btn').click();
@@ -134,7 +171,7 @@ test('가이드를 건너뛰면 튜토리얼이 끝나고 지금 페이지에 �
   await expect(page.getByTestId('excel-input')).toHaveCount(1);
   // 블록 스케줄링 가이드에서 Esc로 닫아도 그 페이지에 남는다
   await step(page, '메뉴').click();
-  await page.getByTestId('tile-tutorial').click();
+  await page.getByTestId('tutorial-guide-btn').click();
   for (let i = 0; i < 4; i++) await page.getByTestId('tour-next').click();
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
   await expect(page.locator('.tour-card')).toContainText('1 / ');

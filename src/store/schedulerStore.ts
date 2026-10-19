@@ -7,6 +7,7 @@ import { todayISO } from '../io/dates';
 import { assignBlockedReason } from '../domain/assign';
 import { assignLanes, seatIn } from '../domain/lanes';
 import { TUTORIAL_BLOCKS, TUTORIAL_RESOURCES } from '../tutorial/scenario';
+import { reportTutorialSeen } from '../io/auth';
 
 /** 유저 여정: 로그인 → 메뉴 → 공통 설정 입력 → 블록 스케줄링 → 결과 */
 export type Page = 'login' | 'menu' | 'setup' | 'schedule' | 'result';
@@ -28,6 +29,8 @@ export interface Settings {
 export interface User {
   id: string;
   guest: boolean;
+  /** 튜토리얼 가이드를 본 적 있음 (가입 계정은 DB에 저장) */
+  tutorialSeen?: boolean;
 }
 
 interface State {
@@ -44,6 +47,7 @@ interface State {
   assignments: Assignments;
   /** 마지막 최적화 결과 (블록/자원 입력이 바뀌면 지운다) */
   solve: SolveResponse | null;
+  /** 체험하기(게스트)로 튜토리얼 가이드를 본 적 있음. 가입 계정은 user.tutorialSeen(DB)을 쓴다 */
   tutorialSeen: boolean;
   /** 튜토리얼 진행 중 (예시 데이터, 공통 설정 입력은 읽기 전용) */
   tutorialActive: boolean;
@@ -87,7 +91,10 @@ interface State {
   clearAssignments(): void;
   setSolve(s: SolveResponse | null): void;
 
+  /** 튜토리얼 가이드와 함께 예시로 시작 */
   startTutorial(): void;
+  /** 메뉴의 튜토리얼: 가이드를 처음 보면 가이드와 함께, 이미 봤으면 예시만 불러온다 */
+  openTutorial(): void;
   setTutorialStep(step: number | null): void;
   /** 이 페이지 가이드를 띄웠다고 표시하고 1단계를 연다 */
   openPageGuide(page: Page): void;
@@ -99,6 +106,11 @@ interface State {
   /** 결과 페이지로 가면서 (설정이 켜져 있고 움직임 줄이기가 아니면) 조립 애니메이션을 띄운다 */
   goToResult(animate: boolean): void;
   endAssembly(): void;
+}
+
+/** 가입 계정은 DB 기록, 체험하기는 이 브라우저 기록으로 튜토리얼 가이드를 봤는지 판단한다 */
+function guideSeen(s: Pick<State, 'user' | 'tutorialSeen'>): boolean {
+  return s.user && !s.user.guest ? s.user.tutorialSeen === true : s.tutorialSeen;
 }
 
 const storage = createJSONStorage(() => {
@@ -136,7 +148,7 @@ export const useStore = create<State>()(
       setMode: (mode) => set({ mode }),
       login: (user) => {
         set({ user });
-        if (get().tutorialSeen) set({ page: 'menu' });
+        if (guideSeen(get())) set({ page: 'menu' });
         else get().startTutorial();
       },
       logout: () => set({ user: null, page: 'login', tutorialActive: false, tutorialPage: null, tutorialStep: null, tutorialGuided: [] }),
@@ -232,8 +244,23 @@ export const useStore = create<State>()(
       },
       setTutorialStep: (tutorialStep) => set({ tutorialStep }),
       openPageGuide: (page) => set((s) => ({ tutorialGuided: [...s.tutorialGuided, page], tutorialPage: page, tutorialStep: 0 })),
+      openTutorial: () => {
+        if (!guideSeen(get())) return get().startTutorial();
+        get().loadScenario();
+        set({ page: 'setup' });
+      },
       // 끝내도 지금 페이지에 그대로 머문다
-      endTutorial: () => set({ tutorialActive: false, tutorialPage: null, tutorialStep: null, tutorialGuided: [], tutorialSeen: true }),
+      endTutorial: () => {
+        const { user } = get();
+        if (user && !user.guest && !user.tutorialSeen) reportTutorialSeen(user.id);
+        set({
+          tutorialActive: false,
+          tutorialPage: null,
+          tutorialStep: null,
+          tutorialGuided: [],
+          ...(user && !user.guest ? { user: { ...user, tutorialSeen: true } } : { tutorialSeen: true }),
+        });
+      },
       setShowFull: (showFull) => set({ showFull }),
       selectToken: (selectedToken) => set({ selectedToken }),
       showToast: (message) => set((s) => ({ toast: { id: (s.toast?.id ?? 0) + 1, message } })),

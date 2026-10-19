@@ -75,8 +75,8 @@ export function LoginPage() {
     setBusy(true);
     try {
       const user = await requestAuth(signup ? 'signup' : 'login', id.trim(), password);
-      if (signup) showToast(`${user}님, 가입을 환영합니다.`);
-      login({ id: user, guest: false });
+      if (signup) showToast(`${user.id}님, 가입을 환영합니다.`);
+      login({ id: user.id, guest: false, tutorialSeen: user.tutorialSeen });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -144,6 +144,7 @@ export function MenuPage() {
   const planStart = useStore((s) => s.planStart);
   const blocks = useStore((s) => s.blocks);
   const startTutorial = useStore((s) => s.startTutorial);
+  const openTutorial = useStore((s) => s.openTutorial);
   const showToast = useStore((s) => s.showToast);
   const [settings, setSettings] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -171,11 +172,17 @@ export function MenuPage() {
           <strong>엑셀 업로드</strong>
           <small>블록 ID · 납기일 · 필요 작업 시간 · 자재준비 여부</small>
         </button>
-        <button type="button" className="tile" onClick={startTutorial} data-testid="tile-tutorial">
-          <LineIcon name="play" size={34} />
-          <strong>튜토리얼</strong>
-          <small>예시 5블록으로 따라 하기</small>
-        </button>
+        {/* 타일 전체는 예시 불러오기(처음이면 가이드와 함께), 안쪽 버튼은 가이드 다시 받기 */}
+        <div className="tile tile-split">
+          <button type="button" className="tile-main" onClick={openTutorial} data-testid="tile-tutorial">
+            <LineIcon name="play" size={34} />
+            <strong>튜토리얼</strong>
+            <small>예시 5블록으로 따라 하기</small>
+          </button>
+          <button type="button" className="btn ghost small tile-sub" onClick={startTutorial} data-testid="tutorial-guide-btn">
+            튜토리얼 가이드
+          </button>
+        </div>
         <button type="button" className="tile" disabled title="준비 중">
           <LineIcon name="camera" size={34} />
           <strong>블록 작업 촬영</strong>

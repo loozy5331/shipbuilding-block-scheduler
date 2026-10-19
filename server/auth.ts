@@ -9,7 +9,7 @@ export const ID_RULE = /^[A-Za-z0-9_]{3,20}$/;
 export const PASSWORD_MIN = 6;
 export const PASSWORD_MAX = 64;
 
-export type AuthResult = { ok: true; id: string } | { ok: false; status: number; message: string };
+export type AuthResult = { ok: true; id: string; tutorialSeen: boolean } | { ok: false; status: number; message: string };
 
 /** 비밀번호는 사용자마다 다른 salt로 scrypt 해시해서 저장한다 */
 function hash(password: string, salt: Buffer): Buffer {
@@ -25,8 +25,12 @@ export function openUserStore(path: string) {
     hash BLOB NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`);
-  const find = db.prepare('SELECT id, salt, hash FROM users WHERE id = ?');
+  // 튜토리얼 가이드를 본 적 있는지 (처음 로그인할 때만 가이드를 띄운다). 예전 DB에는 열을 더한다
+  const columns = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+  if (!columns.some((c) => c.name === 'tutorial_seen')) db.exec('ALTER TABLE users ADD COLUMN tutorial_seen INTEGER NOT NULL DEFAULT 0');
+  const find = db.prepare('SELECT id, salt, hash, tutorial_seen FROM users WHERE id = ?');
   const insert = db.prepare('INSERT INTO users (id, salt, hash) VALUES (?, ?, ?)');
+  const markSeen = db.prepare('UPDATE users SET tutorial_seen = 1 WHERE id = ?');
 
   return {
     signup(id: string, password: string): AuthResult {
@@ -36,14 +40,18 @@ export function openUserStore(path: string) {
       if (find.get(id)) return { ok: false, status: 409, message: '이미 있는 아이디입니다.' };
       const salt = randomBytes(16);
       insert.run(id, salt, hash(password, salt));
-      return { ok: true, id };
+      return { ok: true, id, tutorialSeen: false };
     },
     login(id: string, password: string): AuthResult {
-      const row = find.get(id) as { id: string; salt: Uint8Array; hash: Uint8Array } | undefined;
+      const row = find.get(id) as { id: string; salt: Uint8Array; hash: Uint8Array; tutorial_seen: number } | undefined;
       // 없는 아이디와 틀린 비밀번호를 구분하지 않는다
       if (!row || !timingSafeEqual(hash(password, Buffer.from(row.salt)), Buffer.from(row.hash)))
         return { ok: false, status: 401, message: '아이디 또는 비밀번호가 올바르지 않습니다.' };
-      return { ok: true, id: row.id };
+      return { ok: true, id: row.id, tutorialSeen: row.tutorial_seen === 1 };
+    },
+    /** 튜토리얼 가이드를 봤다고 기록한다. 없는 아이디면 false */
+    markTutorialSeen(id: string): boolean {
+      return Number(markSeen.run(id).changes) > 0;
     },
     close: () => db.close(),
   };
@@ -74,16 +82,21 @@ function send(res: ServerResponse, status: number, data: unknown) {
   res.end(JSON.stringify(data));
 }
 
-/** POST /api/signup, POST /api/login — 그 밖의 요청은 next로 넘긴다 */
+/** POST /api/signup, POST /api/login, POST /api/tutorial-seen — 그 밖의 요청은 next로 넘긴다 */
 export function authMiddleware(store: UserStore) {
   return async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const route = req.url?.split('?')[0];
-    if (req.method !== 'POST' || (route !== '/api/signup' && route !== '/api/login')) return next();
+    if (req.method !== 'POST' || (route !== '/api/signup' && route !== '/api/login' && route !== '/api/tutorial-seen')) return next();
     const body = await readJSON(req);
     const id = typeof body.id === 'string' ? body.id.trim() : '';
+    if (route === '/api/tutorial-seen') {
+      if (store.markTutorialSeen(id)) send(res, 200, { ok: true });
+      else send(res, 404, { message: '없는 아이디입니다.' });
+      return;
+    }
     const password = typeof body.password === 'string' ? body.password : '';
     const r = route === '/api/signup' ? store.signup(id, password) : store.login(id, password);
-    if (r.ok) send(res, 200, { id: r.id });
+    if (r.ok) send(res, 200, { id: r.id, tutorialSeen: r.tutorialSeen });
     else send(res, r.status, { message: r.message });
   };
 }

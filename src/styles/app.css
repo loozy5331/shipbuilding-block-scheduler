@@ -1303,6 +1303,38 @@ button.brand {
   cursor: not-allowed;
 }
 
+/* 튜토리얼 타일: 타일 전체가 주 버튼이고, 그 위에 가이드 버튼을 얹는다 */
+.tile-split {
+  position: relative;
+  cursor: default;
+}
+.tile-split .tile-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.tile-split .tile-main::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+}
+.tile-split .tile-sub {
+  position: relative;
+  z-index: 1;
+}
+.tile-split:has(.tile-main:focus-visible) {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
 .settings {
   display: flex;
   flex-direction: column;
