@@ -13,10 +13,10 @@ import {
   type DragStartEvent,
   type Modifier,
 } from '@dnd-kit/core';
-import type { Assignments, ResourceKind } from '../../domain/types';
+import type { ResourceKind } from '../../domain/types';
 import { evaluate } from '../../domain/evaluate';
 import { nextHint, type Hint } from '../../domain/hint';
-import { samePlan, workplaceOf } from '../../domain/lanes';
+import { samePlan, startOrder, workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { runSolve } from '../../store/actions';
 import { ResourceIcon } from '../icons/ResourceIcons';
@@ -44,14 +44,6 @@ const collide: CollisionDetection = (args) => {
 };
 
 const PLAN_NAME = ['최적 배치', '차선', '차차선'];
-
-/** 착수 순서 (같은 날은 ID 순) */
-function startOrder(a: Assignments): string[] {
-  return Object.values(a)
-    .filter((x) => x.startDay !== null)
-    .sort((x, y) => x.startDay! - y.startDay! || x.blockId.localeCompare(y.blockId))
-    .map((x) => x.blockId);
-}
 
 export function BoardPage() {
   const blocks = useStore((s) => s.blocks);

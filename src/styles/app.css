@@ -235,7 +235,6 @@ textarea {
 }
 
 /* ---------- 입력 화면 (종이) ---------- */
-.approval th,
 .capacity {
   margin-bottom: 8px;
 }
@@ -280,7 +279,6 @@ textarea {
   padding-left: 18px;
 }
 
-.bt-row input,
 .add-row {
   width: 100%;
   margin-top: 10px;

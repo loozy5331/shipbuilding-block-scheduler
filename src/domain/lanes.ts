@@ -79,6 +79,14 @@ export function laneOverlapDays(blocks: Block[], assignments: Assignments, r: Re
   return out;
 }
 
+/** 착수 순서(같은 날은 ID 순). 미배치 블록은 빠진다. */
+export function startOrder(a: Assignments): string[] {
+  return Object.values(a)
+    .filter((x) => x.startDay !== null)
+    .sort((x, y) => x.startDay! - y.startDay! || x.blockId.localeCompare(y.blockId))
+    .map((x) => x.blockId);
+}
+
 /** 배치가 같은지 비교 (자리는 무시) */
 export function samePlan(a: Assignments, b: Assignments): boolean {
   const ka = Object.keys(a).filter((k) => a[k].startDay !== null || a[k].general || a[k].skilled || a[k].crane || a[k].emergency);

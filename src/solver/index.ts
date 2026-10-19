@@ -19,7 +19,6 @@ export interface SolveResponse {
 export function solveAll({ blocks, resources, budgetMs = 800 }: SolveRequest): SolveResponse {
   const solutions = {
     input: solvePolicy('input', blocks, resources),
-    edd: solvePolicy('edd', blocks, resources),
     optimal: solvePolicy('optimal', blocks, resources, { budgetMs }),
   };
   return {

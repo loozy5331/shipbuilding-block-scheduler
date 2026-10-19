@@ -41,7 +41,8 @@ export type LoadKind = 'slots' | 'general' | 'skilled' | 'crane';
 /** conflict: 작업 기간 중 쓰는 자원이 용량을 넘은 날이 있음 (그날 공수는 인정하지 않음) */
 export type BlockStatus = 'ok' | 'late' | 'conflict' | 'blocked' | 'unscheduled';
 
-export type Policy = 'input' | 'edd' | 'optimal';
+/** input: 입력 순서대로 배치(튜토리얼 비교용), optimal: 최적화 */
+export type Policy = 'input' | 'optimal';
 
 /** 숙련자: 최적 배치 버튼 / 신입: 힌트 버튼 */
 export type UserMode = 'expert' | 'novice';
