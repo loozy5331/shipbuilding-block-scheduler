@@ -1,4 +1,4 @@
-import type { BlockStatus } from './types';
+import type { BlockStatus, UserMode } from './types';
 import type { BlockedReason, BlockResult } from './evaluate';
 
 export const STATUS_LABEL: Record<BlockStatus, string> = {
@@ -29,3 +29,9 @@ export function verdictText(x: BlockResult): string {
       return STATUS_LABEL[x.status];
   }
 }
+
+/** 사용자 모드 이름과 설명 */
+export const MODE_LABEL: Record<UserMode, { name: string; desc: string }> = {
+  expert: { name: '숙련자', desc: '최적 배치 버튼으로 바로 계산' },
+  novice: { name: '신입', desc: '직접 배치하고 힌트로 배우기' },
+};

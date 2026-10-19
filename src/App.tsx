@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { PAGES, useStore, type Page } from './store/schedulerStore';
-import { LoginPage, MenuPage, ModeToggle } from './components/home/StartPages';
+import { LoginPage } from './components/home/LoginPage';
+import { MenuPage } from './components/home/MenuPage';
+import { ModeToggle } from './components/home/ModeToggle';
 import { InputPage } from './components/input/InputPage';
 import { BoardPage } from './components/board/BoardPage';
 import { ResultPage } from './components/result/ResultPage';

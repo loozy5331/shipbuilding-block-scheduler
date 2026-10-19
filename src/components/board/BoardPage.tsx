@@ -1,47 +1,19 @@
 import { useEffect, useState } from 'react';
-import {
-  DndContext,
-  DragOverlay,
-  MouseSensor,
-  TouchSensor,
-  pointerWithin,
-  rectIntersection,
-  useSensor,
-  useSensors,
-  type CollisionDetection,
-  type DragEndEvent,
-  type DragStartEvent,
-  type Modifier,
-} from '@dnd-kit/core';
-import type { ResourceKind } from '../../domain/types';
+import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { useEvaluation } from '../../store/evaluation';
 import { nextHint, type Hint } from '../../domain/hint';
-import { samePlan, startOrder, workplaceOf } from '../../domain/lanes';
+import { samePlan, startOrder } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { runSolve } from '../../store/actions';
 import { ResourceIcon } from '../icons/ResourceIcons';
 import { LineIcon } from '../icons/LineIcons';
 import { ResourcePalette } from './ResourcePalette';
-import { COL, GanttChart, MAX_DAYS } from './GanttChart';
+import { GanttChart, MAX_DAYS } from './GanttChart';
+import { useBoardDnd } from './useBoardDnd';
 import { Legend, LoadGrid } from './LoadGrid';
 import { KpiCards, WhatIfCard } from './Insights';
 import { BlockEditor } from './BlockEditor';
 import { prefersReducedMotion } from '../assembly/AssemblyShow';
-
-/** 막대(대기 블록의 점선 막대 포함)는 하루 단위로 스냅하고 1일 앞으로는 못 간다. 위아래로는 다른 작업장으로 옮길 수 있다. */
-const barModifier: Modifier = ({ transform, active }) => {
-  if (!/^(bar|wait):/.test(String(active?.id))) return transform;
-  const start = (active?.data.current?.start as number) ?? 1;
-  return { ...transform, x: Math.max((1 - start) * COL, Math.round(transform.x / COL) * COL) };
-};
-
-/** 자원 아이콘은 블록 줄에, 막대·대기 블록은 작업장 테두리 안에만 놓인다 */
-const collide: CollisionDetection = (args) => {
-  const prefix = String(args.active.id).startsWith('res:') ? 'blk:' : 'wp:';
-  const scoped = { ...args, droppableContainers: args.droppableContainers.filter((c) => String(c.id).startsWith(prefix)) };
-  const hits = pointerWithin(scoped);
-  return hits.length ? hits : rectIntersection(scoped);
-};
 
 const PLAN_NAME = ['최적 배치', '차선', '차차선'];
 
@@ -54,13 +26,9 @@ export function BoardPage() {
   const hintCount = useStore((s) => s.hintCount);
   const setPage = useStore((s) => s.setPage);
   const goToResult = useStore((s) => s.goToResult);
-  const assign = useStore((s) => s.assign);
-  const moveBlock = useStore((s) => s.moveBlock);
-  const moveToWorkplace = useStore((s) => s.moveToWorkplace);
   const clear = useStore((s) => s.clearAssignments);
   const showFull = useStore((s) => s.showFull);
   const setShowFull = useStore((s) => s.setShowFull);
-  const [drag, setDrag] = useState<{ kind?: ResourceKind } | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<Hint | null>(null);
@@ -83,36 +51,7 @@ export function BoardPage() {
   // 배치가 바뀌면 지난 힌트는 낡는다
   useEffect(() => setHint(null), [assignments]);
 
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
-  );
-
-  const onDragStart = (e: DragStartEvent) => {
-    const id = String(e.active.id);
-    if (id.startsWith('res:')) setDrag({ kind: e.active.data.current?.kind as ResourceKind });
-    else setDrag(null);
-  };
-  const onDragEnd = (e: DragEndEvent) => {
-    setDrag(null);
-    const id = String(e.active.id);
-    const wp = e.over?.data.current?.wp as number | undefined;
-    if (id.startsWith('res:')) {
-      const target = e.over?.data.current?.blockId as string | undefined;
-      if (target) assign(target, id.slice(4) as ResourceKind);
-    } else if (id.startsWith('bar:')) {
-      const blockId = id.slice(4);
-      const a = assignments[blockId];
-      if (!a?.startDay) return;
-      const start = a.startDay + Math.round(e.delta.x / COL);
-      const fromWp = a.lane === undefined ? -1 : workplaceOf(a.lane, resources);
-      if (wp !== undefined && wp !== fromWp) moveToWorkplace(blockId, start, wp);
-      else if (start !== a.startDay) moveBlock(blockId, start);
-    } else if (id.startsWith('wait:') && wp !== undefined) {
-      // 점선 막대는 1일에서 출발하므로 옮긴 칸 수만큼 착수일이 늦어진다
-      moveToWorkplace(id.slice(5), 1 + Math.round(e.delta.x / COL), wp);
-    }
-  };
+  const { dragKind, dndProps } = useBoardDnd();
 
   // 최적 배치 + 차선책. 지금 적용된 안이 몇 번째인지 (직접 고쳤으면 -1)
   const options = solve ? [solve.solutions.optimal, ...(solve.solutions.optimal.alternatives ?? [])] : [];
@@ -228,7 +167,7 @@ export function BoardPage() {
         </div>
       )}
 
-      <DndContext sensors={sensors} collisionDetection={collide} modifiers={[barModifier]} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDrag(null)}>
+      <DndContext {...dndProps}>
         <ResourcePalette />
         <div className="gantt-scroll">
           <GanttChart
@@ -242,9 +181,9 @@ export function BoardPage() {
           <LoadGrid ev={ev} days={days} />
         </div>
         <DragOverlay dropAnimation={null}>
-          {drag?.kind && (
+          {dragKind && (
             <div className="drag-ghost">
-              <ResourceIcon kind={drag.kind} size={36} />
+              <ResourceIcon kind={dragKind} size={36} />
             </div>
           )}
         </DragOverlay>
