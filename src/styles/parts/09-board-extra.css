@@ -1,0 +1,136 @@
+/* ---------- 작업장 레인 간트 ---------- */
+.bar-edit {
+  margin-left: auto;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+/* ---------- 힌트 · 오늘 작업 · TBM · 평가서 ---------- */
+.notice.hint {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-color: #f1d58a;
+  background: #fffbec;
+}
+
+.notice.hint p {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.today-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.today-head h3 {
+  margin: 0;
+}
+
+.today-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.today-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.today-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.tbm {
+  margin: 0 0 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--navy);
+  color: #fff;
+  font: 13px/1.6 inherit;
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.report-table th,
+.report-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.report-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.report-table tr.better td:last-child {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.report-table tr.worse td:last-child {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.board > .panel {
+  margin: 0;
+}
+
+@media (max-width: 860px) {
+  :root {
+    --left: 96px;
+  }
+
+  .home h1 {
+    font-size: 22px;
+  }
+
+  .tile strong {
+    font-size: 16px;
+  }
+
+  .topbar .tabs button {
+    padding: 6px 8px;
+  }
+
+  .report-table small {
+    display: none;
+  }
+
+  .load-row .g-left {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0;
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}

@@ -1,0 +1,123 @@
+/* ---------- 블록 줄 간트: 작업장 테두리로 묶음 ---------- */
+.wp-group {
+  margin: 8px 6px;
+  border: 2.5px solid var(--navy);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.wp-group.wp-over {
+  background: var(--green-50);
+  border-color: var(--green);
+}
+
+.waiting-group {
+  border: 2px dashed var(--muted);
+}
+
+.wp-title {
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: max-content;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.wp-title strong {
+  color: var(--navy);
+  font-size: 15px;
+}
+
+.wp-empty {
+  position: sticky;
+  left: 0;
+  width: max-content;
+  padding: 10px 14px 14px;
+  font-size: 13px;
+}
+
+.g-block .g-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+}
+
+.g-block .g-track {
+  min-height: 64px;
+}
+
+.b-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  font-size: 12px;
+}
+
+.b-title strong {
+  font-size: 15px;
+  color: var(--navy);
+}
+
+.b-title .bar-edit {
+  color: var(--muted);
+}
+
+.g-block .placed-icons {
+  min-height: 0;
+  gap: 3px;
+}
+
+.g-block .placed-icons .placed,
+.g-block .placed-icons .slot {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.g-block .drop-reason {
+  align-self: flex-start;
+}
+
+.g-block.drop-ok .g-left,
+.g-block.drop-ok .g-track {
+  background: #e6f4ea;
+}
+
+.g-block.drop-no .g-left,
+.g-block.drop-no .g-track {
+  background: #ffebe5;
+}
+
+.g-block.selectable .g-left {
+  cursor: copy;
+}
+
+.g-block.selectable .g-left:hover {
+  background: #fffbec;
+}
+
+.g-block.hinted .g-left {
+  background: #fffbec;
+  box-shadow: inset 4px 0 0 #f1bd3c;
+}
+
+.g-block .g-bar {
+  touch-action: manipulation;
+}
+
+.g-block .g-bar.short:not(.blocked) {
+  flex-direction: row;
+  align-items: center;
+  margin-top: -18px;
+  height: 36px;
+  font-size: 11px;
+}
+
+.g-block .g-bar.blocked {
+  font-size: 11px;
+}

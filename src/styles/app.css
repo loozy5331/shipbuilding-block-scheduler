@@ -1,0 +1,15 @@
+/* 스타일 진입점. 순서가 곧 적용 우선순위이므로 바꾸지 않는다 (같은 선택자는 뒤 파일이 이긴다) */
+@import './parts/01-base.css';
+@import './parts/02-setup.css';
+@import './parts/03-board.css';
+@import './parts/04-tour.css';
+@import './parts/05-narrow.css';
+@import './parts/06-gantt-interaction.css';
+@import './parts/07-dialog.css';
+@import './parts/08-home.css';
+@import './parts/09-board-extra.css';
+@import './parts/10-steps-result.css';
+@import './parts/11-gantt-rows.css';
+@import './parts/12-setup-panels.css';
+@import './parts/13-excel-help.css';
+@import './parts/14-assembly.css';
