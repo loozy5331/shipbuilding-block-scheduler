@@ -1,0 +1,60 @@
+/* ---------- 단계 표시 · 차선책 · 결과 ---------- */
+.steps button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-no {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.steps button.on .step-no {
+  background: var(--green);
+  color: #fff;
+}
+
+.notice.alt {
+  border-color: #b9cde9;
+  background: #eef4fc;
+}
+
+.notice.alt p {
+  margin: 0;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.plan-table th,
+.plan-table td {
+  white-space: nowrap;
+}
+
+.plan-table tr.worse td:last-child {
+  color: var(--red);
+  font-weight: 700;
+}
+
+@media (max-width: 860px) {
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .steps {
+    gap: 2px;
+  }
+
+  .steps button:not(.on) .step-label {
+    display: none;
+  }
+}
