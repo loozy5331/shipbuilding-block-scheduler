@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useStore } from '../../store/schedulerStore';
+import { useEvaluation } from '../../store/evaluation';
 import { buildScene, type Scene } from './scene';
 
 /** 장면 순서와 시작 시각(ms). 앞 장면의 클래스는 남겨 두어 CSS에서 "이 장면 이후"로 고른다 */
@@ -107,7 +108,8 @@ export function AssemblyShow() {
   const resources = useStore((s) => s.resources);
   const assignments = useStore((s) => s.assignments);
   const close = useStore((s) => s.endAssembly);
-  const scene = useMemo(() => buildScene(blocks, resources, assignments), [blocks, resources, assignments]);
+  const ev = useEvaluation();
+  const scene = useMemo(() => buildScene(blocks, resources, assignments, ev), [blocks, resources, assignments, ev]);
 
   useEffect(() => {
     if (!scene) close();

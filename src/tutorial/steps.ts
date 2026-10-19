@@ -1,6 +1,6 @@
-import { evaluate } from '../domain/evaluate';
 import { runSolve } from '../store/actions';
 import { useStore, type Page } from '../store/schedulerStore';
+import { selectEvaluation } from '../store/evaluation';
 
 export interface TourStep {
   page: Page;
@@ -14,8 +14,8 @@ export interface TourStep {
 }
 
 function lateText(): string {
-  const { blocks, resources, assignments } = useStore.getState();
-  const ev = evaluate(blocks, resources, assignments);
+  const { blocks } = useStore.getState();
+  const ev = selectEvaluation(useStore.getState());
   const bad = blocks.filter((b) => ev.blocks[b.id].status !== 'ok');
   if (bad.length === 0) return '이 순서로도 모두 납기 안에 끝났습니다.';
   return `${bad.map((b) => b.id).join(', ')} 블록이 납기를 넘깁니다 (빨간 막대). 급한 블록이 앞 블록에 밀려 작업장을 못 잡았기 때문입니다.`;
@@ -96,8 +96,7 @@ export const STEPS: TourStep[] = [
     eyebrow: '변경 후',
     title: '작업 순서 변경으로 납기 위험 해소',
     body: () => {
-      const { blocks, resources, assignments } = useStore.getState();
-      const k = evaluate(blocks, resources, assignments).kpi;
+      const k = selectEvaluation(useStore.getState()).kpi;
       return `최적 배치를 적용했습니다. 블록 납기 준수 ${k.onTime}/${k.total}, 비상 자재 ${k.emergencyUsed}개 사용.`;
     },
     enter: async () => {

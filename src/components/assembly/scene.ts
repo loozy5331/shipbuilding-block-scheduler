@@ -1,5 +1,5 @@
 import type { Assignments, Block, Resources } from '../../domain/types';
-import { evaluate } from '../../domain/evaluate';
+import { evaluate, type Evaluation } from '../../domain/evaluate';
 import { laneCount } from '../../domain/lanes';
 
 /** 조립 애니메이션에 그릴 최대 기간·작업 자리 (넘는 부분은 잘라낸다) */
@@ -29,8 +29,7 @@ export interface Scene {
  * 간트에 올라간 블록으로 조립 장면을 만든다. 블록이 가장 많은 작업 자리에서 먼저 착수하는 블록을 주인공으로,
  * 같은 자리의 다음 블록(없으면 다른 블록)을 크레인이 붙일 블록으로 고른다. 배치된 블록이 없으면 null.
  */
-export function buildScene(blocks: Block[], resources: Resources, assignments: Assignments): Scene | null {
-  const ev = evaluate(blocks, resources, assignments);
+export function buildScene(blocks: Block[], resources: Resources, assignments: Assignments, ev: Evaluation = evaluate(blocks, resources, assignments)): Scene | null {
   const days = Math.min(ev.horizon, SCENE_MAX_DAYS);
   const lanes = Math.min(laneCount(resources), SCENE_MAX_LANES);
   const bars: SceneBar[] = [];

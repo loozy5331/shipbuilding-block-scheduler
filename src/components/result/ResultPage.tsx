@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { evaluate } from '../../domain/evaluate';
+import { useEffect, useState } from 'react';
+import { useEvaluation } from '../../store/evaluation';
 import { verdictText } from '../../domain/labels';
 import { laneCount, workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
@@ -22,7 +22,7 @@ export function ResultPage() {
   const hintCount = useStore((s) => s.hintCount);
   const setPage = useStore((s) => s.setPage);
   const [day, setDay] = useState(1);
-  const ev = useMemo(() => evaluate(blocks, resources, assignments), [blocks, resources, assignments]);
+  const ev = useEvaluation();
   const expert = mode !== 'novice';
   const lanes = laneCount(resources);
   const date = (d: number | null) => (d === null ? '-' : formatMD(dayToDate(planStart, d)));

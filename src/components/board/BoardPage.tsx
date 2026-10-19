@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -14,7 +14,7 @@ import {
   type Modifier,
 } from '@dnd-kit/core';
 import type { ResourceKind } from '../../domain/types';
-import { evaluate } from '../../domain/evaluate';
+import { useEvaluation } from '../../store/evaluation';
 import { nextHint, type Hint } from '../../domain/hint';
 import { samePlan, startOrder, workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
@@ -65,7 +65,7 @@ export function BoardPage() {
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<Hint | null>(null);
 
-  const ev = useMemo(() => evaluate(blocks, resources, assignments), [blocks, resources, assignments]);
+  const ev = useEvaluation();
   // 막대를 오른쪽으로 더 끌 수 있도록 여유 열을 두고, 너무 길면 90일까지만 그린다
   const needed = ev.horizon + 2;
   const days = showFull ? needed : Math.min(MAX_DAYS, needed);
