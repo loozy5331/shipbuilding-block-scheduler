@@ -33,6 +33,7 @@ React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 
 ## 규칙
 - UI 문구·주석·커밋 메시지는 한국어. 주석은 "왜"만 짧게, 주변 코드 밀도에 맞춘다.
 - 작업은 단계마다 커밋(기능 브랜치, 통합 브랜치는 `develop`). 커밋 전 tsc·vitest·playwright 통과.
+- 버전: 유의적 버전. 기능 브랜치를 합칠 때 `CHANGELOG.md`의 `[Unreleased]`에 한 줄 추가. 릴리스는 `develop`에서 `release/X.Y.Z` → `package.json` 버전·CHANGELOG 갱신 → `main`에 `--no-ff` 머지 → `vX.Y.Z` 태그(annotated) → `develop`에 되머지.
 - 배치를 바꾸는 상태 변경은 `plan.ts`의 `withLanes`로 작업 자리를 채운다.
 - 평가가 필요하면 `evaluate()`를 새로 부르지 말고 `useEvaluation()`/`selectEvaluation()`.
 - 큰 파일 통째 읽기 피하기: 위 지도로 파일을 고르고 `grep -n`으로 위치를 찾은 뒤 필요한 범위만 읽는다.
