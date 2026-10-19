@@ -129,7 +129,7 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   await drag(page, '[data-testid="chip-general"]', '[data-testid="row-A-101"]');
   await expect(page.getByTestId('bar-A-101')).toContainText('16MH');
 
-  // B-203도 1일차(작업장 2)에 3명 → 일반 작업자 5명으로 초과(빨간 칸)
+  // B-203도 1일차(작업장 2)에 일반 3명 → 보유 2명 초과(빨간 칸)
   await drag(page, '[data-testid="chip-crane"]', '[data-testid="row-B-203"]');
   await expect(page.getByTestId('wp-1').getByTestId('bar-B-203')).toBeVisible();
   for (let i = 0; i < 3; i++) await drag(page, '[data-testid="chip-general"]', '[data-testid="row-B-203"]');
@@ -235,13 +235,14 @@ test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·�
   await dlg.getByLabel('일반 작업자').fill('4');
   await dlg.getByRole('button', { name: '저장' }).click();
   await expect(dlg).toContainText('블록당 최대 3명');
-  await dlg.getByLabel('일반 작업자').fill('3');
+  await dlg.getByLabel('일반 작업자').fill('1');
+  await dlg.getByLabel('숙련공').fill('2');
   await dlg.getByLabel('크레인 1대').check();
   await dlg.getByLabel('작업장').selectOption({ label: '작업장 2' });
   await dlg.getByRole('button', { name: '저장' }).click();
   await expect(dlg).toHaveCount(0);
 
-  // 1일에 일반 5명 > 4명 → 자원 겹침, 겹친 날 공수 불인정
+  // 1일에 일반 3명 > 보유 2명 → 자원 겹침, 겹친 날 공수 불인정
   await expect(page.getByTestId('wp-1').getByTestId('bar-B-203')).toHaveClass(/conflict/);
   await expect(page.getByTestId('bar-B-203')).toHaveAttribute('title', /납기까지 0\/24 MH/);
   await shot(page, '09-conflict');

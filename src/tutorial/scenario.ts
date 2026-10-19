@@ -12,4 +12,5 @@ export const TUTORIAL_BLOCKS: Block[] = [
   { id: 'E-320', dueDay: 4, requiredMH: 20, materialReady: true },
 ];
 
-export const TUTORIAL_RESOURCES: Resources = { ...DEFAULT_RESOURCES };
+/** 하루 가용 40인시: 일반 작업자 2명 × 8MH + 숙련공 2명 × 12MH */
+export const TUTORIAL_RESOURCES: Resources = { ...DEFAULT_RESOURCES, generalWorkers: 2, skilledWorkers: 2 };

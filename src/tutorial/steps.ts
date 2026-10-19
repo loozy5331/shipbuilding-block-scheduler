@@ -34,7 +34,7 @@ export const STEPS: TourStep[] = [
     page: 'tutorial',
     target: 'summary',
     eyebrow: '02. 문제 확인',
-    title: '필요 80MH, 하루 가용은 44MH',
+    title: '필요 80MH, 하루 가용은 40MH',
     body: () => '전체 필요 작업시간이 하루 가용 작업시간의 약 2배입니다. 그래서 우선순위 판단이 필요합니다.',
   },
   {
@@ -48,7 +48,7 @@ export const STEPS: TourStep[] = [
     page: 'tutorial',
     target: 'resources',
     eyebrow: '04. 가용 자원',
-    title: '작업장 2곳, 작업자 4명, 숙련공 1명, 크레인 2대',
+    title: '작업장 2곳, 작업자 2명, 숙련공 2명, 크레인 2대',
     body: () => '일반 작업자는 하루 8MH, 숙련공은 12MH를 처리합니다. 블록마다 크레인 1대가 필요하고 비상 자재는 1개뿐입니다.',
   },
   {

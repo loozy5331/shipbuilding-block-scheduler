@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/domain/evaluate';
 import { assignBlockedReason } from '../src/domain/assign';
-import { TUTORIAL_BLOCKS, TUTORIAL_RESOURCES } from '../src/tutorial/scenario';
+import { TUTORIAL_BLOCKS } from '../src/tutorial/scenario';
+import { DEFAULT_RESOURCES } from '../src/domain/types';
 import type { Assignments } from '../src/domain/types';
 
-const R = TUTORIAL_RESOURCES;
+// 자원 규칙 검증용: 일반 작업자 4명 · 숙련공 1명 기본값
+const R = DEFAULT_RESOURCES;
 const a = (blockId: string, startDay: number, general: number, skilled = 0) => ({ blockId, startDay, general, skilled, crane: true, emergency: false });
 
 describe('자원 겹침', () => {

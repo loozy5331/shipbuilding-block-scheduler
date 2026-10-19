@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/domain/evaluate';
 import { assignLanes, samePlan } from '../src/domain/lanes';
-import { TUTORIAL_BLOCKS, TUTORIAL_RESOURCES } from '../src/tutorial/scenario';
+import { TUTORIAL_BLOCKS } from '../src/tutorial/scenario';
+import { DEFAULT_RESOURCES } from '../src/domain/types';
 import { solvePolicy } from '../src/solver/search';
 import type { Assignments } from '../src/domain/types';
 
-const R = TUTORIAL_RESOURCES;
+// 자원 규칙 검증용: 일반 작업자 4명 · 숙련공 1명 기본값
+const R = DEFAULT_RESOURCES;
 const a = (blockId: string, startDay: number, general: number, lane?: number) => ({ blockId, startDay, general, skilled: 0, crane: true, emergency: false, lane });
 
 describe('작업 자리(레인)', () => {

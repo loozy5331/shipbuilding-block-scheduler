@@ -24,10 +24,10 @@ describe('튜토리얼 시나리오', () => {
     expect(edd.kpi.onTime).toBe(5);
   });
 
-  it('용량 요약: 전체 80MH, 하루 인력 44MH', () => {
+  it('용량 요약: 전체 80MH, 하루 인력 40MH', () => {
     const c = checkCapacity(TUTORIAL_BLOCKS, TUTORIAL_RESOURCES);
     expect(c.totalMH).toBe(80);
-    expect(c.workforceMH).toBe(44);
+    expect(c.workforceMH).toBe(40);
     expect(c.possible).toBe(true);
   });
 });
