@@ -30,11 +30,12 @@ async function drag(page: Page, from: string, to: string | { dx?: number; dy?: n
   await page.waitForTimeout(80);
 }
 
-/** 모드를 고르고(첫 방문이면 튜토리얼이 열리므로 건너뛰면 메뉴) 샘플로 블록 스케줄링까지 */
+/** 모드를 고르고(첫 방문이면 튜토리얼이 열리므로 건너뛰고 끝낸다) 샘플로 블록 스케줄링까지 */
 async function start(page: Page, mode: 'expert' | 'novice', sample = true) {
   await page.goto('/');
   await page.getByTestId(`mode-${mode}`).click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
+  await page.getByRole('button', { name: '튜토리얼 끝내기' }).click();
   await expect(page.locator('.tile')).toHaveCount(4);
   if (!sample) return;
   await page.getByRole('button', { name: /이어서 하기|직접 입력하기/ }).click();
@@ -49,6 +50,7 @@ test('진입 화면: 모드 선택 → 田자 메뉴 → 엑셀 업로드', asyn
   await shot(page, '00-mode');
   await page.getByTestId('mode-novice').click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
+  await page.getByRole('button', { name: '튜토리얼 끝내기' }).click();
   await expect(page.locator('.tile')).toHaveCount(4);
   await expect(page.locator('.mode-chip')).toHaveText('신입');
   await shot(page, '00-home');
@@ -63,6 +65,22 @@ test('진입 화면: 모드 선택 → 田자 메뉴 → 엑셀 업로드', asyn
   await page.getByTestId('home-excel-input').setInputFiles(path.resolve('public/sample-tutorial.xlsx'));
   await expect(page.locator('.toast')).toContainText('블록 5개 읽음');
   await expect(page.locator('[data-tour="summary"]')).toContainText('80');
+});
+
+test('가이드를 건너뛰어도 튜토리얼 페이지에 머문다', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('mode-expert').click();
+  await page.getByTestId('tour-next').click();
+  await page.getByRole('button', { name: '건너뛰기' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.tutorial-page')).toBeVisible();
+  // Esc로 닫아도 마찬가지
+  await page.getByRole('button', { name: '가이드 다시 보기' }).click();
+  await expect(page.getByRole('dialog', { name: '튜토리얼' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.tutorial-page')).toBeVisible();
+  await page.getByRole('button', { name: '튜토리얼 끝내기' }).click();
+  await expect(page.locator('.tile')).toHaveCount(4);
 });
 
 test('튜토리얼 전체 진행', async ({ page }) => {

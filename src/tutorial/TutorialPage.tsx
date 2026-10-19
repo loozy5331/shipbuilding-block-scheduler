@@ -74,6 +74,9 @@ export function TutorialPage() {
   const resources = useStore((s) => s.resources);
   const assignments = useStore((s) => s.assignments);
   const setStep = useStore((s) => s.setTutorialStep);
+  const setPage = useStore((s) => s.setPage);
+  const startTutorial = useStore((s) => s.startTutorial);
+  const touring = useStore((s) => s.tutorialStep !== null);
   const [day, setDay] = useState(1);
   const ev = useMemo(() => evaluate(blocks, resources, assignments), [blocks, resources, assignments]);
 
@@ -85,7 +88,19 @@ export function TutorialPage() {
           <h1>{TUTORIAL_TITLE}</h1>
         </div>
         <div className="board-actions">
-          <button type="button" className="btn ghost" onClick={() => setStep(null)}>
+          {!touring && (
+            <button type="button" className="btn ghost" onClick={startTutorial}>
+              가이드 다시 보기
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => {
+              setStep(null);
+              setPage('menu');
+            }}
+          >
             튜토리얼 끝내기
           </button>
         </div>

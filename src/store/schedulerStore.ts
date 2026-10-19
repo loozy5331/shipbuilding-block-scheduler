@@ -193,9 +193,8 @@ export const useStore = create<State>()(
         get().loadScenario();
         set({ tutorialStep: 0, page: 'tutorial' });
       },
-      // 튜토리얼을 끝내면 메뉴로 돌아간다
-      setTutorialStep: (tutorialStep) =>
-        set((s) => (tutorialStep === null ? { tutorialStep, tutorialSeen: true, page: s.page === 'tutorial' ? 'menu' : s.page } : { tutorialStep })),
+      // 가이드를 닫아도(건너뛰기) 튜토리얼 페이지에 그대로 머문다
+      setTutorialStep: (tutorialStep) => set(tutorialStep === null ? { tutorialStep, tutorialSeen: true } : { tutorialStep }),
       setShowFull: (showFull) => set({ showFull }),
       selectToken: (selectedToken) => set({ selectedToken }),
       showToast: (message) => set((s) => ({ toast: { id: (s.toast?.id ?? 0) + 1, message } })),

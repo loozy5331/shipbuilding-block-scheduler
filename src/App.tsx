@@ -22,7 +22,6 @@ export function App() {
   const setPage = useStore((s) => s.setPage);
   const blocks = useStore((s) => s.blocks);
   const mode = useStore((s) => s.mode);
-  const touring = useStore((s) => s.tutorialStep !== null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -37,9 +36,7 @@ export function App() {
 
   // 모드를 고르기 전에는 모드 선택만, 블록이 없으면 스케줄링·결과로 갈 수 없다
   const needsBlocks = (p: Page) => p === 'schedule' || p === 'result';
-  let current: Page = !mode ? 'mode' : needsBlocks(page) && blocks.length === 0 ? 'setup' : page;
-  // 새로고침 등으로 튜토리얼이 끊겼으면 메뉴로
-  if (current === 'tutorial' && !touring) current = 'menu';
+  const current: Page = !mode ? 'mode' : needsBlocks(page) && blocks.length === 0 ? 'setup' : page;
   const View = VIEW[current];
 
   return (
