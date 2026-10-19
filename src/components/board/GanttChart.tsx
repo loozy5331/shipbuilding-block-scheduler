@@ -141,7 +141,6 @@ export function GanttChart({ blocks, assignments, ev, days, hintBlock, onEdit }:
     const lane = assignments[b.id]?.lane;
     return ev.blocks[b.id].start !== null && lane !== undefined && lane < n ? workplaceOf(lane, r) : -1;
   };
-  const byStart = (x: Block, y: Block) => (ev.blocks[x.id].start ?? 0) - (ev.blocks[y.id].start ?? 0) || x.id.localeCompare(y.id);
   const row = (b: Block) => (
     <BlockRow
       key={b.id}
@@ -161,7 +160,8 @@ export function GanttChart({ blocks, assignments, ev, days, hintBlock, onEdit }:
     <div className="gantt" data-tour="gantt">
       <DayHeader days={days} planStart={planStart} label="블록 · 배정 자원" />
       {Array.from({ length: workplaces }, (_, wp) => {
-        const rows = blocks.filter((b) => wpOf(b) === wp).sort(byStart);
+        // 착수일 순으로 정렬하면 최적화 때 줄이 뒤섞여 납기선이 움직이는 것처럼 보여서, 입력 순서를 유지한다
+        const rows = blocks.filter((b) => wpOf(b) === wp);
         return (
           <WorkplaceGroup key={wp} wp={wp} count={rows.length}>
             {rows.map(row)}
