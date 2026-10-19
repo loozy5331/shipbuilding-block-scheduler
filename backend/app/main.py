@@ -1,4 +1,4 @@
-"""API 서버: 로그인 API(+ 배포 시 dist/ 정적 파일). `uvicorn --factory backend.app.main:create_app`
+"""API 서버: 로그인 API(+ 배포 시 frontend/dist/ 정적 파일). `uvicorn --factory backend.app.main:create_app`
 
 개발: `npm run dev`가 vite와 함께 이 서버를 띄운다 (vite가 /api를 넘김).
 배포: `npm run build && npm start` → uvicorn 하나가 화면과 API를 모두 제공한다.
@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from .users import AuthError, UserStore
 
 ROOT = Path(__file__).resolve().parents[2]
-DIST = ROOT / "dist"
+DIST = ROOT / "frontend" / "dist"
 
 
 class Credentials(BaseModel):
@@ -30,7 +30,7 @@ class UserId(BaseModel):
 
 
 def create_app(db_path: str | None = None) -> FastAPI:
-    store = UserStore(db_path or os.environ.get("AUTH_DB", str(ROOT / "data" / "users.db")))
+    store = UserStore(db_path or os.environ.get("AUTH_DB", str(ROOT / "backend" / "data" / "users.db")))
     app = FastAPI(title="블록 일정 스케줄러 API", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
     @app.exception_handler(AuthError)
@@ -65,7 +65,7 @@ def create_app(db_path: str | None = None) -> FastAPI:
             return FileResponse(file)
         index = DIST / "index.html"
         if not index.is_file():
-            return JSONResponse({"message": "dist/가 없습니다. npm run build를 먼저 실행하세요."}, status_code=404)
+            return JSONResponse({"message": "frontend/dist/가 없습니다. npm run build를 먼저 실행하세요."}, status_code=404)
         return FileResponse(index)
 
     app.state.store = store

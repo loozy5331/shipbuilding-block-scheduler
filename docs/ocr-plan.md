@@ -30,7 +30,7 @@ OCR 결과는 틀릴 수 있으므로 **사람이 검토·수정한 뒤 적용**
 - 백엔드가 이미 FastAPI(`backend/`)이므로 **OCR도 같은 서버의 라우트**로 붙인다. 별도 프록시가 필요 없다.
 - PaddleOCR는 무거우므로 첫 요청 때 모델을 불러오고(lazy), `paddleocr`는 `backend/requirements-ocr.txt`로 분리해
   OCR이 필요 없는 환경은 가볍게 설치한다. 설치되지 않았으면 `/api/ocr`이 503과 안내 문구를 돌려준다.
-- 표 해석은 엑셀 업로드와 같은 `src/io/parse.ts`의 `parseTable()`을 재사용한다. 헤더 별칭·날짜 환산·자재 표기 인식이 한 곳에 모인다.
+- 표 해석은 엑셀 업로드와 같은 `frontend/src/io/parse.ts`의 `parseTable()`을 재사용한다. 헤더 별칭·날짜 환산·자재 표기 인식이 한 곳에 모인다.
 
 ## 3. 처리 단계
 
