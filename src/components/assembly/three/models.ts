@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { Scene } from '../scene';
 
 /** 간트 1일 = 1, 작업 자리 한 줄 = LANE (월드 단위) */
@@ -121,28 +120,124 @@ export function makeBar(r: Rect, text: string) {
   return { group, mat, tagMat: tag.material as THREE.MeshBasicMaterial, setHeight };
 }
 
-const steel = std('#8e9bab', 0.48, 0.55);
-const steelDark = std('#6f7c8c', 0.55, 0.5);
-const primer = std('#7b3a2c', 0.7, 0.1);
+/** 이중선체 측면 블록 단면 (단위: 월드). 앞(+z)이 바깥 외판, 바닥에서 빌지로 휘어 올라간다 */
+const BILGE_R = 0.42;
+const SHELL_T = 0.025;
+const TANK_TOP = 0.26;
+const STRINGER_W = 0.28;
 
-/** 선박 블록: 철판 상자 + 아랫단 방청 도장 + 보강재(늑골·종통재). 원점은 바닥 가운데 */
+const hullPaint = std('#7f8a96', 0.55, 0.35);
+const primer = std('#8d4b35', 0.75, 0.1);
+
+/** (z, y) 평면 도형을 x 방향으로 len만큼 밀어 낸 메시 (x 가운데 정렬) */
+function extrudeX(shape: THREE.Shape, len: number, mat: THREE.Material, x = 0) {
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: len, bevelEnabled: false, curveSegments: 40 }).rotateY(-Math.PI / 2).translate(len / 2 + x, 0, 0);
+  const m = new THREE.Mesh(geo, mat);
+  m.castShadow = m.receiveShadow = true;
+  return m;
+}
+
+/** 외판: 바닥판 → 빌지 곡면 → 측면 외판 (두께 SHELL_T) */
+function shellShape() {
+  const D = DEPTH / 2;
+  const s = new THREE.Shape();
+  s.moveTo(-D, 0);
+  s.lineTo(D - BILGE_R, 0);
+  s.absarc(D - BILGE_R, BILGE_R, BILGE_R, -Math.PI / 2, 0, false);
+  s.lineTo(D, BLOCK_H);
+  s.lineTo(D - SHELL_T, BLOCK_H);
+  s.lineTo(D - SHELL_T, BILGE_R);
+  s.absarc(D - BILGE_R, BILGE_R, BILGE_R - SHELL_T, 0, -Math.PI / 2, true);
+  s.lineTo(-D, SHELL_T);
+  s.lineTo(-D, 0);
+  return s;
+}
+
+/** 이중저 늑판: 바닥과 내저판 사이 가로 판, 가운데 경감 구멍 */
+function floorShape() {
+  const D = DEPTH / 2;
+  const right = D - BILGE_R + Math.sqrt((BILGE_R - SHELL_T) ** 2 - (BILGE_R - TANK_TOP) ** 2) - 0.01;
+  const s = new THREE.Shape();
+  s.moveTo(-D + 0.02, SHELL_T);
+  s.lineTo(D - BILGE_R, SHELL_T);
+  s.lineTo(right, TANK_TOP);
+  s.lineTo(-D + 0.02, TANK_TOP);
+  s.lineTo(-D + 0.02, SHELL_T);
+  const hole = new THREE.Path();
+  hole.absellipse(-0.05, (SHELL_T + TANK_TOP) / 2, 0.11, 0.06, 0, Math.PI * 2, false, 0);
+  s.holes.push(hole);
+  return s;
+}
+
+/**
+ * 선박 블록(이중선체 측면 블록): 회색 도장 외판(바닥·빌지·측면), 안쪽은 방청 도장한 구조 —
+ * 내저판, 이중저 늑판, 횡늑골, 외판·종격벽 종늑골, 내측 종격벽, 중간·상부 스트링거. 외판에 블록 번호를 칠한다.
+ * 원점은 바닥 가운데, 길이는 x 방향
+ */
 export function makeShipBlock(len: number, text: string | null) {
+  const D = DEPTH / 2;
   const g = new THREE.Group();
-  const hull = new THREE.Mesh(new RoundedBoxGeometry(len, BLOCK_H, DEPTH, 2, 0.035), steel);
-  hull.position.y = BLOCK_H / 2;
-  hull.castShadow = hull.receiveShadow = true;
-  g.add(hull, box(len + 0.012, 0.13, DEPTH + 0.012, primer, 0, 0.065, 0));
-  for (let x = -len / 2 + 0.14; x < len / 2 - 0.08; x += 0.22) {
-    for (const z of [DEPTH / 2 + 0.012, -DEPTH / 2 - 0.012]) g.add(box(0.035, BLOCK_H - 0.2, 0.024, steelDark, x, BLOCK_H / 2 + 0.05, z));
+  g.add(extrudeX(shellShape(), len, hullPaint));
+  const tankRight = D - BILGE_R + Math.sqrt((BILGE_R - SHELL_T) ** 2 - (BILGE_R - TANK_TOP) ** 2);
+  g.add(box(len, 0.02, tankRight + D, primer, 0, TANK_TOP + 0.01, (tankRight - D) / 2));
+  // 내측 종격벽과 종늑골
+  const wallH = BLOCK_H - TANK_TOP;
+  g.add(box(len, wallH, 0.02, primer, 0, TANK_TOP + wallH / 2, -D + 0.01));
+  for (const y of [0.5, 0.72]) {
+    g.add(box(len, 0.016, 0.05, primer, 0, y, D - SHELL_T - 0.025));
+    g.add(box(len, 0.016, 0.04, primer, 0, y, -D + 0.04));
   }
-  for (let z = -DEPTH / 2 + 0.16; z < DEPTH / 2 - 0.1; z += 0.2) g.add(box(len - 0.12, 0.028, 0.03, steelDark, 0, BLOCK_H + 0.014, z));
+  // 중간 스트링거와 상부 갑판 스트링거 (외판 쪽 선반)
+  g.add(box(len, 0.018, 0.16, primer, 0, 0.61, D - SHELL_T - 0.08));
+  g.add(box(len, 0.02, STRINGER_W, hullPaint, 0, BLOCK_H - 0.01, D - STRINGER_W / 2));
+  // 횡늑골·늑판: 블록 길이를 따라 일정 간격 (이음부에 닿지 않게 양끝은 비운다)
+  const n = Math.max(1, Math.round(len / 0.3));
+  for (let i = 0; i < n; i++) {
+    const x = -len / 2 + (len / n) * (i + 0.5);
+    g.add(extrudeX(floorShape(), 0.018, primer, x));
+    // 외판 쪽 늑골은 빌지 곡면 위부터 갑판 스트링거 아래까지 (외판 밖으로 튀어나오지 않게)
+    const frameH = BLOCK_H - 0.02 - BILGE_R;
+    g.add(box(0.018, frameH, 0.07, primer, x, BILGE_R + frameH / 2, D - SHELL_T - 0.036));
+    g.add(box(0.018, wallH - 0.002, 0.05, primer, x, TANK_TOP + wallH / 2 - 0.001, -D + 0.045));
+  }
   if (text) {
-    const tag = label(text, Math.min(len, 1.6), DEPTH * 0.5);
-    tag.position.set(-len / 2 + Math.min(len, 1.6) / 2, BLOCK_H + 0.032, 0);
+    // 외판에 칠한 블록 번호
+    const w = Math.min(len * 0.7, 0.9);
+    const tag = label(text, w, 0.2);
+    tag.rotation.x = 0;
+    tag.position.set(-len / 2 + w / 2 + 0.06, BLOCK_H * 0.72, D + 0.002);
     g.add(tag);
   }
   return g;
 }
+
+/**
+ * 두 블록 이음부 용접선: 빌지 곡면(아래 → 옆) → 측면 외판(위로) → 갑판 스트링거(바깥 → 안).
+ * at(s)는 s(0~total) 위치의 점, normal(s)은 바깥쪽 방향. seamX에서 x는 일정
+ */
+export function seamPath(seamX: number, z0: number) {
+  const D = DEPTH / 2;
+  const arc = (BILGE_R * Math.PI) / 2;
+  const side = BLOCK_H - BILGE_R;
+  const total = arc + side + STRINGER_W;
+  const at = (s: number) => {
+    if (s < arc) {
+      const a = s / BILGE_R;
+      return new THREE.Vector3(seamX, BILGE_R - BILGE_R * Math.cos(a), z0 + D - BILGE_R + BILGE_R * Math.sin(a));
+    }
+    if (s < arc + side) return new THREE.Vector3(seamX, BILGE_R + (s - arc), z0 + D);
+    return new THREE.Vector3(seamX, BLOCK_H, z0 + D - (s - arc - side));
+  };
+  const normal = (s: number) => {
+    if (s < arc) {
+      const a = s / BILGE_R;
+      return new THREE.Vector3(0, -Math.cos(a), Math.sin(a));
+    }
+    return s < arc + side ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
+  };
+  return { at, normal, total };
+}
+export type SeamPath = ReturnType<typeof seamPath>;
 
 /** 실린더를 두 점 사이에 걸친다 (크레인 와이어) */
 export function stretch(mesh: THREE.Mesh, a: THREE.Vector3, b: THREE.Vector3) {

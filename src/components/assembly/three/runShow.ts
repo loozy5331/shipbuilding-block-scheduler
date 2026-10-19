@@ -6,7 +6,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { Scene } from '../scene';
 import { END, PHASES, at, easeIn, easeInOut, easeOut, lerp, progress, type Phase } from '../timeline';
-import { BLOCK_H, CRANE_H, DEPTH, layoutOf, makeBackdrop, makeBar, makeBoard, makeCrane, makeShipBlock, makeWorker, stretch } from './models';
+import { BLOCK_H, CRANE_H, DEPTH, layoutOf, makeBackdrop, makeBar, makeBoard, makeCrane, makeShipBlock, makeWorker, seamPath, stretch } from './models';
 import { burst, dust, smoke, sparks } from './effects';
 import { makeWeldBead } from './weldBead';
 
@@ -79,7 +79,7 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
   world.add(floor, board, backdrop);
   for (const sx of [-1, 1]) {
     // 크레인 레일
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 40), new THREE.MeshStandardMaterial({ color: '#5b6573', metalness: 0.7, roughness: 0.35 }));
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 40), new THREE.MeshStandardMaterial({ color: '#5b6573', metalness: 0.3, roughness: 0.65 }));
     rail.position.set(sx < 0 ? L.seamX - 2.4 : L.partner.x1 + 1.6, 0.025, 0);
     rail.receiveShadow = true;
     rail.userData.rail = true;
@@ -102,7 +102,7 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
   world.add(heroBlock, partnerBlock);
 
   // 용접 비드: 앞면 아래→위, 이어서 윗면 앞→뒤
-  const bead = makeWeldBead(L.seamX, L.front, BLOCK_H, DEPTH);
+  const bead = makeWeldBead(seamPath(L.seamX, L.hero.z));
   bead.group.visible = false;
   world.add(bead.group);
   // 용접이 끝난 뒤 용접부를 옆에서 낮게 스치는 조명 (빛나게 하지 않고 비드 물결에 그늘이 지게)
@@ -291,10 +291,13 @@ export function runShow(canvas: HTMLCanvasElement, scene: Scene, cb: Callbacks):
       if (Math.random() < dt * 14) fx.smoke.emit(tipPos, 1, burst(0.25, new THREE.Vector3(0, 1, 0), 0.6), [0.6, 1]);
       weldLight.position.copy(tipPos).add(new THREE.Vector3(0, 0.05, 0.25));
       weldLight.intensity = 1.2 + Math.random() * 1.8;
-    } else weldLight.intensity *= Math.max(0, 1 - dt * 6);
+    } else weldLight.intensity = t > at('seam') ? 2 * Math.exp(-(t - at('seam')) / 0.12) : 0;
     // 밝은 탑뷰(종이)에서는 번짐을 끈다
     bloom.strength = lerp(0, 0.6, night);
 
+    // 강조 장면(클로즈업)에는 연기·먼지를 남기지 않는다
+    fx.smoke.points.visible = t < at('seam') + 0.5;
+    fx.dust.points.visible = t < at('seam');
     fx.sparks.update(dt);
     fx.dust.update(dt);
     fx.smoke.update(dt);
