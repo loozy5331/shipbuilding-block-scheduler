@@ -5,7 +5,7 @@ import { DEFAULT_RESOURCES, emptyAssignment } from '../domain/types';
 import type { SolveResponse } from '../solver';
 import { todayISO } from '../io/dates';
 import { assignBlockedReason } from '../domain/assign';
-import { assignLanes } from '../domain/lanes';
+import { assignLanes, seatIn } from '../domain/lanes';
 import { TUTORIAL_BLOCKS, TUTORIAL_RESOURCES } from '../tutorial/scenario';
 
 /** 유저 여정: 모드 선택 → 메뉴 → 공통 설정 입력 → 블록 스케줄링 → 결과 */
@@ -62,6 +62,8 @@ interface State {
   unassign(blockId: string, kind: ResourceKind): void;
   /** 착수일과(주면) 작업 자리를 옮긴다. 아직 배치가 없으면 빈 배치로 올린다. */
   moveBlock(blockId: string, startDay: number, lane?: number): void;
+  /** 착수일을 정하고 작업장 wp의 빈 자리로 옮긴다 */
+  moveToWorkplace(blockId: string, startDay: number, wp: number): void;
   applyAssignments(a: Assignments): void;
   clearAssignments(): void;
   setSolve(s: SolveResponse | null): void;
@@ -176,6 +178,13 @@ export const useStore = create<State>()(
           if (lane !== undefined) a.lane = lane;
           return { assignments: assignLanes(s.blocks, { ...s.assignments, [blockId]: a }, s.resources) };
         }),
+      moveToWorkplace: (blockId, startDay, wp) => {
+        const s = get();
+        const block = s.blocks.find((b) => b.id === blockId);
+        if (!block) return;
+        const start = Math.max(1, startDay);
+        s.moveBlock(blockId, start, seatIn(wp, block, start, s.assignments, s.blocks, s.resources));
+      },
       applyAssignments: (assignments) => set((s) => ({ assignments: assignLanes(s.blocks, assignments, s.resources) })),
       clearAssignments: () => set({ assignments: {} }),
       setSolve: (solve) => set({ solve }),
@@ -184,6 +193,7 @@ export const useStore = create<State>()(
         get().loadScenario();
         set({ tutorialStep: 0, page: 'setup' });
       },
+      // 가이드를 닫아도(건너뛰기) 지금 페이지에 그대로 머문다
       setTutorialStep: (tutorialStep) => set(tutorialStep === null ? { tutorialStep, tutorialSeen: true } : { tutorialStep }),
       setShowFull: (showFull) => set({ showFull }),
       selectToken: (selectedToken) => set({ selectedToken }),
@@ -191,12 +201,12 @@ export const useStore = create<State>()(
     }),
     {
       name: 'block-scheduler',
-      version: 3,
+      version: 4,
       storage,
-      // v1 → v2: 모드·설정·작업 자리 추가 (자리는 화면에서 채운다). v2 → v3: 페이지 이름 변경
+      // v1 → v2: 모드·설정·작업 자리 추가 (자리는 화면에서 채운다). v2 → v3: 페이지 이름 변경. v3 → v4: 튜토리얼 전용 페이지 없앰
       migrate: (persisted) => {
         const s = persisted as State & { page: string };
-        const renamed: Record<string, Page> = { home: 'menu', input: 'setup', board: 'schedule' };
+        const renamed: Record<string, Page> = { home: 'menu', input: 'setup', board: 'schedule', tutorial: 'menu' };
         return { ...s, page: renamed[s.page] ?? s.page } as State;
       },
       partialize: (s) => ({

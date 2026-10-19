@@ -3,12 +3,15 @@ import { BlockSource } from './BlockSource';
 import { BlockTable } from './BlockTable';
 import { CapacitySummary } from './CapacitySummary';
 import { ResourceForm } from './ResourceForm';
+import { BlockList, ResourceList } from './ReadOnlyLists';
 
 export function InputPage() {
   const blocks = useStore((s) => s.blocks);
   const planStart = useStore((s) => s.planStart);
   const setPlanStart = useStore((s) => s.setPlanStart);
   const setPage = useStore((s) => s.setPage);
+  // 튜토리얼 가이드 중에는 입력 기능 없이 채워진 블록·자원만 보여 준다
+  const touring = useStore((s) => s.tutorialStep !== null);
   const hasDup = new Set(blocks.map((b) => b.id)).size !== blocks.length || blocks.some((b) => !b.id);
 
   return (
@@ -45,16 +48,25 @@ export function InputPage() {
 
       <CapacitySummary />
 
-      <section className="paper-section">
-        <h2>1. 블록</h2>
-        <BlockSource />
-        <BlockTable />
-      </section>
+      {touring ? (
+        <div className="tutorial-grid">
+          <BlockList />
+          <ResourceList />
+        </div>
+      ) : (
+        <>
+          <section className="paper-section">
+            <h2>1. 블록</h2>
+            <BlockSource />
+            <BlockTable />
+          </section>
 
-      <section className="paper-section">
-        <h2>2. 자원</h2>
-        <ResourceForm />
-      </section>
+          <section className="paper-section">
+            <h2>2. 자원</h2>
+            <ResourceForm />
+          </section>
+        </>
+      )}
 
       <div className="paper-foot">
         <button type="button" className="btn ghost" onClick={() => setPage('menu')}>

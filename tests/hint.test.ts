@@ -38,7 +38,7 @@ describe('TBM · 평가서', () => {
     const msg = tbmMessage(1, TUTORIAL_BLOCKS, optimal, ev, R, '2026-10-19');
     expect(msg.split('\n')[0]).toBe('[TBM] 10/19(월) 오늘 작업');
     expect(msg).toMatch(/\[작업장 1\]/);
-    expect(msg).toMatch(/■ 투입: 일반 \d\/4명/);
+    expect(msg).toMatch(/■ 투입: 일반 \d\/2명 · 숙련 \d\/2명/);
     expect(msg).toContain('크레인 인양 시 신호수 배치');
     expect(tbmMessage(30, TUTORIAL_BLOCKS, optimal, ev, R, '2026-10-19')).toContain('예정된 블록 작업이 없습니다');
   });

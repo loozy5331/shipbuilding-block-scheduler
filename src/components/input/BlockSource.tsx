@@ -4,6 +4,7 @@ import { downloadTemplate, readBlocksFromFile } from '../../io/excel';
 import { parsePasted, type ParseResult } from '../../io/parse';
 import { LineIcon } from '../icons/LineIcons';
 import { TUTORIAL_TITLE } from '../../tutorial/scenario';
+import { ExcelHelpButton } from '../common/ExcelHelp';
 
 /** 엑셀 업로드 · 붙여넣기 · 샘플 불러오기 */
 export function BlockSource() {
@@ -44,6 +45,7 @@ export function BlockSource() {
         <button type="button" className="btn ghost" onClick={() => downloadTemplate(planStart)}>
           <LineIcon name="download" size={16} /> 엑셀 양식
         </button>
+        <ExcelHelpButton />
       </div>
 
       <div className="source-grid">
@@ -99,6 +101,7 @@ export function BlockSource() {
                   <li key={i}>{e.row > 0 ? `${e.row}행: ` : ''}{e.message}</li>
                 ))}
               </ul>
+              <small className="muted">열 이름과 값 형식은 '엑셀 양식 도움말'을 확인하세요.</small>
             </>
           )}
         </div>

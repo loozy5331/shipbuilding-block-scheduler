@@ -978,13 +978,6 @@ textarea {
   border-left: 2px dashed var(--ink);
 }
 
-.insights {
-  display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: 16px;
-  margin-bottom: 40px;
-}
-
 .panel {
   padding: 18px 20px;
   background: #fff;
@@ -1031,78 +1024,6 @@ textarea {
   align-items: center;
   gap: 10px;
   color: var(--muted);
-}
-
-.policy-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
-}
-
-.policy {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg);
-}
-
-.policy.active {
-  border: 2px solid var(--green);
-  background: #fff;
-}
-
-.policy-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--navy);
-}
-
-.pill {
-  margin-left: auto;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--green);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.policy-kpi {
-  font-size: 14px;
-}
-
-.policy-kpi b {
-  font-size: 22px;
-  color: var(--navy);
-}
-
-.policy.good .policy-kpi b {
-  color: var(--green);
-}
-
-.policy.bad .policy-kpi b {
-  color: var(--red);
-}
-
-.policy-warn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--red-50);
-  color: var(--red);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.policy .btn {
-  margin-top: auto;
-  align-self: flex-start;
 }
 
 .issues {
@@ -1221,8 +1142,7 @@ textarea {
     display: none;
   }
 
-  .source-grid,
-  .insights {
+  .source-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1626,125 +1546,6 @@ button.brand {
 }
 
 /* ---------- 작업장 레인 간트 ---------- */
-.wait-tray {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px dashed var(--paper-line);
-  border-radius: var(--radius);
-  background: #fff;
-}
-
-.wait-title {
-  align-self: center;
-  margin-right: 4px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.wait-chip {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 110px;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--paper);
-  font-size: 13px;
-  cursor: grab;
-  touch-action: manipulation;
-}
-
-.wait-chip strong {
-  color: var(--navy);
-}
-
-.wait-chip.dragging {
-  opacity: 0.4;
-}
-
-.wait-chip.drop-ok {
-  outline: 2px solid #328e59;
-  background: #e6f4ea;
-}
-
-.wait-chip.drop-no {
-  outline: 2px solid #bf5750;
-  background: #ffebe5;
-}
-
-.wait-chip.selectable,
-.g-bar.selectable {
-  cursor: copy;
-}
-
-.g-lane .g-track {
-  min-height: 84px;
-}
-
-.g-lane.wp-start {
-  border-top: 3px solid var(--navy);
-}
-
-.lane-label {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-}
-
-.lane-label strong {
-  color: var(--navy);
-  font-size: 16px;
-}
-
-.g-lane.lane-over .g-track {
-  background: var(--green-50);
-}
-
-.g-lane .g-bar,
-.g-lane .g-bar.short:not(.blocked) {
-  top: 10px;
-  height: 64px;
-  margin-top: 0;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 4px;
-  padding: 6px 8px;
-  font-size: 12px;
-  touch-action: manipulation;
-}
-
-.g-lane .g-bar.blocked {
-  color: var(--ink);
-}
-
-.bar-top {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  min-width: 0;
-}
-
-.bar-top strong {
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.bar-status,
-.bar-meta {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-  opacity: 0.95;
-}
-
 .bar-edit {
   margin-left: auto;
   padding: 0 2px;
@@ -1756,57 +1557,6 @@ button.brand {
   opacity: 0.8;
 }
 
-.g-bar .placed-icons {
-  gap: 3px;
-  min-height: 0;
-  flex-wrap: nowrap;
-  overflow: hidden;
-}
-
-.g-bar .placed-icons .placed,
-.g-bar .placed-icons .slot {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-}
-
-.g-bar.drop-ok {
-  outline: 3px solid #328e59;
-  outline-offset: 2px;
-}
-
-.g-bar.drop-no {
-  outline: 3px solid #bf5750;
-  outline-offset: 2px;
-}
-
-.g-bar .drop-reason,
-.wait-chip .drop-reason {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 4px);
-  z-index: 6;
-  white-space: nowrap;
-}
-
-.g-bar:has(.drop-reason) {
-  overflow: visible;
-}
-
-.hinted {
-  box-shadow: 0 0 0 4px #f1bd3c, 0 0 18px rgb(241 189 60 / 0.8) !important;
-}
-
-.due-tick {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  width: 0;
-  border-left: 2px dashed var(--ink);
-  z-index: 1;
-  opacity: 0.6;
-}
-
 .block-ghost {
   width: auto;
   height: auto;
@@ -1814,19 +1564,6 @@ button.brand {
   border-radius: 8px;
   font-weight: 800;
   color: var(--navy);
-}
-
-button.g-day {
-  border: 0;
-  border-right: 1px solid var(--line);
-  background: none;
-  font: inherit;
-  cursor: pointer;
-}
-
-.g-day.focus {
-  background: #fffbec;
-  box-shadow: inset 0 -3px 0 #f1bd3c;
 }
 
 /* ---------- 힌트 · 오늘 작업 · TBM · 평가서 ---------- */
@@ -1928,10 +1665,6 @@ button.g-day {
     --left: 96px;
   }
 
-  .lane-label strong {
-    font-size: 14px;
-  }
-
   .home h1 {
     font-size: 22px;
   }
@@ -2017,4 +1750,238 @@ button.g-day {
   .steps button:not(.on) .step-label {
     display: none;
   }
+}
+
+/* ---------- 블록 줄 간트: 작업장 테두리로 묶음 ---------- */
+.wp-group {
+  margin: 8px 6px;
+  border: 2.5px solid var(--navy);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.wp-group.wp-over {
+  background: var(--green-50);
+  border-color: var(--green);
+}
+
+.waiting-group {
+  border: 2px dashed var(--muted);
+}
+
+.wp-title {
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: max-content;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.wp-title strong {
+  color: var(--navy);
+  font-size: 15px;
+}
+
+.wp-empty {
+  position: sticky;
+  left: 0;
+  width: max-content;
+  padding: 10px 14px 14px;
+  font-size: 13px;
+}
+
+.g-block .g-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+}
+
+.g-block .g-track {
+  min-height: 64px;
+}
+
+.g-block .g-left.waiting {
+  cursor: grab;
+  touch-action: manipulation;
+}
+
+.g-block .g-left.dragging {
+  opacity: 0.5;
+}
+
+.b-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  font-size: 12px;
+}
+
+.b-title strong {
+  font-size: 15px;
+  color: var(--navy);
+}
+
+.b-title .bar-edit {
+  color: var(--muted);
+}
+
+.g-block .placed-icons {
+  min-height: 0;
+  gap: 3px;
+}
+
+.g-block .placed-icons .placed,
+.g-block .placed-icons .slot {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.g-block .drop-reason {
+  align-self: flex-start;
+}
+
+.g-block.drop-ok .g-left,
+.g-block.drop-ok .g-track {
+  background: #e6f4ea;
+}
+
+.g-block.drop-no .g-left,
+.g-block.drop-no .g-track {
+  background: #ffebe5;
+}
+
+.g-block.selectable .g-left {
+  cursor: copy;
+}
+
+.g-block.selectable .g-left:hover {
+  background: #fffbec;
+}
+
+.g-block.hinted .g-left {
+  background: #fffbec;
+  box-shadow: inset 4px 0 0 #f1bd3c;
+}
+
+.g-block .g-bar {
+  touch-action: manipulation;
+}
+
+.g-block .g-bar.short:not(.blocked) {
+  flex-direction: row;
+  align-items: center;
+  margin-top: -18px;
+  height: 36px;
+  font-size: 11px;
+}
+
+.g-block .g-bar.blocked {
+  font-size: 11px;
+}
+
+/* ---------- 튜토리얼: 읽기 전용 블록·자원 표 ---------- */
+.tutorial-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 16px;
+}
+
+.tutorial-grid .panel {
+  margin: 0;
+}
+
+.plain-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.plain-table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.plain-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.plain-table .num {
+  text-align: right;
+}
+
+.resource-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.resource-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.resource-list dt {
+  color: var(--muted);
+}
+
+.resource-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+@media (max-width: 860px) {
+  .tutorial-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- 엑셀 양식 도움말 ---------- */
+.help-table td {
+  white-space: normal;
+}
+
+.sheet-example {
+  width: auto;
+}
+
+.sheet-example th {
+  width: 28px;
+  text-align: center;
+}
+
+.sheet-example td {
+  min-width: 96px;
+  border-left: 1px solid var(--line);
+}
+
+.help-notes {
+  margin: 14px 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.dialog h4 {
+  margin: 16px 0 6px;
+}
+
+.dialog {
+  text-align: left;
 }

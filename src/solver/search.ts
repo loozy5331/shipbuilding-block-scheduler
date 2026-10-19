@@ -1,5 +1,5 @@
 import type { Assignments, Block, Policy, Resources } from '../domain/types';
-import { compareObjective, evaluate, objective, type Kpi } from '../domain/evaluate';
+import { compareObjective, evaluate, meetsMinimum, objective, type Kpi } from '../domain/evaluate';
 import { buildModeTable, serialSchedule, type ModeTable, type PickRule } from './sgs';
 
 export interface Plan {
@@ -60,7 +60,7 @@ export function solvePolicy(policy: Policy, blocks: Block[], r: Resources, opts:
   if (policy === 'edd') return { policy, ...plan(run(eddOrder(blocks, modes), 'fast', blocks, r, modes)) };
   const archive = new Archive();
   const best = localSearch(blocks, r, modes, opts, archive);
-  return { policy, ...plan(best), alternatives: archive.top(MAX_ALTERNATIVES, best).map(plan) };
+  return { policy, ...plan(best), alternatives: archive.top(MAX_ALTERNATIVES, best, blocks, r).map(plan) };
 }
 
 /** 착수 순서(같은 날은 ID 순). 미배치 블록은 빠진다. */
@@ -90,14 +90,20 @@ class Archive {
     return this.byOrder.size;
   }
 
-  /** best와 착수 순서가 다른 해 중 좋은 순으로 n개 */
-  top(n: number, best: Candidate): Candidate[] {
+  /**
+   * best와 착수 순서가 다른 해 중 좋은 순으로 n개.
+   * 최소 요건(자재·크레인·작업자, 자원 초과 없음)을 만족하고, 착수 못 하는 블록이 최적해보다 많지 않은 것만.
+   */
+  top(n: number, best: Candidate, blocks: Block[], r: Resources): Candidate[] {
     const skip = startOrder(best.assignments);
-    return [...this.byOrder.entries()]
-      .filter(([k]) => k !== skip)
-      .map(([, c]) => c)
-      .sort((x, y) => compareObjective(x.score, y.score))
-      .slice(0, n);
+    const out: Candidate[] = [];
+    const sorted = [...this.byOrder.entries()].filter(([k]) => k !== skip).sort((x, y) => compareObjective(x[1].score, y[1].score));
+    for (const [, c] of sorted) {
+      if (out.length >= n) break;
+      if (c.score[0] > best.score[0] || !meetsMinimum(blocks, r, c.assignments)) continue;
+      out.push(c);
+    }
+    return out;
   }
 }
 

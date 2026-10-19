@@ -75,6 +75,11 @@ export function Tour() {
   if (!step || stepIndex === null) return null;
 
   const last = stepIndex === STEPS.length - 1;
+  // 끝까지 보면 실제 작업을 시작하도록 메뉴로, 건너뛰면 튜토리얼 페이지에 머문다
+  const finish = () => {
+    setStep(null);
+    setPage('menu');
+  };
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const cardW = Math.min(380, vw - 32);
@@ -116,7 +121,7 @@ export function Tour() {
               이전
             </button>
           )}
-          <button type="button" className="btn primary small" disabled={!ready} onClick={() => setStep(last ? null : stepIndex + 1)} data-testid="tour-next">
+          <button type="button" className="btn primary small" disabled={!ready} onClick={() => (last ? finish() : setStep(stepIndex + 1))} data-testid="tour-next">
             {last ? '시작하기' : '다음'}
           </button>
         </div>

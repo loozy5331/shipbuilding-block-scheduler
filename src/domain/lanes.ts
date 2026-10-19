@@ -90,3 +90,20 @@ export function samePlan(a: Assignments, b: Assignments): boolean {
     return !!y && x.startDay === y.startDay && x.general === y.general && x.skilled === y.skilled && x.crane === y.crane && x.emergency === y.emergency;
   });
 }
+
+/** 작업장 wp로 옮길 때 쓸 자리: 그 작업장에서 [start, …] 기간에 비어 있는 첫 자리, 없으면 첫 자리 */
+export function seatIn(wp: number, block: Block, start: number, assignments: Assignments, blocks: Block[], r: Resources): number {
+  const first = wp * r.blocksPerWorkplace;
+  const a = { ...(assignments[block.id] ?? { blockId: block.id, startDay: null, general: 0, skilled: 0, crane: false, emergency: false }), startDay: start };
+  const span = spanOf(block, a, r)!;
+  for (let lane = first; lane < first + r.blocksPerWorkplace; lane++) {
+    const busy = blocks.some((b) => {
+      const o = assignments[b.id];
+      if (b.id === block.id || o?.lane !== lane) return false;
+      const s = spanOf(b, o, r);
+      return !!s && overlaps(s, span);
+    });
+    if (!busy) return lane;
+  }
+  return first;
+}
