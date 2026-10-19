@@ -1,6 +1,7 @@
 import type { Assignment, Assignments, Block, BlockStatus, LoadKind, Resources } from './types';
+import { laneOverlapDays } from './lanes';
 
-export type BlockedReason = 'noCrane' | 'noMaterial' | 'noCrew';
+export type BlockedReason = 'noCrane' | 'noMaterial' | 'noCrew' | 'crewLimit';
 
 export interface BlockResult {
   blockId: string;
@@ -10,10 +11,17 @@ export interface BlockResult {
   end: number | null;
   duration: number | null;
   dailyMH: number;
-  /** 납기일까지 처리되는 MH (requiredMH로 상한) */
+  /** 납기일까지 인정되는 MH. 자원 겹침이 있는 날의 공수는 인정하지 않는다. */
   mhByDue: number;
+  /** 전체 기간에 인정되는 MH */
+  creditedMH: number;
   lateDays: number;
-  /** 작업 기간 중 이 블록이 쓰는 자원이 용량을 넘은 날이 있음 */
+  /** 이 블록이 쓰는 자원이 용량을 넘었거나 같은 작업 자리의 다른 블록과 겹친 날 */
+  overDays: number[];
+  /** 같은 작업 자리에서 다른 블록과 겹친 날이 있음 */
+  laneClash: boolean;
+  /** 납기 안에 끝났을 때 남는 날 (납기 여유일) */
+  slackDays: number;
   overloaded: boolean;
   wasteMH: number;
 }
@@ -28,15 +36,21 @@ export interface LoadRow {
 export interface Kpi {
   total: number;
   onTime: number;
+  /** 자원 겹침 없이 납기를 넘긴 블록 */
   late: number;
+  conflicts: number;
   notRunnable: number;
   onTimeRate: number;
+  /** 납기를 넘긴 블록(겹침 포함)과 지연일 합 */
+  lateBlocks: number;
   totalLateDays: number;
   emergencyUsed: number;
   emergencyCapacity: number;
   overloadCells: number;
   makespan: number;
   wasteMH: number;
+  /** 납기 안 블록의 잔여 납기 여유일 합 */
+  totalSlackDays: number;
 }
 
 export interface Evaluation {
@@ -95,9 +109,10 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
     const duration = durationOf(b.requiredMH, dailyMH);
     const reasons: BlockedReason[] = [];
     if (a) {
+      if (duration === null) reasons.push('noCrew');
+      if (a.general + a.skilled > r.maxCrewPerBlock) reasons.push('crewLimit');
       if (!a.crane) reasons.push('noCrane');
       if (!b.materialReady && !a.emergency) reasons.push('noMaterial');
-      if (duration === null) reasons.push('noCrew');
     }
     const start = a?.startDay ?? null;
     const end = start !== null && duration !== null ? start + duration - 1 : null;
@@ -109,8 +124,6 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
     else if (end! > b.dueDay) status = 'late';
     else status = 'ok';
 
-    const runnable = status === 'ok' || status === 'late';
-    const daysByDue = start !== null && duration !== null ? Math.max(0, Math.min(duration, b.dueDay - start + 1)) : 0;
     pre[b.id] = {
       blockId: b.id,
       status,
@@ -119,14 +132,18 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
       end,
       duration,
       dailyMH,
-      mhByDue: runnable ? Math.min(b.requiredMH, daysByDue * dailyMH) : 0,
+      mhByDue: 0,
+      creditedMH: 0,
       lateDays: status === 'late' ? end! - b.dueDay : 0,
+      overDays: [],
+      laneClash: false,
+      slackDays: 0,
       overloaded: false,
-      wasteMH: runnable ? dailyMH * duration! - b.requiredMH : 0,
+      wasteMH: status === 'ok' || status === 'late' ? dailyMH * duration! - b.requiredMH : 0,
     };
   }
 
-  const maxDue = blocks.reduce((m, b) => Math.max(m, b.dueDay), 0);
+  const maxDue = Math.max(1, ...blocks.map((b) => b.dueDay));
   const horizon = Math.max(7, maxDue, maxEnd);
 
   // 간트에 올라간 블록은 착수 불가 상태여도 자원을 점유한 것으로 본다(계획상 예약).
@@ -140,37 +157,63 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
     }
   }
 
+  const overByDay: LoadKind[][] = Array.from({ length: horizon + 1 }, (_, d) =>
+    d === 0 ? [] : load.filter((row) => row.usage[d - 1] > row.capacity).map((row) => row.kind),
+  );
   let overloadCells = 0;
   for (const row of load) for (const u of row.usage) if (u > row.capacity) overloadCells++;
 
+  const emergencyUsed = blocks.filter((b) => assignments[b.id]?.emergency).length;
+  const emergencyOver = emergencyUsed > r.emergencyMaterials;
+
+  const clash = laneOverlapDays(blocks, assignments, r);
+  const clashCells = new Set<string>();
   for (const b of placed) {
     const a = assignments[b.id];
     const res = pre[b.id];
-    for (let d = res.start!; d <= res.end! && !res.overloaded; d++) {
-      res.overloaded = load.some((row) => loadUse(row.kind, a) > 0 && row.usage[d - 1] > row.capacity);
+    for (let d = res.start!; d <= res.end!; d++) {
+      if (overByDay[d].some((k) => loadUse(k, a) > 0) || clash[b.id]?.includes(d)) res.overDays.push(d);
     }
-  }
-
-  const emergencyUsed = blocks.filter((b) => assignments[b.id]?.emergency).length;
-  if (emergencyUsed > r.emergencyMaterials) {
-    for (const b of blocks) if (assignments[b.id]?.emergency) pre[b.id].overloaded = true;
+    res.laneClash = !!clash[b.id];
+    for (const d of clash[b.id] ?? []) clashCells.add(`${a.lane}:${d}`);
+    res.overloaded = res.overDays.length > 0 || (emergencyOver && a.emergency);
+    if (res.status !== 'ok' && res.status !== 'late') continue;
+    if (res.overloaded) res.status = 'conflict';
+    // 겹친 날의 공수는 인정하지 않고, 미완료분을 뒤로 늘리지도 않는다
+    let remaining = b.requiredMH;
+    for (let d = res.start!; d <= res.end!; d++) {
+      if (res.overDays.includes(d) || (emergencyOver && a.emergency)) continue;
+      const earned = Math.min(res.dailyMH, remaining);
+      remaining -= earned;
+      res.creditedMH += earned;
+      if (d <= b.dueDay) res.mhByDue += earned;
+    }
+    if (res.status === 'conflict') res.lateDays = Math.max(0, res.end! - b.dueDay);
+    if (res.status === 'ok') res.slackDays = b.dueDay - res.end!;
   }
 
   const results = Object.values(pre);
-  const onTime = results.filter((x) => x.status === 'ok').length;
-  const late = results.filter((x) => x.status === 'late').length;
+  const count = (s: BlockStatus) => results.filter((x) => x.status === s).length;
+  const onTime = count('ok');
+  const conflicts = count('conflict');
+  const notRunnable = count('blocked') + count('unscheduled');
+  const total = blocks.length;
+  const lateBlocks = results.filter((x) => x.lateDays > 0);
   const kpi: Kpi = {
-    total: blocks.length,
+    total,
     onTime,
-    late,
-    notRunnable: blocks.length - onTime - late,
-    onTimeRate: blocks.length ? onTime / blocks.length : 0,
-    totalLateDays: results.reduce((s, x) => s + x.lateDays, 0),
+    late: count('late'),
+    conflicts,
+    notRunnable,
+    onTimeRate: total ? onTime / total : 0,
+    lateBlocks: lateBlocks.length,
+    totalLateDays: lateBlocks.reduce((s, x) => s + x.lateDays, 0),
     emergencyUsed,
     emergencyCapacity: r.emergencyMaterials,
-    overloadCells: overloadCells + Math.max(0, emergencyUsed - r.emergencyMaterials),
+    overloadCells: overloadCells + clashCells.size + Math.max(0, emergencyUsed - r.emergencyMaterials),
     makespan: maxEnd,
     wasteMH: results.reduce((s, x) => s + x.wasteMH, 0),
+    totalSlackDays: results.reduce((s, x) => s + x.slackDays, 0),
   };
 
   return {
@@ -178,13 +221,13 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
     blocks: pre,
     load,
     kpi,
-    feasible: blocks.length > 0 && onTime === blocks.length && kpi.overloadCells === 0,
+    feasible: total > 0 && onTime === total && kpi.overloadCells === 0,
   };
 }
 
 /** 사전식 비교용 목적값. 작을수록 좋다. */
 export function objective(k: Kpi): number[] {
-  return [k.notRunnable, k.overloadCells, k.late, k.totalLateDays, k.emergencyUsed, k.wasteMH, k.makespan];
+  return [k.notRunnable, k.overloadCells, k.lateBlocks, k.totalLateDays, k.emergencyUsed, k.wasteMH, k.makespan];
 }
 
 export function compareObjective(a: number[], b: number[]): number {

@@ -1,5 +1,5 @@
 /** 발표 자료의 원형 배경 위 라인 아이콘 */
-type Name = 'ship' | 'block' | 'yard' | 'clock' | 'clipboard' | 'gear' | 'bulb' | 'chart' | 'alert' | 'check' | 'sort' | 'coins' | 'upload' | 'download';
+type Name = 'ship' | 'block' | 'yard' | 'clock' | 'clipboard' | 'gear' | 'bulb' | 'chart' | 'alert' | 'check' | 'sort' | 'coins' | 'upload' | 'download' | 'camera' | 'play';
 
 const PATHS: Record<Name, string> = {
   ship: 'M12 3v4M9 7h6v4H9zM4 14l8-3 8 3-2 5H6zM3 21c1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1',
@@ -16,6 +16,8 @@ const PATHS: Record<Name, string> = {
   coins: 'M4 14c0-1 2-2 5-2s5 1 5 2-2 2-5 2-5-1-5-2zM4 14v4c0 1 2 2 5 2s5-1 5-2v-4M10 8c0-1 2-2 5-2s5 1 5 2-2 2-5 2-5-1-5-2zM10 8v4M20 8v8c0 1-2 2-5 2',
   upload: 'M12 16V4M7 9l5-5 5 5M4 16v4h16v-4',
   download: 'M12 4v12M7 11l5 5 5-5M4 16v4h16v-4',
+  camera: 'M3 8h4l2-3h6l2 3h4v11H3zM12 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+  play: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 8.5v7l5.5-3.5z',
 };
 
 export function LineIcon({ name, size = 24, color = 'currentColor' }: { name: Name; size?: number; color?: string }) {

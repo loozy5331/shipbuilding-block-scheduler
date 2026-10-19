@@ -735,30 +735,6 @@ textarea {
   background: var(--green-50);
 }
 
-.g-block .g-left {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.g-block.drop-over .g-left,
-.g-block.drop-over .g-track {
-  background: var(--green-50);
-}
-
-.b-title {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.b-title strong {
-  font-size: 17px;
-  color: var(--navy);
-}
-
 .tag {
   padding: 1px 6px;
   border: 1px solid var(--line);
@@ -806,45 +782,6 @@ textarea {
   border-radius: 8px;
   opacity: 0.35;
   filter: grayscale(1);
-}
-
-.placed-icons .sep {
-  width: 1px;
-  height: 22px;
-  margin: 0 4px;
-  background: var(--line);
-}
-
-.placed-icons .hint {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.progress {
-  position: relative;
-  height: 18px;
-  border-radius: 4px;
-  background: var(--line);
-  overflow: hidden;
-}
-
-.progress span {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: #f2a7a7;
-}
-
-.progress.full span {
-  background: #9bd0a8;
-}
-
-.progress em {
-  position: relative;
-  padding-left: 8px;
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 600;
-  line-height: 18px;
 }
 
 .g-track {
@@ -1312,5 +1249,711 @@ textarea {
 
   .g-left {
     position: static;
+  }
+}
+
+/* ---------- 간트 상호작용: 드래그 말풍선, 드롭 판정, 클릭 배정, 숫자 편집 ---------- */
+.g-bar.late,
+.g-bar.is-late {
+  background: var(--red);
+}
+
+.g-bar:focus-visible,
+.g-left:focus-visible,
+.chip:focus-visible {
+  outline: 3px solid #f1bd3c;
+  outline-offset: 2px;
+}
+
+/* 드래그 중 착수일 말풍선 */
+.g-bar.dragging {
+  overflow: visible;
+}
+
+.g-bar.dragging::after {
+  content: attr(data-day);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.g-bar.out-of-range {
+  background: var(--line);
+  color: var(--muted);
+  cursor: default;
+}
+
+.over-day {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #ffe1e1;
+  opacity: 0.7;
+}
+
+.drop-reason {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--red);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chip.selected {
+  outline: 3px solid #f1bd3c;
+  background: #fffbec;
+}
+
+.over-count {
+  color: var(--red);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.load-cell {
+  gap: 2px;
+}
+
+.notice {
+  padding: 12px 16px;
+  border: 1px solid #c8d8bf;
+  border-radius: 10px;
+  background: #edf3e8;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.notice p {
+  margin: 4px 0 0;
+}
+
+.notice.warn {
+  border-color: #e1c594;
+  background: #fff5e6;
+  color: #84642f;
+}
+
+/* ---------- 대화상자·토스트 ---------- */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgb(19 33 60 / 0.6);
+}
+
+.dialog {
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: auto;
+  padding: 24px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 20px 70px rgb(0 0 0 / 0.3);
+}
+
+.dialog.wide {
+  max-width: 860px;
+}
+
+.dialog h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+  color: var(--navy);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.edit-form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.edit-form input {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  text-align: right;
+}
+
+.edit-check {
+  display: flex;
+  gap: 20px;
+  margin-top: 14px;
+  font-size: 14px;
+}
+
+.edit-check label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-check input {
+  accent-color: var(--green);
+}
+
+.toast-root {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 200;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  max-width: min(640px, 90vw);
+  padding: 11px 19px;
+  border-radius: 8px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+}
+
+@media (max-width: 860px) {
+  .edit-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- 진입 화면: 모드 선택 · 田자 메뉴 ---------- */
+button.brand {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mode-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--green-50);
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mode-chip.novice {
+  background: #fff5e6;
+  color: var(--orange);
+}
+
+.home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 0 40px;
+  text-align: center;
+}
+
+.home h1 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 28px;
+}
+
+.mode-pick {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  width: 100%;
+}
+
+.mode-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 28px 20px;
+  border: 2px solid var(--green);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--navy);
+  cursor: pointer;
+}
+
+.mode-btn strong {
+  font-size: 26px;
+}
+
+.mode-btn small {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.mode-btn.novice {
+  border-color: var(--orange);
+}
+
+.mode-btn:hover {
+  background: var(--green-50);
+}
+
+.mode-btn.novice:hover {
+  background: #fff5e6;
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--green);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* 2×2 밭전(田) 배치 */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  aspect-ratio: 1;
+  padding: 12px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--navy);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+}
+
+.tile strong {
+  font-size: 18px;
+}
+
+.tile small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tile:hover:not(:disabled) {
+  border-color: var(--green);
+  background: var(--green-50);
+}
+
+.tile:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+
+.switch-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.switch-row input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+}
+
+.seg {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.seg button {
+  padding: 6px 12px;
+  border: 0;
+  background: #fff;
+  cursor: pointer;
+}
+
+.seg button.on {
+  background: var(--green);
+  color: #fff;
+}
+
+/* ---------- 작업장 레인 간트 ---------- */
+.wait-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--paper-line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.wait-title {
+  align-self: center;
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.wait-chip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  font-size: 13px;
+  cursor: grab;
+  touch-action: manipulation;
+}
+
+.wait-chip strong {
+  color: var(--navy);
+}
+
+.wait-chip.dragging {
+  opacity: 0.4;
+}
+
+.wait-chip.drop-ok {
+  outline: 2px solid #328e59;
+  background: #e6f4ea;
+}
+
+.wait-chip.drop-no {
+  outline: 2px solid #bf5750;
+  background: #ffebe5;
+}
+
+.wait-chip.selectable,
+.g-bar.selectable {
+  cursor: copy;
+}
+
+.g-lane .g-track {
+  min-height: 84px;
+}
+
+.g-lane.wp-start {
+  border-top: 3px solid var(--navy);
+}
+
+.lane-label {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.lane-label strong {
+  color: var(--navy);
+  font-size: 16px;
+}
+
+.g-lane.lane-over .g-track {
+  background: var(--green-50);
+}
+
+.g-lane .g-bar,
+.g-lane .g-bar.short:not(.blocked) {
+  top: 10px;
+  height: 64px;
+  margin-top: 0;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  touch-action: manipulation;
+}
+
+.g-lane .g-bar.blocked {
+  color: var(--ink);
+}
+
+.bar-top {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.bar-top strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.bar-status,
+.bar-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  opacity: 0.95;
+}
+
+.bar-edit {
+  margin-left: auto;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.g-bar .placed-icons {
+  gap: 3px;
+  min-height: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.g-bar .placed-icons .placed,
+.g-bar .placed-icons .slot {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+}
+
+.g-bar.drop-ok {
+  outline: 3px solid #328e59;
+  outline-offset: 2px;
+}
+
+.g-bar.drop-no {
+  outline: 3px solid #bf5750;
+  outline-offset: 2px;
+}
+
+.g-bar .drop-reason,
+.wait-chip .drop-reason {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 6;
+  white-space: nowrap;
+}
+
+.g-bar:has(.drop-reason) {
+  overflow: visible;
+}
+
+.hinted {
+  box-shadow: 0 0 0 4px #f1bd3c, 0 0 18px rgb(241 189 60 / 0.8) !important;
+}
+
+.due-tick {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 0;
+  border-left: 2px dashed var(--ink);
+  z-index: 1;
+  opacity: 0.6;
+}
+
+.block-ghost {
+  width: auto;
+  height: auto;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+button.g-day {
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.g-day.focus {
+  background: #fffbec;
+  box-shadow: inset 0 -3px 0 #f1bd3c;
+}
+
+/* ---------- 힌트 · 오늘 작업 · TBM · 평가서 ---------- */
+.notice.hint {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-color: #f1d58a;
+  background: #fffbec;
+}
+
+.notice.hint p {
+  flex: 1 1 240px;
+  margin: 0;
+}
+
+.today-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.today-head h3 {
+  margin: 0;
+}
+
+.today-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.today-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.today-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.tbm {
+  margin: 0 0 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--navy);
+  color: #fff;
+  font: 13px/1.6 inherit;
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.report-table th,
+.report-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.report-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.report-table tr.better td:last-child {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.report-table tr.worse td:last-child {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.board > .panel {
+  margin: 0;
+}
+
+@media (max-width: 860px) {
+  :root {
+    --left: 96px;
+  }
+
+  .lane-label strong {
+    font-size: 14px;
+  }
+
+  .home h1 {
+    font-size: 22px;
+  }
+
+  .tile strong {
+    font-size: 16px;
+  }
+
+  .topbar .tabs button {
+    padding: 6px 8px;
+  }
+
+  .report-table small {
+    display: none;
+  }
+
+  .load-row .g-left {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0;
+    padding: 6px 8px;
+    font-size: 12px;
   }
 }

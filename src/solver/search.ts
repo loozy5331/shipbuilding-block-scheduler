@@ -2,12 +2,19 @@ import type { Assignments, Block, Policy, Resources } from '../domain/types';
 import { compareObjective, evaluate, objective, type Kpi } from '../domain/evaluate';
 import { buildModeTable, serialSchedule, type ModeTable, type PickRule } from './sgs';
 
-export interface Solution {
-  policy: Policy;
+export interface Plan {
   assignments: Assignments;
   kpi: Kpi;
   feasible: boolean;
 }
+
+export interface Solution extends Plan {
+  policy: Policy;
+  /** 최적화만: 착수 순서가 다른 차선책 (좋은 순, 최대 MAX_ALTERNATIVES개) */
+  alternatives?: Plan[];
+}
+
+export const MAX_ALTERNATIVES = 3;
 
 /** 재현 가능한 의사난수 (mulberry32) */
 export function rng(seed: number) {
@@ -45,22 +52,64 @@ export interface SolveOptions {
 
 export function solvePolicy(policy: Policy, blocks: Block[], r: Resources, opts: SolveOptions = {}): Solution {
   const modes = buildModeTable(blocks, r);
-  let best: Candidate;
-  if (policy === 'input') best = run(blocks, 'fast', blocks, r, modes);
-  else if (policy === 'edd') best = run(eddOrder(blocks, modes), 'fast', blocks, r, modes);
-  else best = localSearch(blocks, r, modes, opts);
-  const ev = evaluate(blocks, r, best.assignments);
-  return { policy, assignments: best.assignments, kpi: ev.kpi, feasible: ev.feasible };
+  const plan = (c: Candidate): Plan => {
+    const ev = evaluate(blocks, r, c.assignments);
+    return { assignments: c.assignments, kpi: ev.kpi, feasible: ev.feasible };
+  };
+  if (policy === 'input') return { policy, ...plan(run(blocks, 'fast', blocks, r, modes)) };
+  if (policy === 'edd') return { policy, ...plan(run(eddOrder(blocks, modes), 'fast', blocks, r, modes)) };
+  const archive = new Archive();
+  const best = localSearch(blocks, r, modes, opts, archive);
+  return { policy, ...plan(best), alternatives: archive.top(MAX_ALTERNATIVES, best).map(plan) };
+}
+
+/** 착수 순서(같은 날은 ID 순). 미배치 블록은 빠진다. */
+function startOrder(a: Assignments): string {
+  return Object.values(a)
+    .filter((x) => x.startDay !== null)
+    .sort((x, y) => x.startDay! - y.startDay! || x.blockId.localeCompare(y.blockId))
+    .map((x) => x.blockId)
+    .join('>');
+}
+
+/** 탐색 중 만난 해를 착수 순서별로 가장 좋은 것만 모아 둔다 (차선책 후보) */
+class Archive {
+  private byOrder = new Map<string, Candidate>();
+
+  add(c: Candidate) {
+    const key = startOrder(c.assignments);
+    const prev = this.byOrder.get(key);
+    if (!prev || compareObjective(c.score, prev.score) < 0) this.byOrder.set(key, c);
+    if (this.byOrder.size > 400) {
+      const keep = [...this.byOrder.entries()].sort((x, y) => compareObjective(x[1].score, y[1].score)).slice(0, 100);
+      this.byOrder = new Map(keep);
+    }
+  }
+
+  get size() {
+    return this.byOrder.size;
+  }
+
+  /** best와 착수 순서가 다른 해 중 좋은 순으로 n개 */
+  top(n: number, best: Candidate): Candidate[] {
+    const skip = startOrder(best.assignments);
+    return [...this.byOrder.entries()]
+      .filter(([k]) => k !== skip)
+      .map(([, c]) => c)
+      .sort((x, y) => compareObjective(x.score, y.score))
+      .slice(0, n);
+  }
 }
 
 /** EDD/여유시간/입력순서 초기해에서 시작해 교환·삽입 이웃을 탐색하고, 정체되면 섞어서 재시작한다. */
-function localSearch(blocks: Block[], r: Resources, modes: ModeTable, { budgetMs = 800, seed = 7 }: SolveOptions): Candidate {
+function localSearch(blocks: Block[], r: Resources, modes: ModeTable, { budgetMs = 800, seed = 7 }: SolveOptions, archive: Archive): Candidate {
   const rand = rng(seed);
   const deadline = Date.now() + budgetMs;
   const edd = eddOrder(blocks, modes);
   const slack = [...blocks].sort((a, b) => a.dueDay - (modes[a.id][0]?.duration ?? 0) - (b.dueDay - (modes[b.id][0]?.duration ?? 0)));
   const starts: Candidate[] = [];
   for (const order of [edd, slack, blocks]) for (const rule of ['fast', 'lean'] as PickRule[]) starts.push(run(order, rule, blocks, r, modes));
+  starts.forEach((c) => archive.add(c));
   starts.sort((a, b) => compareObjective(a.score, b.score));
   let best = starts[0];
   if (blocks.length < 2) return best;
@@ -70,7 +119,9 @@ function localSearch(blocks: Block[], r: Resources, modes: ModeTable, { budgetMs
   // 미배치·초과·지연·낭비가 모두 0이면 더 볼 필요가 없다
   const isPerfect = (s: number[]) => s[0] === 0 && s[1] === 0 && s[2] === 0 && s[5] === 0;
 
-  while (Date.now() < deadline && !isPerfect(best.score)) {
+  // 최선해가 완벽해도 차선책 후보를 모을 만큼은 더 둘러본다
+  const enough = () => isPerfect(best.score) && archive.size > MAX_ALTERNATIVES * 8;
+  while (Date.now() < deadline && !enough()) {
     const order = [...cur.order];
     const i = Math.floor(rand() * order.length);
     let j = Math.floor(rand() * (order.length - 1));
@@ -79,6 +130,7 @@ function localSearch(blocks: Block[], r: Resources, modes: ModeTable, { budgetMs
     else order.splice(j, 0, order.splice(i, 1)[0]);
     const rule: PickRule = rand() < 0.15 ? (cur.rule === 'fast' ? 'lean' : 'fast') : cur.rule;
     const next = run(order, rule, blocks, r, modes);
+    archive.add(next);
 
     const c = compareObjective(next.score, cur.score);
     if (c <= 0) {

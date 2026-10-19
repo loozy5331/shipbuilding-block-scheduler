@@ -26,6 +26,8 @@ export interface Assignment {
   skilled: number;
   crane: boolean;
   emergency: boolean;
+  /** 작업 자리(레인). 작업장 = ⌊lane / blocksPerWorkplace⌋. 없으면 아직 자리를 정하지 않은 상태 */
+  lane?: number;
 }
 
 export type Assignments = Record<string, Assignment>;
@@ -36,9 +38,13 @@ export type ResourceKind = 'general' | 'skilled' | 'crane' | 'emergency';
 /** 일별 부하를 추적하는 자원 */
 export type LoadKind = 'slots' | 'general' | 'skilled' | 'crane';
 
-export type BlockStatus = 'ok' | 'late' | 'blocked' | 'unscheduled';
+/** conflict: 작업 기간 중 쓰는 자원이 용량을 넘은 날이 있음 (그날 공수는 인정하지 않음) */
+export type BlockStatus = 'ok' | 'late' | 'conflict' | 'blocked' | 'unscheduled';
 
 export type Policy = 'input' | 'edd' | 'optimal';
+
+/** 숙련자: 최적 배치 버튼 / 신입: 힌트 버튼 */
+export type UserMode = 'expert' | 'novice';
 
 export const DEFAULT_RESOURCES: Resources = {
   workplaces: 2,

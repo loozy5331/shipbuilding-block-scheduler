@@ -42,6 +42,11 @@ export function LoadGrid({ ev, days }: { ev: Evaluation; days: number }) {
                     <i key={i} className={i < Math.min(used, row.capacity) ? 'used' : i >= row.capacity ? 'excess' : ''} />
                   ))}
                 </div>
+                {over && (
+                  <small className="over-count">
+                    {used}/{row.capacity}
+                  </small>
+                )}
               </div>
             );
           })}

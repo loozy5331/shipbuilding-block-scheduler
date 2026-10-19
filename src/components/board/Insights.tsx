@@ -1,10 +1,11 @@
 import { evaluate, type Evaluation } from '../../domain/evaluate';
-import type { Assignments, Policy } from '../../domain/types';
+import type { Policy } from '../../domain/types';
 import type { SolveResponse } from '../../solver';
 import { WHATIF_LABEL } from '../../solver/whatif';
 import { useStore } from '../../store/schedulerStore';
 import { StatCard } from '../common/StatCard';
 import { LineIcon } from '../icons/LineIcons';
+import { samePlan } from '../../domain/lanes';
 
 export function KpiCards({ ev }: { ev: Evaluation }) {
   const k = ev.kpi;
@@ -13,7 +14,7 @@ export function KpiCards({ ev }: { ev: Evaluation }) {
       <StatCard icon="ship" label="블록 납기 준수" value={`${k.onTime} / ${k.total}`} unit="개" sub={`준수율 ${Math.round(k.onTimeRate * 100)}%`} tone={k.onTime === k.total ? 'good' : 'bad'} />
       <StatCard icon="clock" label="총 지연" value={k.totalLateDays} unit="블록·일" sub={k.notRunnable ? `미배치·착수 불가 ${k.notRunnable}개` : '미배치 없음'} tone={k.totalLateDays || k.notRunnable ? 'bad' : 'good'} />
       <StatCard icon="block" label="비상 자재" value={`${k.emergencyUsed} / ${k.emergencyCapacity}`} unit="개" sub="자재 미준비 블록에 사용" tone={k.emergencyUsed > k.emergencyCapacity ? 'bad' : undefined} />
-      <StatCard icon="chart" label="자원 초과" value={k.overloadCells} unit="칸" sub={k.overloadCells ? '부하 그리드의 빨간 칸 확인' : '모든 날 용량 안'} tone={k.overloadCells ? 'bad' : 'good'} />
+      <StatCard icon="chart" label="자원 초과" value={k.overloadCells} unit="칸" sub={k.overloadCells ? `겹침 블록 ${k.conflicts}개 · 겹친 날 공수 불인정` : '모든 날 용량 안'} tone={k.overloadCells ? 'bad' : 'good'} />
     </div>
   );
 }
@@ -23,8 +24,6 @@ const POLICY: Record<Policy, { name: string; desc: string; icon: 'ship' | 'sort'
   edd: { name: '납기 빠른 순', desc: '납기가 급한 블록부터 배치', icon: 'sort' },
   optimal: { name: '최적화', desc: '순서·인원 구성을 탐색해 지연 최소화', icon: 'check' },
 };
-
-const same = (a: Assignments, b: Assignments) => JSON.stringify(a) === JSON.stringify(b);
 
 /** 발표 자료 "변경 전 / 변경 후" 비교 */
 export function PolicyCompare({ solve }: { solve: SolveResponse }) {
@@ -42,7 +41,7 @@ export function PolicyCompare({ solve }: { solve: SolveResponse }) {
           const sol = solve.solutions[p];
           const ev = evaluate(blocks, resources, sol.assignments);
           const warn = blocks.filter((b) => ev.blocks[b.id].status !== 'ok').map((b) => b.id);
-          const active = same(assignments, sol.assignments);
+          const active = samePlan(assignments, sol.assignments);
           return (
             <div key={p} className={`policy ${active ? 'active' : ''} ${sol.feasible ? 'good' : 'bad'}`}>
               <div className="policy-head">
