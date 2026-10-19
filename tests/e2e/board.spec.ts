@@ -288,7 +288,9 @@ test('모바일 폭에서 가로 스크롤 없음', async ({ page }) => {
   await start(page, 'novice', false);
   await step(page, '메뉴').click();
   const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  // 田자: 두 칸씩 두 줄
+  // 田자: 두 칸씩 두 줄, 촬영이 설정보다 앞
+  await expect(page.locator('.tile').nth(2)).toContainText('블록 작업 촬영');
+  await expect(page.locator('.tile').nth(3)).toContainText('설정');
   const tiles = await page.locator('.tile').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
   expect(tiles[0]).toBe(tiles[1]);
   expect(tiles[2]).toBe(tiles[3]);

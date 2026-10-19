@@ -124,15 +124,15 @@ export function MenuPage() {
           <strong>튜토리얼</strong>
           <small>예시 5블록으로 따라 하기</small>
         </button>
-        <button type="button" className="tile" onClick={() => setSettings(true)} data-testid="tile-settings">
-          <LineIcon name="gear" size={34} />
-          <strong>설정</strong>
-          <small>애니메이션 · 모드</small>
-        </button>
         <button type="button" className="tile" disabled title="준비 중">
           <LineIcon name="camera" size={34} />
           <strong>블록 작업 촬영</strong>
           <small>사진으로 엑셀 만들기 · 준비 중</small>
+        </button>
+        <button type="button" className="tile" onClick={() => setSettings(true)} data-testid="tile-settings">
+          <LineIcon name="gear" size={34} />
+          <strong>설정</strong>
+          <small>애니메이션 · 모드</small>
         </button>
       </div>
       <input
