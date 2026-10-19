@@ -144,9 +144,13 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   await expect(page.getByTestId('bar-A-101')).toContainText('16MH');
 
   // B-203도 1일차(작업장 2)에 일반 3명 → 보유 2명 초과(빨간 칸)
+  // 작업자가 없으면 막대는 필요 작업시간 기준 길이(24MH ÷ 8 = 3일), 작업자를 놓을수록 짧아진다
+  await expect(page.getByTestId('ghost-B-203')).toContainText('24MH · 3일');
   await drag(page, '[data-testid="chip-crane"]', '[data-testid="row-B-203"]');
   await expect(page.getByTestId('wp-1').getByTestId('bar-B-203')).toBeVisible();
+  expect(Math.round((await page.getByTestId('bar-B-203').boundingBox())!.width)).toBe(3 * 96 - 6);
   for (let i = 0; i < 3; i++) await drag(page, '[data-testid="chip-general"]', '[data-testid="row-B-203"]');
+  expect(Math.round((await page.getByTestId('bar-B-203').boundingBox())!.width)).toBe(96 - 6);
   await expect(page.getByTestId('load-general-1')).toHaveClass(/over/);
   await shot(page, '03-manual-overload');
 
@@ -172,8 +176,10 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   await expect(page.getByTestId('wp-1').getByTestId('bar-B-203')).toBeVisible();
   await expect(page.getByTestId('bar-B-203')).not.toContainText('작업장 겹침');
 
-  // 대기 블록을 작업장 테두리 안으로 끌어 놓기
-  await drag(page, '[data-testid="row-E-320"] .g-left', '[data-testid="wp-0"] .wp-title', async () => {
+  // 대기 블록의 점선 막대를 작업장 테두리 안으로 끌어 놓기
+  const ghost = (await page.getByTestId('ghost-E-320').boundingBox())!;
+  const wp0b = (await page.getByTestId('wp-0').boundingBox())!;
+  await drag(page, '[data-testid="ghost-E-320"]', { dy: wp0b.y + wp0b.height / 2 - (ghost.y + ghost.height / 2) }, async () => {
     await expect(page.getByTestId('wp-0')).toHaveClass(/wp-over/);
   });
   await expect(page.getByTestId('wp-0').getByTestId('row-E-320')).toBeVisible();
@@ -201,7 +207,7 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   expect(String(XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets.TBM)[0]['TBM 메시지'])).toContain('[TBM]');
 });
 
-test('최적 배치를 다시 누르면 착수 순서가 다른 차선책을 차례로 본다', async ({ page }) => {
+test('최적 배치를 다시 누르면 차선·차차선을 차례로 본다', async ({ page }) => {
   await start(page, 'expert');
   const btn = page.getByTestId('optimize-btn');
   await btn.click();
@@ -209,10 +215,10 @@ test('최적 배치를 다시 누르면 착수 순서가 다른 차선책을 차
   const first = await page.getByTestId('plan-option').innerText();
   const total = Number(first.match(/\(1\/(\d)\)/)![1]);
   expect(total).toBeGreaterThan(1);
-  expect(total).toBeLessThanOrEqual(4);
+  expect(total).toBeLessThanOrEqual(3);
   await expect(btn).toHaveText(`다음 안 보기 (1/${total})`);
   await btn.click();
-  await expect(page.getByTestId('plan-option')).toContainText(`차선책 1 (2/${total})`);
+  await expect(page.getByTestId('plan-option')).toContainText(`차선 (2/${total})`);
   expect(await page.getByTestId('plan-option').innerText()).not.toBe(first);
   await shot(page, '13-alternative');
   // 끝까지 넘기면 다시 최적 배치

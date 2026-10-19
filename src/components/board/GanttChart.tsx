@@ -1,6 +1,6 @@
 import { useDndContext, useDraggable, useDroppable } from '@dnd-kit/core';
 import type { Assignment, Assignments, Block, ResourceKind } from '../../domain/types';
-import type { BlockResult, Evaluation } from '../../domain/evaluate';
+import { nominalDuration, type BlockResult, type Evaluation } from '../../domain/evaluate';
 import { REASON_LABEL } from '../../domain/labels';
 import { assignBlockedReason } from '../../domain/assign';
 import { laneCount, workplaceOf } from '../../domain/lanes';
@@ -146,6 +146,30 @@ function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
   );
 }
 
+/** 아직 배치하지 않은 블록의 점선 막대: 1일 착수, 필요 작업시간 ÷ 8시간 길이. 작업장 테두리로 끌어 놓으면 배치된다. */
+function GhostBar({ block, days }: { block: Block; days: number }) {
+  const r = useStore((s) => s.resources);
+  const drag = useDraggable({ id: `wait:${block.id}`, data: { blockId: block.id, start: 1 } });
+  const nominal = nominalDuration(block.requiredMH, r);
+  const length = Math.min(nominal, days);
+  const shift = drag.transform ? Math.round(drag.transform.x / COL) : 0;
+  return (
+    <div
+      ref={drag.setNodeRef}
+      className={`g-bar ghost ${length === 1 ? 'short' : ''} ${drag.isDragging ? 'dragging' : ''}`}
+      data-testid={`ghost-${block.id}`}
+      data-day={drag.isDragging ? `${1 + shift}일 착수` : undefined}
+      title={`${block.id}: 필요 ${block.requiredMH} MH = 작업자 1명(하루 ${r.generalMHPerDay}MH) 기준 ${nominal}일. 작업장 테두리 안으로 끌어 놓으면 배치되고, 작업자를 놓을수록 짧아집니다`}
+      style={{ left: 3, width: length * COL - 6, transform: drag.transform ? `translate(${drag.transform.x}px, ${drag.transform.y}px)` : undefined }}
+      {...drag.listeners}
+      {...drag.attributes}
+      aria-label={`${block.id} 대기 블록. 작업장으로 끌어 놓아 배치`}
+    >
+      {block.requiredMH}MH · {nominal}일
+    </div>
+  );
+}
+
 interface RowProps {
   block: Block;
   res: BlockResult;
@@ -164,9 +188,7 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
   const resources = useStore((s) => s.resources);
   const selected = useStore((s) => s.selectedToken);
   const assign = useStore((s) => s.assign);
-  // 아직 배치하지 않은 블록은 왼쪽 칸을 끌어 작업장에 놓는다
   const waiting = res.start === null;
-  const drag = useDraggable({ id: `wait:${block.id}`, data: { blockId: block.id }, disabled: !waiting });
 
   const dragKind = active?.data.current?.kind as ResourceKind | undefined;
   const reason = isOver && dragKind ? assignBlockedReason(block, a, dragKind, resources, assignments) : null;
@@ -180,12 +202,10 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
       style={{ gridTemplateColumns: `var(--left) repeat(${days}, ${COL}px)` }}
     >
       <div
-        ref={drag.setNodeRef}
-        className={`g-left ${waiting ? 'waiting' : ''} ${drag.isDragging ? 'dragging' : ''}`}
+        className="g-left"
         tabIndex={0}
-        title={waiting ? '작업장 테두리 안으로 끌어 놓으면 그 날짜에 배치됩니다' : blockTitle(block, res)}
+        title={waiting ? '오른쪽 점선 막대를 작업장 테두리 안으로 끌어 놓으면 배치됩니다' : blockTitle(block, res)}
         aria-label={`${block.id} 배치 영역`}
-        {...(waiting ? drag.listeners : {})}
         onClick={(e) => {
           if (selected && !(e.target as HTMLElement).closest('button')) assign(block.id, selected);
         }}
@@ -227,6 +247,7 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
           ))}
         {block.dueDay <= days && <div className="due-line" style={{ left: block.dueDay * COL }} title={`납기: ${block.dueDay}일 끝`} />}
         {res.start !== null && a && <Bar block={block} res={res} a={a} days={days} workplaces={workplaces} onEdit={onEdit} />}
+        {waiting && <GhostBar block={block} days={days} />}
       </div>
     </div>
   );
@@ -297,7 +318,7 @@ export function GanttChart({ blocks, assignments, ev, days, hintBlock, onEdit }:
         <div className="wp-group waiting-group" data-testid="waiting" data-tour="waiting">
           <div className="wp-title">
             <strong>대기 블록</strong>
-            <span className="muted">자원 아이콘을 놓거나, 블록을 작업장으로 끌어 놓으세요</span>
+            <span className="muted">점선 막대를 작업장으로 끌어 놓거나, 자원 아이콘을 놓으세요</span>
           </div>
           {waiting.map(row)}
         </div>

@@ -83,11 +83,11 @@ describe('대규모 입력', () => {
 });
 
 describe('차선책', () => {
-  it('최적해와 착수 순서가 다른 차선책을 최대 3개, 좋은 순으로 준다', () => {
+  it('최적해와 착수 순서가 다른 차선·차차선을 최대 2개, 좋은 순으로 준다', () => {
     const sol = solvePolicy('optimal', TUTORIAL_BLOCKS, TUTORIAL_RESOURCES, { budgetMs: 300 });
     const alts = sol.alternatives!;
     expect(alts.length).toBeGreaterThan(0);
-    expect(alts.length).toBeLessThanOrEqual(3);
+    expect(alts.length).toBeLessThanOrEqual(2);
     const order = (a: typeof sol.assignments) =>
       Object.values(a)
         .filter((x) => x.startDay !== null)

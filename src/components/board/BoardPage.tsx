@@ -27,9 +27,9 @@ import { Legend, LoadGrid } from './LoadGrid';
 import { KpiCards, WhatIfCard } from './Insights';
 import { BlockEditor } from './BlockEditor';
 
-/** 막대는 하루 단위로 스냅하고 1일 앞으로는 못 간다. 위아래로는 다른 작업장으로 옮길 수 있다. */
+/** 막대(대기 블록의 점선 막대 포함)는 하루 단위로 스냅하고 1일 앞으로는 못 간다. 위아래로는 다른 작업장으로 옮길 수 있다. */
 const barModifier: Modifier = ({ transform, active }) => {
-  if (!String(active?.id).startsWith('bar:')) return transform;
+  if (!/^(bar|wait):/.test(String(active?.id))) return transform;
   const start = (active?.data.current?.start as number) ?? 1;
   return { ...transform, x: Math.max((1 - start) * COL, Math.round(transform.x / COL) * COL) };
 };
@@ -42,18 +42,14 @@ const collide: CollisionDetection = (args) => {
   return hits.length ? hits : rectIntersection(scoped);
 };
 
+const PLAN_NAME = ['최적 배치', '차선', '차차선'];
+
 /** 착수 순서 (같은 날은 ID 순) */
 function startOrder(a: Assignments): string[] {
   return Object.values(a)
     .filter((x) => x.startDay !== null)
     .sort((x, y) => x.startDay! - y.startDay! || x.blockId.localeCompare(y.blockId))
     .map((x) => x.blockId);
-}
-
-function pointerX(e: Event | null): number {
-  if (!e) return 0;
-  if ('touches' in e) return (e as TouchEvent).touches[0]?.clientX ?? 0;
-  return (e as MouseEvent).clientX;
 }
 
 export function BoardPage() {
@@ -70,7 +66,7 @@ export function BoardPage() {
   const clear = useStore((s) => s.clearAssignments);
   const showFull = useStore((s) => s.showFull);
   const setShowFull = useStore((s) => s.setShowFull);
-  const [drag, setDrag] = useState<{ kind?: ResourceKind; blockId?: string } | null>(null);
+  const [drag, setDrag] = useState<{ kind?: ResourceKind } | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<Hint | null>(null);
@@ -101,7 +97,6 @@ export function BoardPage() {
   const onDragStart = (e: DragStartEvent) => {
     const id = String(e.active.id);
     if (id.startsWith('res:')) setDrag({ kind: e.active.data.current?.kind as ResourceKind });
-    else if (id.startsWith('wait:')) setDrag({ blockId: id.slice(5) });
     else setDrag(null);
   };
   const onDragEnd = (e: DragEndEvent) => {
@@ -120,10 +115,8 @@ export function BoardPage() {
       if (wp !== undefined && wp !== fromWp) moveToWorkplace(blockId, start, wp);
       else if (start !== a.startDay) moveBlock(blockId, start);
     } else if (id.startsWith('wait:') && wp !== undefined) {
-      // 놓은 자리의 날짜: 첫 날짜 칸 기준
-      const firstDay = document.querySelector('.g-header .g-day')?.getBoundingClientRect().left ?? 0;
-      const x = pointerX(e.activatorEvent) + e.delta.x;
-      moveToWorkplace(id.slice(5), Math.floor((x - firstDay) / COL) + 1, wp);
+      // 점선 막대는 1일에서 출발하므로 옮긴 칸 수만큼 착수일이 늦어진다
+      moveToWorkplace(id.slice(5), 1 + Math.round(e.delta.x / COL), wp);
     }
   };
 
@@ -203,7 +196,7 @@ export function BoardPage() {
       {expert && applied >= 0 && options.length > 0 && (
         <div className="notice alt" role="status" data-testid="plan-option">
           <p>
-            <b>{applied === 0 ? '최적 배치' : `차선책 ${applied}`}</b> ({applied + 1}/{options.length}) · 납기 준수 {options[applied].kpi.onTime}/{options[applied].kpi.total} · 지연{' '}
+            <b>{PLAN_NAME[applied]}</b> ({applied + 1}/{options.length}) · 납기 준수 {options[applied].kpi.onTime}/{options[applied].kpi.total} · 지연{' '}
             {options[applied].kpi.totalLateDays}일 · 착수 순서: {startOrder(options[applied].assignments).join(' → ')}
           </p>
           <small className="muted">
@@ -231,7 +224,7 @@ export function BoardPage() {
         </div>
       )}
 
-      <KpiCards ev={ev} />
+      <KpiCards ev={ev} onlyOnTime />
       {!showFull && needed > MAX_DAYS && (
         <div className="notice warn">
           표시는 1~{days}일로 제한했습니다. 자원 충돌·KPI는 {ev.horizon}일까지 전체 배치를 분석합니다.{' '}
@@ -260,7 +253,6 @@ export function BoardPage() {
               <ResourceIcon kind={drag.kind} size={36} />
             </div>
           )}
-          {drag?.blockId && <div className="drag-ghost block-ghost">{drag.blockId}</div>}
         </DragOverlay>
       </DndContext>
       <Legend />

@@ -10,11 +10,12 @@ export interface Plan {
 
 export interface Solution extends Plan {
   policy: Policy;
-  /** 최적화만: 착수 순서가 다른 차선책 (좋은 순, 최대 MAX_ALTERNATIVES개) */
+  /** 최적화만: 착수 순서가 다른 차선·차차선 (좋은 순, 최대 MAX_ALTERNATIVES개) */
   alternatives?: Plan[];
 }
 
-export const MAX_ALTERNATIVES = 3;
+/** 후보는 최적 · 차선 · 차차선 3개까지 */
+export const MAX_ALTERNATIVES = 2;
 
 /** 재현 가능한 의사난수 (mulberry32) */
 export function rng(seed: number) {

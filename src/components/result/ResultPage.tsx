@@ -106,16 +106,18 @@ export function ResultPage() {
         </div>
       </section>
 
-      <TodayPanel ev={ev} day={day} onDay={setDay} maxDay={ev.horizon} />
-
-      {solve ? (
-        <ReportCard ev={ev} solve={solve} hintCount={expert ? null : hintCount} />
-      ) : (
-        <div className="panel muted-panel">
-          <LineIcon name="bulb" />
-          <span>최적 배치를 계산하고 있습니다.</span>
-        </div>
-      )}
+      {/* 한 줄: 왼쪽 최적 대비 평가서, 오른쪽 TBM 메시지 */}
+      <div className="result-row">
+        {solve ? (
+          <ReportCard ev={ev} solve={solve} hintCount={expert ? null : hintCount} />
+        ) : (
+          <div className="panel muted-panel">
+            <LineIcon name="bulb" />
+            <span>최적 배치를 계산하고 있습니다.</span>
+          </div>
+        )}
+        <TodayPanel ev={ev} day={day} onDay={setDay} maxDay={ev.horizon} />
+      </div>
     </div>
   );
 }

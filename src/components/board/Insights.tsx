@@ -5,11 +5,22 @@ import { useStore } from '../../store/schedulerStore';
 import { StatCard } from '../common/StatCard';
 import { LineIcon } from '../icons/LineIcons';
 
-export function KpiCards({ ev }: { ev: Evaluation }) {
+/** onlyOnTime: 블록 스케줄링에서는 납기 준수만 (나머지는 결과 페이지와 중복) */
+export function KpiCards({ ev, onlyOnTime = false }: { ev: Evaluation; onlyOnTime?: boolean }) {
   const k = ev.kpi;
+  const onTime = (
+    <StatCard icon="ship" label="블록 납기 준수" value={`${k.onTime} / ${k.total}`} unit="개" sub={`준수율 ${Math.round(k.onTimeRate * 100)}%`} tone={k.onTime === k.total ? 'good' : 'bad'} />
+  );
+  if (onlyOnTime) {
+    return (
+      <div className="stat-row kpis single" data-tour="kpi">
+        {onTime}
+      </div>
+    );
+  }
   return (
     <div className="stat-row kpis" data-tour="kpi">
-      <StatCard icon="ship" label="블록 납기 준수" value={`${k.onTime} / ${k.total}`} unit="개" sub={`준수율 ${Math.round(k.onTimeRate * 100)}%`} tone={k.onTime === k.total ? 'good' : 'bad'} />
+      {onTime}
       <StatCard icon="clock" label="총 지연" value={k.totalLateDays} unit="블록·일" sub={k.notRunnable ? `미배치·착수 불가 ${k.notRunnable}개` : '미배치 없음'} tone={k.totalLateDays || k.notRunnable ? 'bad' : 'good'} />
       <StatCard icon="block" label="비상 자재" value={`${k.emergencyUsed} / ${k.emergencyCapacity}`} unit="개" sub="자재 미준비 블록에 사용" tone={k.emergencyUsed > k.emergencyCapacity ? 'bad' : undefined} />
       <StatCard icon="chart" label="자원 초과" value={k.overloadCells} unit="칸" sub={k.overloadCells ? `겹침 블록 ${k.conflicts}개 · 겹친 날 공수 불인정` : '모든 날 용량 안'} tone={k.overloadCells ? 'bad' : 'good'} />

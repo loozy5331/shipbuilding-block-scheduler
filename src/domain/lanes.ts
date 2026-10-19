@@ -1,5 +1,5 @@
 import type { Assignment, Assignments, Block, Resources } from './types';
-import { dailyMHOf, durationOf } from './evaluate';
+import { dailyMHOf, durationOf, nominalDuration } from './evaluate';
 
 /** 작업 자리 수 = 작업장 × 작업장당 동시 처리 블록 */
 export function laneCount(r: Resources): number {
@@ -10,10 +10,10 @@ export function workplaceOf(lane: number, r: Resources): number {
   return Math.floor(lane / Math.max(1, r.blocksPerWorkplace));
 }
 
-/** 간트에 차지하는 기간 [start, end]. 작업자가 없어 기간을 모르면 하루로 본다. */
+/** 간트에 차지하는 기간 [start, end]. 작업자가 없으면 필요 작업시간 기준 길이로 본다. */
 export function spanOf(block: Block, a: Assignment, r: Resources): [number, number] | null {
   if (a.startDay === null) return null;
-  const d = durationOf(block.requiredMH, dailyMHOf(a, r)) ?? 1;
+  const d = durationOf(block.requiredMH, dailyMHOf(a, r)) ?? nominalDuration(block.requiredMH, r);
   return [a.startDay, a.startDay + d - 1];
 }
 
