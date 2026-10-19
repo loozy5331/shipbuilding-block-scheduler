@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-20
+
 ### 기능
 - 결과로 넘어갈 때 three.js 조립 애니메이션(이중선체 측면 블록, 용접 비드)
 - 숙련자는 블록 스케줄링에 들어오면 최적 배치로 시작
@@ -16,6 +18,7 @@
 
 ### 내부
 - 폴더 정리: 프론트엔드를 `frontend/`로, 회원 DB 기본 위치를 `backend/data/`로. npm 스크립트 `typecheck`·`samples` 추가
+- 버전 관리(유의적 버전·CHANGELOG·릴리스 태그)와 로드맵 문서 `docs/roadmap.md`
 
 ## [1.0.0] - 2026-10-20
 
@@ -35,5 +38,6 @@
 - 리팩토링 R1~R7: 스토어 slice 분리, `useEvaluation` 단일 평가, 컴포넌트·CSS·e2e 분리, 백엔드를 Python FastAPI로 전환
 - 블록 작업 촬영(OCR) 계획 문서 `docs/ocr-plan.md`
 
-[Unreleased]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.0.0...develop
+[Unreleased]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.1.0...develop
+[1.1.0]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/loozy5331/shipbuilding-block-scheduler/releases/tag/v1.0.0
