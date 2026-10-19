@@ -30,7 +30,7 @@ class UserId(BaseModel):
 
 
 def create_app(db_path: str | None = None) -> FastAPI:
-    store = UserStore(db_path or os.environ.get("AUTH_DB", str(ROOT / "data" / "users.db")))
+    store = UserStore(db_path or os.environ.get("AUTH_DB", str(ROOT / "backend" / "data" / "users.db")))
     app = FastAPI(title="블록 일정 스케줄러 API", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
     @app.exception_handler(AuthError)
