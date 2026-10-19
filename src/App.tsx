@@ -18,12 +18,19 @@ const VIEW: Record<Page, () => React.ReactNode> = {
   result: ResultPage,
 };
 
+/** 튜토리얼 중에는 지금 페이지와 가이드를 이미 본(지나온) 페이지로만 이동한다 (순서를 건너뛰지 않게) */
+function openInTutorial(page: Page, current: Page, guided: Page[]) {
+  return page === current || (page !== 'menu' && page !== 'login' && guided.includes(page));
+}
+
 export function App() {
   const page = useStore((s) => s.page);
   const setPage = useStore((s) => s.setPage);
   const blocks = useStore((s) => s.blocks);
   const user = useStore((s) => s.user);
   const mode = useStore((s) => s.mode);
+  const tutorialActive = useStore((s) => s.tutorialActive);
+  const tutorialGuided = useStore((s) => s.tutorialGuided);
   const logout = useStore((s) => s.logout);
   const assemblyShow = useStore((s) => s.assemblyShow);
 
@@ -58,7 +65,13 @@ export function App() {
               className={current === p.page ? 'on' : ''}
               aria-current={current === p.page ? 'step' : undefined}
               onClick={() => setPage(p.page)}
-              disabled={(!user && p.page !== 'login') || (!!user && p.page === 'login') || (needsBlocks(p.page) && blocks.length === 0)}
+              disabled={
+                (!user && p.page !== 'login') ||
+                (!!user && p.page === 'login') ||
+                (needsBlocks(p.page) && blocks.length === 0) ||
+                (tutorialActive && !openInTutorial(p.page, current, tutorialGuided))
+              }
+              title={tutorialActive && !openInTutorial(p.page, current, tutorialGuided) ? '튜토리얼 중에는 각 페이지의 다음 버튼으로 이동합니다' : undefined}
             >
               <span className="step-no">{i + 1}</span>
               <span className="step-label">{p.label}</span>
