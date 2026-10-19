@@ -15,8 +15,8 @@ export function InputPage() {
     <div className="paper">
       <header className="paper-head">
         <div>
-          <small className="muted">조립 공정 생산관리</small>
-          <h1>블 록 일 정 입 력</h1>
+          <small className="muted">블록 · 자원 · 계획 시작일</small>
+          <h1>공 통 설 정 입 력</h1>
           <div className="paper-meta">
             <span>
               블록 <b>{blocks.length}개</b>
@@ -57,8 +57,11 @@ export function InputPage() {
       </section>
 
       <div className="paper-foot">
-        <button type="button" className="btn primary" data-tour="next" disabled={blocks.length === 0 || hasDup} onClick={() => setPage('board')}>
-          다음: 배치 →
+        <button type="button" className="btn ghost" onClick={() => setPage('menu')}>
+          ← 메뉴
+        </button>
+        <button type="button" className="btn primary" data-tour="next" disabled={blocks.length === 0 || hasDup} onClick={() => setPage('schedule')}>
+          다음: 블록 스케줄링 →
         </button>
         {hasDup && <span className="error-text">블록 ID가 비었거나 중복되었습니다.</span>}
       </div>

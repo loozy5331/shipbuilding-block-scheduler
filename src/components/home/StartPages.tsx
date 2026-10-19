@@ -48,25 +48,48 @@ function SettingsDialog({ onClose }: { onClose(): void }) {
   );
 }
 
-/** 진입 화면: 모드 선택 → 田자 메뉴 */
-export function HomePage() {
-  const mode = useStore((s) => s.mode);
+/** ① 모드 선택 (로그인은 추후) */
+export function ModePage() {
   const setMode = useStore((s) => s.setMode);
   const setPage = useStore((s) => s.setPage);
-  const setBlocks = useStore((s) => s.setBlocks);
-  const planStart = useStore((s) => s.planStart);
-  const blocks = useStore((s) => s.blocks);
   const tutorialSeen = useStore((s) => s.tutorialSeen);
   const startTutorial = useStore((s) => s.startTutorial);
-  const showToast = useStore((s) => s.showToast);
-  const [settings, setSettings] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const choose = (m: UserMode) => {
     setMode(m);
     // 처음이면 튜토리얼부터
-    if (!tutorialSeen) startTutorial();
+    if (tutorialSeen) setPage('menu');
+    else startTutorial();
   };
+
+  return (
+    <div className="home">
+      <span className="eyebrow-label">— 조립 공정 생산관리</span>
+      <h1>누가 배치하나요?</h1>
+      <div className="mode-pick">
+        {(Object.keys(MODE) as UserMode[]).map((m) => (
+          <button key={m} type="button" className={`mode-btn ${m}`} onClick={() => choose(m)} data-testid={`mode-${m}`}>
+            <strong>{MODE[m].name}</strong>
+            <small>{MODE[m].desc}</small>
+          </button>
+        ))}
+      </div>
+      <p className="muted">로그인은 추후 지원 예정입니다.</p>
+    </div>
+  );
+}
+
+/** ② 田자 메뉴 */
+export function MenuPage() {
+  const mode = useStore((s) => s.mode) ?? 'expert';
+  const setPage = useStore((s) => s.setPage);
+  const setBlocks = useStore((s) => s.setBlocks);
+  const planStart = useStore((s) => s.planStart);
+  const blocks = useStore((s) => s.blocks);
+  const startTutorial = useStore((s) => s.startTutorial);
+  const showToast = useStore((s) => s.showToast);
+  const [settings, setSettings] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
@@ -75,35 +98,17 @@ export function HomePage() {
       if (r.blocks.length === 0) return showToast(`${file.name}: 읽은 블록이 없습니다. ${r.errors[0]?.message ?? ''}`);
       setBlocks(r.blocks);
       showToast(`${file.name}: 블록 ${r.blocks.length}개 읽음${r.errors.length ? ` · 오류 ${r.errors.length}건` : ''}`);
-      setPage('input');
+      setPage('setup');
     } catch {
       showToast('엑셀 파일을 읽지 못했습니다. .xlsx / .xls / .csv 파일인지 확인하세요.');
     }
   };
 
-  if (!mode) {
-    return (
-      <div className="home">
-        <span className="eyebrow-label">— 조립 공정 생산관리</span>
-        <h1>누가 배치하나요?</h1>
-        <div className="mode-pick">
-          {(Object.keys(MODE) as UserMode[]).map((m) => (
-            <button key={m} type="button" className={`mode-btn ${m}`} onClick={() => choose(m)} data-testid={`mode-${m}`}>
-              <strong>{MODE[m].name}</strong>
-              <small>{MODE[m].desc}</small>
-            </button>
-          ))}
-        </div>
-        <p className="muted">로그인은 추후 지원 예정입니다.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="home">
       <span className="eyebrow-label">
         — {MODE[mode].name} 모드 ·{' '}
-        <button type="button" className="link-btn" onClick={() => setMode(null)}>
+        <button type="button" className="link-btn" onClick={() => setPage('mode')}>
           모드 변경
         </button>
       </span>
@@ -141,7 +146,7 @@ export function HomePage() {
           e.target.value = '';
         }}
       />
-      <button type="button" className="btn ghost" onClick={() => setPage('input')}>
+      <button type="button" className="btn ghost" onClick={() => setPage('setup')}>
         {blocks.length ? `이어서 하기 (블록 ${blocks.length}개) →` : '직접 입력하기 →'}
       </button>
       {settings && <SettingsDialog onClose={() => setSettings(false)} />}

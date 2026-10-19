@@ -1,17 +1,25 @@
 import { useEffect } from 'react';
-import { useStore } from './store/schedulerStore';
-import { HomePage } from './components/home/HomePage';
+import { PAGES, useStore, type Page } from './store/schedulerStore';
+import { MenuPage, ModePage } from './components/home/StartPages';
 import { InputPage } from './components/input/InputPage';
 import { BoardPage } from './components/board/BoardPage';
+import { ResultPage } from './components/result/ResultPage';
 import { Tour } from './tutorial/Tour';
 import { Toast } from './components/common/Modal';
+
+const VIEW: Record<Page, () => React.ReactNode> = {
+  mode: ModePage,
+  menu: MenuPage,
+  setup: InputPage,
+  schedule: BoardPage,
+  result: ResultPage,
+};
 
 export function App() {
   const page = useStore((s) => s.page);
   const setPage = useStore((s) => s.setPage);
   const blocks = useStore((s) => s.blocks);
   const mode = useStore((s) => s.mode);
-  const startTutorial = useStore((s) => s.startTutorial);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -24,40 +32,37 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // 모드를 고르기 전에는 진입 화면만 보인다
-  const current = mode ? page : 'home';
+  // 모드를 고르기 전에는 모드 선택만, 블록이 없으면 스케줄링·결과로 갈 수 없다
+  const needsBlocks = (p: Page) => p === 'schedule' || p === 'result';
+  const current: Page = !mode ? 'mode' : needsBlocks(page) && blocks.length === 0 ? 'setup' : page;
+  const View = VIEW[current];
 
   return (
     <>
       <header className="topbar">
-        <button type="button" className="brand" onClick={() => setPage('home')} aria-label="처음 화면">
+        <button type="button" className="brand" onClick={() => mode && setPage('menu')} aria-label="메뉴로">
           <span className="brand-bar" />
           블록 일정 스케줄러
         </button>
-        {mode && (
-          <nav className="tabs">
-            <button type="button" className={current === 'home' ? 'on' : ''} onClick={() => setPage('home')}>
-              홈
+        <nav className="tabs steps" aria-label="단계">
+          {PAGES.map((p, i) => (
+            <button
+              key={p.page}
+              type="button"
+              className={current === p.page ? 'on' : ''}
+              aria-current={current === p.page ? 'step' : undefined}
+              onClick={() => setPage(p.page)}
+              disabled={(!mode && p.page !== 'mode') || (needsBlocks(p.page) && blocks.length === 0)}
+            >
+              <span className="step-no">{i + 1}</span>
+              <span className="step-label">{p.label}</span>
             </button>
-            <button type="button" className={current === 'input' ? 'on' : ''} onClick={() => setPage('input')}>
-              1. 입력
-            </button>
-            <button type="button" className={current === 'board' ? 'on' : ''} onClick={() => setPage('board')} disabled={blocks.length === 0}>
-              2. 배치
-            </button>
-          </nav>
-        )}
-        {mode && (
-          <>
-            <span className={`mode-chip ${mode}`}>{mode === 'expert' ? '숙련자' : '신입'}</span>
-            <button type="button" className="btn ghost small" onClick={startTutorial}>
-              튜토리얼
-            </button>
-          </>
-        )}
+          ))}
+        </nav>
+        {mode && <span className={`mode-chip ${mode}`}>{mode === 'expert' ? '숙련자' : '신입'}</span>}
       </header>
-      <main className={current === 'board' ? 'main' : 'main paper-bg'}>
-        {current === 'home' ? <HomePage /> : current === 'input' ? <InputPage /> : <BoardPage />}
+      <main className={current === 'schedule' || current === 'result' ? 'main' : 'main paper-bg'}>
+        <View />
       </main>
       <Tour />
       <Toast />

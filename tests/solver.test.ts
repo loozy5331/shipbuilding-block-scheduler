@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluate } from '../src/domain/evaluate';
+import { compareObjective, evaluate, objective } from '../src/domain/evaluate';
 import { solveAll } from '../src/solver';
 import { checkCapacity } from '../src/solver/feasibility';
 import { buildModes } from '../src/solver/modes';
@@ -79,5 +79,23 @@ describe('대규모 입력', () => {
     const ev = evaluate(blocks, r, res.solutions.optimal.assignments);
     expect(ev.kpi.overloadCells).toBe(0);
     expect(res.solutions.optimal.kpi.late).toBeLessThanOrEqual(res.solutions.edd.kpi.late);
+  });
+});
+
+describe('차선책', () => {
+  it('최적해와 착수 순서가 다른 차선책을 최대 3개, 좋은 순으로 준다', () => {
+    const sol = solvePolicy('optimal', TUTORIAL_BLOCKS, TUTORIAL_RESOURCES, { budgetMs: 300 });
+    const alts = sol.alternatives!;
+    expect(alts.length).toBeGreaterThan(0);
+    expect(alts.length).toBeLessThanOrEqual(3);
+    const order = (a: typeof sol.assignments) =>
+      Object.values(a)
+        .filter((x) => x.startDay !== null)
+        .sort((x, y) => x.startDay! - y.startDay! || x.blockId.localeCompare(y.blockId))
+        .map((x) => x.blockId)
+        .join();
+    const orders = [sol, ...alts].map((p) => order(p.assignments));
+    expect(new Set(orders).size).toBe(orders.length);
+    for (let i = 1; i < alts.length; i++) expect(compareObjective(objective(alts[i - 1].kpi), objective(alts[i].kpi))).toBeLessThanOrEqual(0);
   });
 });

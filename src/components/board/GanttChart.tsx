@@ -313,9 +313,10 @@ interface Props {
   assignments: Assignments;
   ev: Evaluation;
   days: number;
-  focusDay: number;
   hintBlock: string | null;
-  onFocusDay(day: number): void;
+  /** 주면 날짜 머리를 눌러 그날을 고를 수 있다 */
+  focusDay?: number;
+  onFocusDay?(day: number): void;
   onEdit(id: string): void;
 }
 

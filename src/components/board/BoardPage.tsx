@@ -13,12 +13,12 @@ import {
   type DragStartEvent,
   type Modifier,
 } from '@dnd-kit/core';
-import type { ResourceKind } from '../../domain/types';
+import type { Assignments, ResourceKind } from '../../domain/types';
 import { evaluate } from '../../domain/evaluate';
 import { nextHint, type Hint } from '../../domain/hint';
+import { samePlan } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { runSolve } from '../../store/actions';
-import { exportSchedule } from '../../io/excel';
 import { ResourceIcon } from '../icons/ResourceIcons';
 import { LineIcon } from '../icons/LineIcons';
 import { ResourcePalette } from './ResourcePalette';
@@ -26,8 +26,6 @@ import { COL, GanttChart, MAX_DAYS, WaitingTray } from './GanttChart';
 import { Legend, LoadGrid } from './LoadGrid';
 import { KpiCards, PolicyCompare, WhatIfCard } from './Insights';
 import { BlockEditor } from './BlockEditor';
-import { TodayPanel } from './TodayPanel';
-import { ReportCard } from './ReportCard';
 
 /** 막대는 하루 단위로 스냅하고 1일 앞으로는 못 간다. 위아래로는 다른 작업장으로 옮길 수 있다. */
 const barModifier: Modifier = ({ transform, active }) => {
@@ -44,6 +42,14 @@ const collide: CollisionDetection = (args) => {
   return hits.length ? hits : rectIntersection(scoped);
 };
 
+/** 착수 순서 (같은 날은 ID 순) */
+function startOrder(a: Assignments): string[] {
+  return Object.values(a)
+    .filter((x) => x.startDay !== null)
+    .sort((x, y) => x.startDay! - y.startDay! || x.blockId.localeCompare(y.blockId))
+    .map((x) => x.blockId);
+}
+
 function pointerX(e: Event | null): number {
   if (!e) return 0;
   if ('touches' in e) return (e as TouchEvent).touches[0]?.clientX ?? 0;
@@ -54,10 +60,10 @@ export function BoardPage() {
   const blocks = useStore((s) => s.blocks);
   const resources = useStore((s) => s.resources);
   const assignments = useStore((s) => s.assignments);
-  const planStart = useStore((s) => s.planStart);
   const solve = useStore((s) => s.solve);
   const mode = useStore((s) => s.mode);
   const hintCount = useStore((s) => s.hintCount);
+  const setPage = useStore((s) => s.setPage);
   const touring = useStore((s) => s.tutorialStep !== null);
   const assign = useStore((s) => s.assign);
   const moveBlock = useStore((s) => s.moveBlock);
@@ -68,7 +74,6 @@ export function BoardPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<Hint | null>(null);
-  const [focusDay, setFocusDay] = useState(1);
 
   const ev = useMemo(() => evaluate(blocks, resources, assignments), [blocks, resources, assignments]);
   // 막대를 오른쪽으로 더 끌 수 있도록 여유 열을 두고, 너무 길면 90일까지만 그린다
@@ -119,10 +124,18 @@ export function BoardPage() {
     }
   };
 
+  // 최적 배치 + 차선책. 지금 적용된 안이 몇 번째인지 (직접 고쳤으면 -1)
+  const options = solve ? [solve.solutions.optimal, ...(solve.solutions.optimal.alternatives ?? [])] : [];
+  const applied = options.findIndex((o) => samePlan(assignments, o.assignments));
+
+  /** 처음엔 최적 배치, 다시 누르면 차선책을 차례로 보여 준다 (현장 사정으로 먼저 해야 할 블록이 있을 수 있음) */
   const optimize = async () => {
     setBusy(true);
     try {
-      await runSolve('optimal');
+      const res = await runSolve(null);
+      const opts = [res.solutions.optimal, ...(res.solutions.optimal.alternatives ?? [])];
+      const cur = opts.findIndex((o) => samePlan(useStore.getState().assignments, o.assignments));
+      useStore.getState().applyAssignments(opts[(cur + 1) % opts.length].assignments);
     } finally {
       setBusy(false);
     }
@@ -147,9 +160,7 @@ export function BoardPage() {
     <div className="board">
       <div className="board-head">
         <div>
-          <span className="eyebrow-label">
-            — 02. 배치 · {expert ? '숙련자' : '신입'} 모드
-          </span>
+          <span className="eyebrow-label">— 블록 스케줄링 · {expert ? '숙련자' : '신입'} 모드</span>
           <h1 data-testid="verdict">
             {verdict === 'good' && (
               <>
@@ -165,30 +176,36 @@ export function BoardPage() {
           </h1>
         </div>
         <div className="board-actions">
-          <button type="button" className="btn ghost" onClick={() => useStore.getState().setPage('input')}>
-            ← 입력 수정
+          <button type="button" className="btn ghost" onClick={() => setPage('setup')}>
+            ← 공통 설정 입력
           </button>
           <button type="button" className="btn ghost" onClick={clear} disabled={Object.keys(assignments).length === 0}>
             초기화
           </button>
-          <button
-            type="button"
-            className="btn ghost"
-            onClick={() => exportSchedule(blocks, resources, assignments, planStart, { optimal: solve?.solutions.optimal.assignments, hintCount: expert ? undefined : hintCount })}
-          >
-            <LineIcon name="download" size={16} /> 엑셀 내보내기
-          </button>
           {expert ? (
-            <button type="button" className="btn primary" onClick={optimize} disabled={busy || blocks.length === 0} data-tour="optimize">
-              {busy ? '계산 중…' : '최적 배치'}
+            <button type="button" className="btn primary" onClick={optimize} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="optimize-btn">
+              {busy ? '계산 중…' : applied < 0 || options.length < 2 ? '최적 배치' : `다음 안 보기 (${applied + 1}/${options.length})`}
             </button>
           ) : (
             <button type="button" className="btn primary" onClick={askHint} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="hint-btn">
               <LineIcon name="bulb" size={16} /> {busy ? '계산 중…' : '힌트'}
             </button>
           )}
+          <button type="button" className="btn primary" onClick={() => setPage('result')} disabled={blocks.length === 0}>
+            다음: 결과 →
+          </button>
         </div>
       </div>
+
+      {expert && applied >= 0 && options.length > 0 && (
+        <div className="notice alt" role="status" data-testid="plan-option">
+          <p>
+            <b>{applied === 0 ? '최적 배치' : `차선책 ${applied}`}</b> ({applied + 1}/{options.length}) · 납기 준수 {options[applied].kpi.onTime}/{options[applied].kpi.total} · 지연{' '}
+            {options[applied].kpi.totalLateDays}일 · 착수 순서: {startOrder(options[applied].assignments).join(' → ')}
+          </p>
+          {options.length > 1 && <small className="muted">버튼을 다시 누르면 착수 순서가 다른 안을 봅니다. 현장 사정으로 먼저 해야 할 블록이 있으면 차선책을 고르세요.</small>}
+        </div>
+      )}
 
       {hint && (
         <div className="notice hint" role="status" data-testid="hint">
@@ -226,9 +243,7 @@ export function BoardPage() {
             assignments={assignments}
             ev={ev}
             days={days}
-            focusDay={focusDay}
             hintBlock={hint?.blockId ?? null}
-            onFocusDay={setFocusDay}
             onEdit={setEditing}
           />
           <LoadGrid ev={ev} days={days} />
@@ -244,16 +259,11 @@ export function BoardPage() {
       </DndContext>
       <Legend />
 
-      <TodayPanel ev={ev} day={focusDay} onDay={setFocusDay} maxDay={ev.horizon} />
-
       {solve ? (
-        <>
-          <ReportCard ev={ev} solve={solve} hintCount={expert ? null : hintCount} />
-          <div className="insights">
-            {(expert || touring) && <PolicyCompare solve={solve} />}
-            <WhatIfCard solve={solve} />
-          </div>
-        </>
+        <div className="insights">
+          {(expert || touring) && <PolicyCompare solve={solve} />}
+          <WhatIfCard solve={solve} />
+        </div>
       ) : (
         <div className="panel muted-panel">
           <LineIcon name="bulb" />

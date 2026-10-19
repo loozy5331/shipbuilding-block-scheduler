@@ -8,7 +8,16 @@ import { assignBlockedReason } from '../domain/assign';
 import { assignLanes } from '../domain/lanes';
 import { TUTORIAL_BLOCKS, TUTORIAL_RESOURCES } from '../tutorial/scenario';
 
-export type Page = 'home' | 'input' | 'board';
+/** 유저 여정: 모드 선택 → 메뉴 → 공통 설정 입력 → 블록 스케줄링 → 결과 */
+export type Page = 'mode' | 'menu' | 'setup' | 'schedule' | 'result';
+
+export const PAGES: { page: Page; label: string }[] = [
+  { page: 'mode', label: '모드 선택' },
+  { page: 'menu', label: '메뉴' },
+  { page: 'setup', label: '공통 설정 입력' },
+  { page: 'schedule', label: '블록 스케줄링' },
+  { page: 'result', label: '결과' },
+];
 
 export interface Settings {
   /** 간트 위 작업 애니메이션 (준비 중) */
@@ -75,7 +84,7 @@ const storage = createJSONStorage(() => {
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
-      page: 'home',
+      page: 'mode',
       mode: null,
       settings: { animation: true },
       hintCount: 0,
@@ -173,7 +182,7 @@ export const useStore = create<State>()(
 
       startTutorial: () => {
         get().loadScenario();
-        set({ tutorialStep: 0, page: 'input' });
+        set({ tutorialStep: 0, page: 'setup' });
       },
       setTutorialStep: (tutorialStep) => set(tutorialStep === null ? { tutorialStep, tutorialSeen: true } : { tutorialStep }),
       setShowFull: (showFull) => set({ showFull }),
@@ -182,10 +191,14 @@ export const useStore = create<State>()(
     }),
     {
       name: 'block-scheduler',
-      version: 2,
+      version: 3,
       storage,
-      // v1 → v2: 모드·설정·작업 자리 추가. 기존 입력·배치는 그대로 두고 자리는 화면에서 채운다.
-      migrate: (persisted) => persisted as State,
+      // v1 → v2: 모드·설정·작업 자리 추가 (자리는 화면에서 채운다). v2 → v3: 페이지 이름 변경
+      migrate: (persisted) => {
+        const s = persisted as State & { page: string };
+        const renamed: Record<string, Page> = { home: 'menu', input: 'setup', board: 'schedule' };
+        return { ...s, page: renamed[s.page] ?? s.page } as State;
+      },
       partialize: (s) => ({
         page: s.page,
         mode: s.mode,

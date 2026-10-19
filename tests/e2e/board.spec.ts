@@ -30,16 +30,17 @@ async function drag(page: Page, from: string, to: string | { dx?: number; dy?: n
   await page.waitForTimeout(80);
 }
 
-/** 모드를 고르고(첫 방문이면 튜토리얼이 열리므로 건너뛴다) 샘플로 배치 화면까지 */
+const step = (page: Page, label: string) => page.locator('.steps button', { hasText: label });
+
+/** 모드를 고르고(첫 방문이면 튜토리얼이 열리므로 건너뛰면 공통 설정 입력) 샘플로 블록 스케줄링까지 */
 async function start(page: Page, mode: 'expert' | 'novice', sample = true) {
   await page.goto('/');
   await page.getByTestId(`mode-${mode}`).click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
-  await page.getByRole('button', { name: '홈' }).click();
+  await expect(page.locator('.paper-head h1')).toHaveText('공 통 설 정 입 력');
   if (!sample) return;
-  await page.getByRole('button', { name: /직접 입력하기|이어서 하기/ }).click();
   await page.getByRole('button', { name: '샘플 불러오기' }).click();
-  await page.getByRole('button', { name: '다음: 배치 →' }).click();
+  await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
 }
 
 test('진입 화면: 모드 선택 → 田자 메뉴 → 엑셀 업로드', async ({ page }) => {
@@ -48,7 +49,7 @@ test('진입 화면: 모드 선택 → 田자 메뉴 → 엑셀 업로드', asyn
   await shot(page, '00-mode');
   await page.getByTestId('mode-novice').click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
-  await page.getByRole('button', { name: '홈' }).click();
+  await step(page, '메뉴').click();
   await expect(page.locator('.tile')).toHaveCount(4);
   await expect(page.locator('.mode-chip')).toHaveText('신입');
   await shot(page, '00-home');
@@ -75,10 +76,10 @@ test('튜토리얼 전체 진행', async ({ page }) => {
     await expect(page.getByTestId('tour-next')).toBeEnabled();
     await shot(page, `01-tour-${String(i).padStart(2, '0')}`);
   }
-  await expect(page.locator('.tour-card')).toContainText('추가 자원');
+  await expect(page.locator('.tour-card')).toContainText('TBM');
   await page.getByTestId('tour-next').click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  // 튜토리얼 끝에는 최적 배치 적용 상태
+  // 튜토리얼 끝에는 최적 배치를 적용한 결과 페이지
   await expect(page.locator('[data-tour="kpi"]')).toContainText('5 / 5');
 });
 
@@ -129,14 +130,19 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   });
   await expect(page.getByTestId('lane-0').getByTestId('bar-E-320')).toBeVisible();
 
-  await page.getByRole('button', { name: '최적 배치' }).click();
+  await page.getByTestId('optimize-btn').click();
   await expect(page.locator('[data-tour="kpi"]')).toContainText('5 / 5');
   await expect(page.locator('.wait-chip')).toHaveCount(0);
-  await expect(page.getByTestId('report')).toContainText('현재 배치가 최적 배치와 같은 수준');
+  await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
   await shot(page, '04-optimized');
 
+  await page.getByRole('button', { name: '다음: 결과 →' }).click();
+  await expect(page.getByTestId('report')).toContainText('현재 배치가 최적 배치와 같은 수준');
+  await expect(page.getByTestId('plan-table')).toContainText('작업장 1');
+  await shot(page, '12-result');
+
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: '엑셀 내보내기' }).click();
+  await page.getByRole('button', { name: '엑셀 저장' }).click();
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/^블록_배치_.*\.xlsx$/);
   const wb = XLSX.read(readFileSync(await file.path()));
@@ -145,6 +151,26 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   expect(plan[0]).toHaveProperty('작업장');
   expect(plan[0]).toHaveProperty('작업자 수');
   expect(String(XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets.TBM)[0]['TBM 메시지'])).toContain('[TBM]');
+});
+
+test('최적 배치를 다시 누르면 착수 순서가 다른 차선책을 차례로 본다', async ({ page }) => {
+  await start(page, 'expert');
+  const btn = page.getByTestId('optimize-btn');
+  await btn.click();
+  await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
+  const first = await page.getByTestId('plan-option').innerText();
+  const total = Number(first.match(/\(1\/(\d)\)/)![1]);
+  expect(total).toBeGreaterThan(1);
+  expect(total).toBeLessThanOrEqual(4);
+  await expect(btn).toHaveText(`다음 안 보기 (1/${total})`);
+  await btn.click();
+  await expect(page.getByTestId('plan-option')).toContainText(`차선책 1 (2/${total})`);
+  expect(await page.getByTestId('plan-option').innerText()).not.toBe(first);
+  await shot(page, '13-alternative');
+  // 끝까지 넘기면 다시 최적 배치
+  for (let i = 2; i < total; i++) await btn.click();
+  await btn.click();
+  await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
 });
 
 test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·숫자 편집', async ({ page }) => {
@@ -213,16 +239,18 @@ test('신입 모드: 최적 배치 대신 단계적 힌트', async ({ page }) =>
   }
   await expect(page.getByTestId('hint')).toContainText('최적 배치만큼 좋습니다');
   await expect(page.locator('[data-tour="kpi"]')).toContainText('5 / 5');
+  await page.getByRole('button', { name: '다음: 결과 →' }).click();
   await expect(page.getByTestId('report')).toContainText('힌트 사용');
 });
 
 test('오늘 작업과 TBM 메시지', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await start(page, 'expert');
-  await page.getByRole('button', { name: '최적 배치' }).click();
+  await page.getByTestId('optimize-btn').click();
+  await page.getByRole('button', { name: '다음: 결과 →' }).click();
   await expect(page.getByTestId('tbm')).toContainText('[TBM]');
   await expect(page.getByTestId('tbm')).toContainText('작업장 1');
-  await page.locator('.g-header button.g-day').nth(1).click();
+  await page.getByRole('button', { name: '다음 날' }).click();
   await expect(page.locator('[data-tour="tbm"] h3')).toContainText('2일차');
   await page.locator('[data-tour="tbm"]').getByRole('button', { name: '복사' }).click();
   await expect(page.locator('.toast')).toContainText('TBM 메시지를 복사했습니다');
@@ -232,12 +260,12 @@ test('오늘 작업과 TBM 메시지', async ({ page, context }) => {
 
 test('자원 부족 시 즉시 불가 판정과 추가 자원 제안', async ({ page }) => {
   await start(page, 'expert');
-  await page.getByRole('button', { name: '← 입력 수정' }).click();
+  await page.getByRole('button', { name: '← 공통 설정 입력' }).click();
   await page.getByRole('button', { name: '숙련공 줄이기' }).click();
   await page.getByRole('button', { name: '일반 작업자 줄이기' }).click();
   await page.getByRole('button', { name: '일반 작업자 줄이기' }).click();
   await expect(page.locator('.verdict')).toContainText('불가능');
-  await page.getByRole('button', { name: '다음: 배치 →' }).click();
+  await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
   await expect(page.getByTestId('verdict')).toContainText('납기 준수 불가');
   await expect(page.locator('[data-tour="whatif"]')).toContainText('대응안 1');
   await shot(page, '05-whatif');
@@ -247,11 +275,10 @@ test('자원 부족 시 즉시 불가 판정과 추가 자원 제안', async ({ 
 
 test('30블록 엑셀', async ({ page }) => {
   await start(page, 'expert', false);
-  await page.getByRole('button', { name: /직접 입력하기|이어서 하기/ }).click();
   await page.getByTestId('excel-input').setInputFiles(path.resolve('public/sample-30-blocks.xlsx'));
   await expect(page.locator('.parse-result')).toContainText('블록 30개 읽음');
-  await page.getByRole('button', { name: '다음: 배치 →' }).click();
-  await page.getByRole('button', { name: '최적 배치' }).click();
+  await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
+  await page.getByTestId('optimize-btn').click();
   await expect(page.getByTestId('verdict')).not.toContainText('판정 중');
   await shot(page, '06-thirty');
 });
@@ -259,6 +286,7 @@ test('30블록 엑셀', async ({ page }) => {
 test('모바일 폭에서 가로 스크롤 없음', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await start(page, 'novice', false);
+  await step(page, '메뉴').click();
   const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   // 田자: 두 칸씩 두 줄
   const tiles = await page.locator('.tile').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
@@ -271,8 +299,12 @@ test('모바일 폭에서 가로 스크롤 없음', async ({ page }) => {
   await page.getByRole('button', { name: '샘플 불러오기' }).click();
   expect(await overflow()).toBeLessThanOrEqual(0);
   await shot(page, '07-mobile-input');
-  await page.getByRole('button', { name: '다음: 배치 →' }).click();
+  await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
   await page.getByTestId('hint-btn').click();
   expect(await overflow()).toBeLessThanOrEqual(0);
   await shot(page, '07-mobile-board');
+  await page.getByRole('button', { name: '다음: 결과 →' }).click();
+  await expect(page.getByTestId('tbm')).toBeVisible();
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  await shot(page, '07-mobile-result');
 });
