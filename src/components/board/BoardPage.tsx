@@ -43,9 +43,13 @@ export function BoardPage() {
     if (Object.values(assignments).some((a) => a.startDay !== null && a.lane === undefined)) useStore.getState().applyAssignments(assignments);
   }, [assignments]);
 
-  // 입력이 바뀌면 바로 가능/불가를 판정한다 (배치는 바꾸지 않음)
+  // 입력이 바뀌면 바로 가능/불가를 판정한다. 숙련자는 아직 아무것도 배치하지 않았으면 최적 배치로 시작한다
+  // (직접 고친 배치·초기화한 상태는 덮어쓰지 않고, 튜토리얼은 빈 상태에서 따라 한다)
   useEffect(() => {
-    if (!solve && blocks.length > 0) runSolve(null).catch(() => undefined);
+    if (solve || blocks.length === 0) return;
+    const s = useStore.getState();
+    const startOptimal = s.mode !== 'novice' && !s.tutorialActive && Object.keys(s.assignments).length === 0;
+    runSolve(startOptimal ? 'optimal' : null).catch(() => undefined);
   }, [solve, blocks, resources]);
 
   // 배치가 바뀌면 지난 힌트는 낡는다

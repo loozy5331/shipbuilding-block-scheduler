@@ -83,11 +83,12 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   expect(String(XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets.TBM)[0]['TBM 메시지'])).toContain('[TBM]');
 });
 
-test('최적 배치를 다시 누르면 차선·차차선을 차례로 본다', async ({ page }) => {
+test('숙련자는 최적 배치로 시작하고, 다시 누르면 차선·차차선을 차례로 본다', async ({ page }) => {
   await start(page, 'expert');
   const btn = page.getByTestId('optimize-btn');
-  await btn.click();
+  // 들어오자마자 최적 배치가 적용되어 있다
   await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
+  await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(0);
   const first = await page.getByTestId('plan-option').innerText();
   const total = Number(first.match(/\(1\/(\d)\)/)![1]);
   expect(total).toBeGreaterThan(1);
@@ -127,6 +128,11 @@ test('최적 배치로 줄이 재정렬되면 줄이 새 자리로 미끄러진�
 
 test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·숫자 편집', async ({ page }) => {
   await start(page, 'expert');
+  await expect(page.getByTestId('plan-option')).toBeVisible();
+  // 초기화하면 빈 간트에서 직접 배치한다 (최적 배치가 다시 덮어쓰지 않는다)
+  await page.getByRole('button', { name: '초기화' }).click();
+  await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
+  await page.waitForTimeout(300);
   await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
 
   await drag(page, '[data-testid="chip-crane"]', '[data-testid="row-A-101"]');
@@ -178,6 +184,8 @@ test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·�
 test('신입 모드: 최적 배치 대신 단계적 힌트', async ({ page }) => {
   await start(page, 'novice');
   await expect(page.getByRole('button', { name: '최적 배치' })).toHaveCount(0);
+  // 신입은 빈 간트에서 직접 배치하며 시작한다
+  await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
 
   await page.getByTestId('hint-btn').click();
   await expect(page.getByTestId('hint')).toContainText('힌트 1');

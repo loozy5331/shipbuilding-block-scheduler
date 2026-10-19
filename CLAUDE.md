@@ -26,7 +26,7 @@ React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 
 | 페이지 | `components/home/{LoginPage,MenuPage}` → `input/InputPage` → `board/BoardPage` → `result/ResultPage` (`App.tsx`가 전환) |
 | 간트 | `board/GanttChart.tsx`(줄·작업장), `board/GanttBars.tsx`(막대·아이콘), 드래그 `board/useBoardDnd.ts`, 칸 폭 `board/ganttLayout.ts` |
 | 튜토리얼 가이드 | 단계 `src/tutorial/steps.ts`, 화면 `Tour.tsx`, 예시 데이터 `scenario.ts` |
-| 조립 애니메이션 | 장면 데이터 `components/assembly/scene.ts`, 화면 `AssemblyShow.tsx` |
+| 조립 애니메이션 | 장면 데이터 `assembly/scene.ts`, 시간표 `timeline.ts`, three.js 연출 `three/runShow.ts`(카메라·빛·장면별 동작), 모델(선박 블록 단면·이음부 경로 포함) `three/models.ts`, 용접 비드 `three/weldBead.ts`, 불꽃·먼지 `three/effects.ts`, 오버레이 `AssemblyShow.tsx`(three.js는 재생 때만 로드) |
 | 스타일 | `src/styles/parts/NN-*.css` — **번호 순서가 우선순위**(app.css가 순서대로 @import). 새 스타일은 해당 구역 파일에 |
 | 계획 문서 | `docs/ocr-plan.md` |
 
