@@ -5,14 +5,16 @@ import { InputPage } from './components/input/InputPage';
 import { BoardPage } from './components/board/BoardPage';
 import { ResultPage } from './components/result/ResultPage';
 import { Tour } from './tutorial/Tour';
+import { TutorialPage } from './tutorial/TutorialPage';
 import { Toast } from './components/common/Modal';
 
 const VIEW: Record<Page, () => React.ReactNode> = {
   mode: ModePage,
   menu: MenuPage,
   setup: InputPage,
-  schedule: BoardPage,
+  schedule: () => <BoardPage />,
   result: ResultPage,
+  tutorial: TutorialPage,
 };
 
 export function App() {
@@ -20,6 +22,7 @@ export function App() {
   const setPage = useStore((s) => s.setPage);
   const blocks = useStore((s) => s.blocks);
   const mode = useStore((s) => s.mode);
+  const touring = useStore((s) => s.tutorialStep !== null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -34,7 +37,9 @@ export function App() {
 
   // 모드를 고르기 전에는 모드 선택만, 블록이 없으면 스케줄링·결과로 갈 수 없다
   const needsBlocks = (p: Page) => p === 'schedule' || p === 'result';
-  const current: Page = !mode ? 'mode' : needsBlocks(page) && blocks.length === 0 ? 'setup' : page;
+  let current: Page = !mode ? 'mode' : needsBlocks(page) && blocks.length === 0 ? 'setup' : page;
+  // 새로고침 등으로 튜토리얼이 끊겼으면 메뉴로
+  if (current === 'tutorial' && !touring) current = 'menu';
   const View = VIEW[current];
 
   return (
@@ -61,7 +66,7 @@ export function App() {
         </nav>
         {mode && <span className={`mode-chip ${mode}`}>{mode === 'expert' ? '숙련자' : '신입'}</span>}
       </header>
-      <main className={current === 'schedule' || current === 'result' ? 'main' : 'main paper-bg'}>
+      <main className={current === 'schedule' || current === 'result' || current === 'tutorial' ? 'main' : 'main paper-bg'}>
         <View />
       </main>
       <Tour />

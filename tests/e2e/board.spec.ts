@@ -30,15 +30,15 @@ async function drag(page: Page, from: string, to: string | { dx?: number; dy?: n
   await page.waitForTimeout(80);
 }
 
-const step = (page: Page, label: string) => page.locator('.steps button', { hasText: label });
-
-/** 모드를 고르고(첫 방문이면 튜토리얼이 열리므로 건너뛰면 공통 설정 입력) 샘플로 블록 스케줄링까지 */
+/** 모드를 고르고(첫 방문이면 튜토리얼이 열리므로 건너뛰면 메뉴) 샘플로 블록 스케줄링까지 */
 async function start(page: Page, mode: 'expert' | 'novice', sample = true) {
   await page.goto('/');
   await page.getByTestId(`mode-${mode}`).click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
-  await expect(page.locator('.paper-head h1')).toHaveText('공 통 설 정 입 력');
+  await expect(page.locator('.tile')).toHaveCount(4);
   if (!sample) return;
+  await page.getByRole('button', { name: /이어서 하기|직접 입력하기/ }).click();
+  await expect(page.locator('.paper-head h1')).toHaveText('공 통 설 정 입 력');
   await page.getByRole('button', { name: '샘플 불러오기' }).click();
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
 }
@@ -49,7 +49,6 @@ test('진입 화면: 모드 선택 → 田자 메뉴 → 엑셀 업로드', asyn
   await shot(page, '00-mode');
   await page.getByTestId('mode-novice').click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
-  await step(page, '메뉴').click();
   await expect(page.locator('.tile')).toHaveCount(4);
   await expect(page.locator('.mode-chip')).toHaveText('신입');
   await shot(page, '00-home');
@@ -71,16 +70,20 @@ test('튜토리얼 전체 진행', async ({ page }) => {
   await page.getByTestId('mode-expert').click();
   await expect(page.getByRole('dialog', { name: '튜토리얼' })).toBeVisible();
   await shot(page, '01-tour-intro');
-  for (let i = 1; i < 12; i++) {
+  // 튜토리얼은 한 페이지에서 진행하고, 엑셀 업로드 같은 입력 기능은 없다
+  for (let i = 1; i < 11; i++) {
     await page.getByTestId('tour-next').click();
     await expect(page.getByTestId('tour-next')).toBeEnabled();
+    await expect(page.locator('.tutorial-page')).toBeVisible();
+    await expect(page.getByTestId('excel-input')).toHaveCount(0);
     await shot(page, `01-tour-${String(i).padStart(2, '0')}`);
   }
   await expect(page.locator('.tour-card')).toContainText('TBM');
+  await expect(page.locator('[data-tour="kpi"]')).toContainText('5 / 5');
   await page.getByTestId('tour-next').click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  // 튜토리얼 끝에는 최적 배치를 적용한 결과 페이지
-  await expect(page.locator('[data-tour="kpi"]')).toContainText('5 / 5');
+  // 끝나면 메뉴로
+  await expect(page.locator('.tile')).toHaveCount(4);
 });
 
 test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작업장 변경 → 최적 배치 → 내보내기', async ({ page }) => {
@@ -278,6 +281,7 @@ test('자원 부족 시 즉시 불가 판정과 추가 자원 제안', async ({ 
 
 test('30블록 엑셀', async ({ page }) => {
   await start(page, 'expert', false);
+  await page.getByRole('button', { name: /이어서 하기|직접 입력하기/ }).click();
   await page.getByTestId('excel-input').setInputFiles(path.resolve('public/sample-30-blocks.xlsx'));
   await expect(page.locator('.parse-result')).toContainText('블록 30개 읽음');
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
@@ -289,7 +293,6 @@ test('30블록 엑셀', async ({ page }) => {
 test('모바일 폭에서 가로 스크롤 없음', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await start(page, 'novice', false);
-  await step(page, '메뉴').click();
   const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   // 田자: 두 칸씩 두 줄, 촬영이 설정보다 앞
   await expect(page.locator('.tile').nth(2)).toContainText('블록 작업 촬영');

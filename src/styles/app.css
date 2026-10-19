@@ -1965,3 +1965,74 @@ button.brand {
   font-size: 11px;
 }
 
+/* ---------- 튜토리얼 페이지 ---------- */
+.tutorial-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 16px;
+}
+
+.tutorial-grid .panel {
+  margin: 0;
+}
+
+.plain-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.plain-table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.plain-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.plain-table .num {
+  text-align: right;
+}
+
+.resource-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.resource-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.resource-list dt {
+  color: var(--muted);
+}
+
+.resource-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* 튜토리얼 안에 넣은 배치 화면은 바깥 여백·제목을 줄인다 */
+.tutorial-page .board .board-head h1 {
+  font-size: 22px;
+}
+
+@media (max-width: 860px) {
+  .tutorial-grid {
+    grid-template-columns: 1fr;
+  }
+}

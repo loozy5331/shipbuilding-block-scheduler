@@ -9,7 +9,7 @@ import { assignLanes, seatIn } from '../domain/lanes';
 import { TUTORIAL_BLOCKS, TUTORIAL_RESOURCES } from '../tutorial/scenario';
 
 /** 유저 여정: 모드 선택 → 메뉴 → 공통 설정 입력 → 블록 스케줄링 → 결과 */
-export type Page = 'mode' | 'menu' | 'setup' | 'schedule' | 'result';
+export type Page = 'mode' | 'menu' | 'setup' | 'schedule' | 'result' | 'tutorial';
 
 export const PAGES: { page: Page; label: string }[] = [
   { page: 'mode', label: '모드 선택' },
@@ -191,9 +191,11 @@ export const useStore = create<State>()(
 
       startTutorial: () => {
         get().loadScenario();
-        set({ tutorialStep: 0, page: 'setup' });
+        set({ tutorialStep: 0, page: 'tutorial' });
       },
-      setTutorialStep: (tutorialStep) => set(tutorialStep === null ? { tutorialStep, tutorialSeen: true } : { tutorialStep }),
+      // 튜토리얼을 끝내면 메뉴로 돌아간다
+      setTutorialStep: (tutorialStep) =>
+        set((s) => (tutorialStep === null ? { tutorialStep, tutorialSeen: true, page: s.page === 'tutorial' ? 'menu' : s.page } : { tutorialStep })),
       setShowFull: (showFull) => set({ showFull }),
       selectToken: (selectedToken) => set({ selectedToken }),
       showToast: (message) => set((s) => ({ toast: { id: (s.toast?.id ?? 0) + 1, message } })),
