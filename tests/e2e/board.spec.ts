@@ -37,7 +37,7 @@ async function start(page: Page, mode: 'expert' | 'novice', sample = true) {
   await page.goto('/');
   await page.getByTestId(`mode-${mode}`).click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
-  await expect(page.locator('.paper-head h1')).toHaveText('공 통 설 정 입 력');
+  await expect(page.getByTestId('setup-title')).toBeVisible();
   if (!sample) {
     await step(page, '메뉴').click();
     await expect(page.locator('.tile')).toHaveCount(4);
@@ -80,49 +80,66 @@ test('진입 화면: 모드 선택 → 田자 메뉴 → 엑셀 업로드', asyn
   await expect(page.locator('[data-tour="summary"]')).toContainText('80');
 });
 
-test('가이드를 건너뛰어도 지금 페이지에 머문다', async ({ page }) => {
+test('가이드를 건너뛰면 튜토리얼이 끝나고 지금 페이지에 머문다', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('mode-expert').click();
   await page.getByTestId('tour-next').click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('.paper-head h1')).toHaveText('공 통 설 정 입 력');
-  // 스케줄링 단계에서 Esc로 닫아도 그 페이지에 남는다
+  await expect(page.getByTestId('setup-title')).toBeVisible();
+  await expect(page.getByTestId('excel-input')).toHaveCount(1);
+  // 블록 스케줄링 가이드에서 Esc로 닫아도 그 페이지에 남는다
   await step(page, '메뉴').click();
   await page.getByTestId('tile-tutorial').click();
-  for (let i = 0; i < 5; i++) await page.getByTestId('tour-next').click();
-  await expect(page.getByTestId('verdict')).toBeVisible();
+  for (let i = 0; i < 4; i++) await page.getByTestId('tour-next').click();
+  await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
+  await expect(page.locator('.tour-card')).toContainText('1 / ');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(step(page, '블록 스케줄링')).toHaveClass(/on/);
+  // 다시 공통 설정 입력으로 돌아와도 같은 화면(표 디자인), 튜토리얼이 끝났으니 편집 가능
+  await step(page, '공통 설정 입력').click();
+  await expect(page.getByTestId('setup-title')).toBeVisible();
+  await expect(page.locator('.setup .plain-table')).toBeVisible();
+  await expect(page.locator('.approval, .paper')).toHaveCount(0);
+  const ids = page.locator('.edit-table input[aria-label="블록 ID"]');
+  await expect(ids.nth(2)).toHaveValue('C-115');
+  await expect(ids.first()).toBeEditable();
+  await shot(page, '15-setup-after-tour');
 });
 
-test('튜토리얼: 공통 설정 입력(채워짐) → 블록 스케줄링 → 결과 순서로 진행', async ({ page }) => {
+test('튜토리얼: 가이드는 페이지 안에서만, 페이지는 직접 다음 버튼으로', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('mode-expert').click();
-  await expect(page.getByRole('dialog', { name: '튜토리얼' })).toBeVisible();
-  await shot(page, '01-tour-intro');
-  const order = ['공통 설정 입력', '블록 스케줄링', '결과'];
-  const seen: string[] = [];
-  for (let i = 0; i < 12; i++) {
-    if (i > 0) await page.getByTestId('tour-next').click();
-    await expect(page.getByTestId('tour-next')).toBeEnabled();
-    const current = (await page.locator('.steps button.on .step-label').innerText()).trim();
-    seen.push(current);
-    // 공통 설정 입력에서는 채워진 블록·자원만 보이고 엑셀 업로드 같은 입력 기능은 없다
-    if (current === '공통 설정 입력') {
-      await expect(page.getByTestId('excel-input')).toHaveCount(0);
-      await expect(page.locator('.plain-table')).toContainText('C-115');
+  const card = page.locator('.tour-card');
+  const next = page.getByTestId('tour-next');
+  /** 지금 페이지 가이드를 끝까지 넘기고 (마지막은 확인/마치기), 그동안 페이지가 바뀌지 않는지 본다 */
+  const runPage = async (label: string, count: number, lastButton: string) => {
+    for (let i = 1; i <= count; i++) {
+      await expect(card).toContainText(`${i} / ${count}`);
+      await expect(step(page, label)).toHaveClass(/on/);
+      await expect(next).toBeEnabled();
+      await shot(page, `01-tour-${label}-${i}`);
+      if (i === count) await expect(next).toHaveText(lastButton);
+      await next.click();
     }
-    await shot(page, `01-tour-${String(i).padStart(2, '0')}`);
-  }
-  // 페이지는 앞으로만 넘어간다
-  const idx = seen.map((p) => order.indexOf(p));
-  expect(idx.every((v, k) => v >= 0 && (k === 0 || v >= idx[k - 1]))).toBe(true);
-  expect(new Set(seen)).toEqual(new Set(order));
-  await expect(page.locator('.tour-card')).toContainText('평가서');
+  };
+
+  // 공통 설정 입력: 1/4 ~ 4/4, 예시로 채워진 읽기 전용 표
+  await expect(page.getByTestId('excel-input')).toHaveCount(0);
+  await expect(page.locator('.setup .plain-table')).toContainText('C-115');
+  await runPage('공통 설정 입력', 4, '확인');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(step(page, '공통 설정 입력')).toHaveClass(/on/);
+  await expect(page.getByTestId('excel-input')).toHaveCount(0);
+
+  await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
+  await runPage('블록 스케줄링', 6, '확인');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('[data-tour="kpi"]')).toContainText('5 / 5');
-  await page.getByTestId('tour-next').click();
+
+  await page.getByRole('button', { name: '다음: 결과 →' }).click();
+  await runPage('결과', 2, '마치기');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   // 끝나면 메뉴로
   await expect(page.locator('.tile')).toHaveCount(4);

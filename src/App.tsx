@@ -61,7 +61,7 @@ export function App() {
         </nav>
         {mode && <span className={`mode-chip ${mode}`}>{mode === 'expert' ? '숙련자' : '신입'}</span>}
       </header>
-      <main className={current === 'schedule' || current === 'result' ? 'main' : 'main paper-bg'}>
+      <main className={current === 'mode' || current === 'menu' ? 'main paper-bg' : 'main'}>
         <View />
       </main>
       <Tour />

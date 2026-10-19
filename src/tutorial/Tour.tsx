@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { useStore } from '../store/schedulerStore';
-import { STEPS } from './steps';
+import { PAGES, useStore } from '../store/schedulerStore';
+import { STEPS, stepsOf } from './steps';
 
 interface Rect {
   top: number;
@@ -43,42 +43,58 @@ function useTargetRect(target: string | undefined, key: unknown): Rect | null {
 }
 
 export function Tour() {
+  const page = useStore((s) => s.page);
+  const active = useStore((s) => s.tutorialActive);
+  const guided = useStore((s) => s.tutorialGuided);
+  const guidePage = useStore((s) => s.tutorialPage);
   const stepIndex = useStore((s) => s.tutorialStep);
   const setStep = useStore((s) => s.setTutorialStep);
+  const openPageGuide = useStore((s) => s.openPageGuide);
+  const endTutorial = useStore((s) => s.endTutorial);
   const setPage = useStore((s) => s.setPage);
   // 단계 본문이 상태(배치 결과)에 따라 바뀌므로 구독
   useStore((s) => s.assignments);
   const [ready, setReady] = useState(true);
-  const step = stepIndex === null ? null : STEPS[stepIndex];
+  const pageSteps = stepsOf(page);
+  const step = stepIndex !== null && guidePage === page ? (pageSteps[stepIndex] ?? null) : null;
+
+  // 튜토리얼 중 새 페이지에 처음 들어오면 그 페이지 가이드를 연다
+  useEffect(() => {
+    if (active && pageSteps.length > 0 && !guided.includes(page)) openPageGuide(page);
+  }, [active, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!step) return;
     let alive = true;
-    setPage(step.page);
     setReady(false);
     Promise.resolve(step.enter?.()).finally(() => alive && setReady(true));
     return () => {
       alive = false;
     };
-  }, [stepIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step]);
 
   useEffect(() => {
-    if (stepIndex === null) return;
+    if (!step) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setStep(null);
+      if (e.key === 'Escape') endTutorial();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [stepIndex, setStep]);
+  }, [step, endTutorial]);
 
-  const rect = useTargetRect(ready ? step?.target : undefined, stepIndex);
+  const rect = useTargetRect(ready ? step?.target : undefined, `${page}:${stepIndex}`);
   if (!step || stepIndex === null) return null;
 
-  const last = stepIndex === STEPS.length - 1;
-  // 끝까지 보면 실제 작업을 시작하도록 메뉴로, 건너뛰면 튜토리얼 페이지에 머문다
-  const finish = () => {
-    setStep(null);
-    setPage('menu');
+  const last = stepIndex === pageSteps.length - 1;
+  const final = last && page === STEPS[STEPS.length - 1].page;
+  const nextPage = PAGES[PAGES.findIndex((p) => p.page === page) + 1];
+  // 마지막 페이지까지 보면 실제 작업을 시작하도록 메뉴로, 페이지 끝이면 가이드만 닫는다
+  const next = () => {
+    if (!last) return setStep(stepIndex + 1);
+    if (final) {
+      endTutorial();
+      setPage('menu');
+    } else setStep(null);
   };
   const vw = window.innerWidth;
   const vh = window.innerHeight;
@@ -108,12 +124,13 @@ export function Tour() {
         <span className="eyebrow-label">— {step.eyebrow}</span>
         <h3>{step.title}</h3>
         <p>{ready ? step.body() : '계산 중…'}</p>
+        {last && !final && nextPage && <p className="tour-next-hint">화면의 ‘다음: {nextPage.label}’ 버튼을 누르면 다음 가이드가 이어집니다.</p>}
         <div className="tour-foot">
           <span className="muted">
-            {stepIndex + 1} / {STEPS.length}
+            {stepIndex + 1} / {pageSteps.length}
           </span>
           <span className="spacer" />
-          <button type="button" className="btn ghost small" onClick={() => setStep(null)}>
+          <button type="button" className="btn ghost small" onClick={endTutorial}>
             건너뛰기
           </button>
           {stepIndex > 0 && (
@@ -121,8 +138,8 @@ export function Tour() {
               이전
             </button>
           )}
-          <button type="button" className="btn primary small" disabled={!ready} onClick={() => (last ? finish() : setStep(stepIndex + 1))} data-testid="tour-next">
-            {last ? '시작하기' : '다음'}
+          <button type="button" className="btn primary small" disabled={!ready} onClick={next} data-testid="tour-next">
+            {final ? '마치기' : last ? '확인' : '다음'}
           </button>
         </div>
       </div>

@@ -37,7 +37,13 @@ interface State {
   /** 마지막 최적화 결과 (블록/자원 입력이 바뀌면 지운다) */
   solve: SolveResponse | null;
   tutorialSeen: boolean;
+  /** 튜토리얼 진행 중 (예시 데이터, 공통 설정 입력은 읽기 전용) */
+  tutorialActive: boolean;
+  /** 가이드가 열린 페이지와 그 페이지 가이드의 몇 번째 단계인지. null이면 가이드 닫힘 */
+  tutorialPage: Page | null;
   tutorialStep: number | null;
+  /** 가이드를 이미 띄운 페이지 (페이지에 처음 들어올 때 한 번만 자동으로 연다) */
+  tutorialGuided: Page[];
   /** 90일을 넘는 긴 일정도 모두 표시 */
   showFull: boolean;
   /** 클릭으로 배정하려고 고른 자원 아이콘 */
@@ -70,6 +76,10 @@ interface State {
 
   startTutorial(): void;
   setTutorialStep(step: number | null): void;
+  /** 이 페이지 가이드를 띄웠다고 표시하고 1단계를 연다 */
+  openPageGuide(page: Page): void;
+  /** 튜토리얼을 끝낸다 (건너뛰기·마치기) */
+  endTutorial(): void;
   setShowFull(v: boolean): void;
   selectToken(k: ResourceKind | null): void;
   showToast(message: string): void;
@@ -96,7 +106,10 @@ export const useStore = create<State>()(
       assignments: {},
       solve: null,
       tutorialSeen: false,
+      tutorialActive: false,
+      tutorialPage: null,
       tutorialStep: null,
+      tutorialGuided: [],
       showFull: false,
       selectedToken: null,
       toast: null,
@@ -191,10 +204,12 @@ export const useStore = create<State>()(
 
       startTutorial: () => {
         get().loadScenario();
-        set({ tutorialStep: 0, page: 'setup' });
+        set({ tutorialActive: true, tutorialGuided: ['setup'], tutorialPage: 'setup', tutorialStep: 0, page: 'setup' });
       },
-      // 가이드를 닫아도(건너뛰기) 지금 페이지에 그대로 머문다
-      setTutorialStep: (tutorialStep) => set(tutorialStep === null ? { tutorialStep, tutorialSeen: true } : { tutorialStep }),
+      setTutorialStep: (tutorialStep) => set({ tutorialStep }),
+      openPageGuide: (page) => set((s) => ({ tutorialGuided: [...s.tutorialGuided, page], tutorialPage: page, tutorialStep: 0 })),
+      // 끝내도 지금 페이지에 그대로 머문다
+      endTutorial: () => set({ tutorialActive: false, tutorialPage: null, tutorialStep: null, tutorialGuided: [], tutorialSeen: true }),
       setShowFull: (showFull) => set({ showFull }),
       selectToken: (selectedToken) => set({ selectedToken }),
       showToast: (message) => set((s) => ({ toast: { id: (s.toast?.id ?? 0) + 1, message } })),

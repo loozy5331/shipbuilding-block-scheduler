@@ -235,66 +235,7 @@ textarea {
 }
 
 /* ---------- 입력 화면 (종이) ---------- */
-.paper {
-  max-width: 1180px;
-  margin: 0 auto;
-}
-
-.paper-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid var(--ink);
-  margin-bottom: 20px;
-}
-
-.paper-head h1 {
-  margin: 4px 0 8px;
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-}
-
-.paper-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.paper-meta b {
-  color: var(--ink);
-  border-bottom: 1px solid var(--muted);
-}
-
-.paper-meta input {
-  border: 1px solid var(--paper-line);
-  border-radius: 6px;
-  padding: 2px 6px;
-  background: #fff;
-}
-
-.approval {
-  border-collapse: collapse;
-  font-size: 12px;
-  color: var(--muted);
-}
-
 .approval th,
-.approval td {
-  border: 1px solid var(--ink);
-  width: 60px;
-  text-align: center;
-  padding: 3px;
-}
-
-.approval td {
-  height: 44px;
-}
-
 .capacity {
   margin-bottom: 8px;
 }
@@ -322,86 +263,6 @@ textarea {
   font-size: 14px;
 }
 
-.paper-section {
-  border-top: 1px dashed var(--paper-line);
-  padding: 18px 0;
-  margin-top: 16px;
-}
-
-.paper-section h2 {
-  font-size: 18px;
-  margin: 0 0 14px;
-}
-
-.source-head {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 12px;
-  font-size: 14px;
-}
-
-.source-grid {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 12px;
-}
-
-.dropzone {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 112px;
-  padding: 12px;
-  border: 2px dashed var(--paper-line);
-  border-radius: var(--radius);
-  background: #fff;
-  color: var(--green);
-  text-align: center;
-  cursor: pointer;
-}
-
-.dropzone small {
-  color: var(--muted);
-}
-
-.dropzone.over {
-  border-color: var(--green);
-  background: var(--green-50);
-}
-
-.dropzone input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.paste {
-  display: flex;
-  gap: 12px;
-}
-
-.paste textarea {
-  flex: 1;
-  min-height: 112px;
-  padding: 10px 12px;
-  border: 1px solid var(--paper-line);
-  border-radius: var(--radius);
-  background: #fff;
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 13px;
-  resize: vertical;
-}
-
-.paste .btn {
-  align-self: stretch;
-}
-
 .parse-result {
   margin-top: 12px;
   padding: 10px 14px;
@@ -419,66 +280,7 @@ textarea {
   padding-left: 18px;
 }
 
-.block-table {
-  margin-top: 16px;
-}
-
-.bt-row {
-  display: grid;
-  grid-template-columns: 2fr 1.4fr 1.4fr 1fr 40px;
-  gap: 12px;
-  align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--paper-line);
-}
-
-.bt-head {
-  font-size: 13px;
-  color: var(--muted);
-  font-weight: 600;
-}
-
 .bt-row input,
-.bt-row select {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--paper-line);
-  border-radius: 8px;
-  background: #fff;
-}
-
-.bt-row input[type='number'] {
-  text-align: right;
-}
-
-.bt-row .invalid {
-  border-color: var(--red);
-}
-
-.bt-row select.not-ready {
-  color: var(--orange);
-  font-weight: 700;
-}
-
-.with-hint {
-  position: relative;
-}
-
-.with-hint small {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted);
-  font-size: 12px;
-  pointer-events: none;
-}
-
-.empty {
-  color: var(--muted);
-  padding: 16px 0;
-}
-
 .add-row {
   width: 100%;
   margin-top: 10px;
@@ -489,31 +291,6 @@ textarea {
   cursor: pointer;
 }
 
-.resource-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
-  gap: 0 32px;
-}
-
-.stepper {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--paper-line);
-}
-
-.stepper-label {
-  display: flex;
-  flex-direction: column;
-}
-
-.stepper-label small {
-  color: var(--muted);
-  font-size: 12px;
-}
-
 .stepper-ctrl {
   display: flex;
   align-items: center;
@@ -521,8 +298,9 @@ textarea {
 }
 
 .stepper-ctrl button {
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
   border-radius: 50%;
   border: 1px solid var(--paper-line);
   background: #fff;
@@ -530,8 +308,8 @@ textarea {
 }
 
 .stepper-ctrl input {
-  width: 60px;
-  height: 40px;
+  width: 48px;
+  height: 28px;
   text-align: center;
   border: 1px solid var(--paper-line);
   border-radius: 8px;
@@ -552,13 +330,6 @@ textarea {
   cursor: pointer;
   color: var(--muted);
   font-size: 14px;
-}
-
-.paper-foot {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 0 40px;
 }
 
 /* ---------- 배치 화면 ---------- */
@@ -1140,31 +911,6 @@ textarea {
 
   .brand {
     display: none;
-  }
-
-  .source-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .paste {
-    flex-direction: column;
-  }
-
-  .bt-row {
-    grid-template-columns: 1.3fr 1fr 1fr 1fr 32px;
-    gap: 6px;
-  }
-
-  .with-hint small {
-    display: none;
-  }
-
-  .approval {
-    display: none;
-  }
-
-  .resource-grid {
-    grid-template-columns: 1fr;
   }
 
   .g-left {
@@ -1867,14 +1613,14 @@ button.brand {
   font-size: 11px;
 }
 
-/* ---------- 튜토리얼: 읽기 전용 블록·자원 표 ---------- */
-.tutorial-grid {
+/* ---------- 공통 설정 입력: 블록·자원 패널, 읽기 전용/편집 표 ---------- */
+.setup-grid {
   display: grid;
-  grid-template-columns: 3fr 2fr;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: 16px;
 }
 
-.tutorial-grid .panel {
+.setup-grid .panel {
   margin: 0;
 }
 
@@ -1912,6 +1658,7 @@ button.brand {
 
 .resource-list div {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 9px 2px;
@@ -1920,7 +1667,13 @@ button.brand {
 }
 
 .resource-list dt {
+  display: flex;
+  flex-direction: column;
   color: var(--muted);
+}
+
+.resource-list dt small {
+  font-size: 11px;
 }
 
 .resource-list dd {
@@ -1929,8 +1682,8 @@ button.brand {
 }
 
 @media (max-width: 860px) {
-  .tutorial-grid {
-    grid-template-columns: 1fr;
+  .setup-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2007,4 +1760,121 @@ button.brand {
 .lg-bar.ghost {
   background: #fff;
   border: 1.5px dashed var(--muted);
+}
+
+.setup .panel h3 small {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.plan-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.plan-start input {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.setup .add-row {
+  margin-top: 8px;
+}
+
+/* 자원은 한 줄에 하나씩, 읽기 전용 목록과 같은 모양 */
+.tour-next-hint {
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--green-50);
+  color: var(--green);
+  font-size: 13px;
+}
+
+/* 블록 표 위 도구 줄 (엑셀 파일을 끌어 놓을 수도 있음) */
+.source-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 6px;
+  border: 1px dashed transparent;
+  border-radius: 10px;
+}
+
+.source-bar.over {
+  border-color: var(--green);
+  background: var(--green-50);
+}
+
+.drop-hint {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.paste-area {
+  width: 100%;
+  min-height: 160px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+
+/* 편집 칸은 읽기 전용 표와 같은 글자처럼 보이고, 마우스를 올리거나 누르면 칸이 드러난다 */
+.edit-table .cell-input {
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.edit-table .cell-input:hover,
+.edit-table .cell-input:focus {
+  border-color: var(--line);
+  background: #fff;
+}
+
+.edit-table .cell-input.id {
+  width: 110px;
+  font-weight: 700;
+}
+
+.edit-table input.cell-input[type='number'] {
+  width: 64px;
+  text-align: right;
+}
+
+.edit-table .cell-input.invalid {
+  border-color: var(--red);
+  background: var(--red-50);
+}
+
+.edit-table select.cell-input.not-ready {
+  color: var(--orange);
+  font-weight: 700;
+}
+
+.edit-table td {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.edit-table .icon-btn {
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+}
+
+.edit-table input.cell-input[aria-label='남은 기간'] {
+  width: 44px;
+  text-align: left;
 }
