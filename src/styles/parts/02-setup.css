@@ -1,0 +1,95 @@
+/* ---------- 입력 화면 (종이) ---------- */
+.capacity {
+  margin-bottom: 8px;
+}
+
+.verdict {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  background: var(--green-50);
+  color: var(--green);
+}
+
+.verdict.bad {
+  background: var(--red-50);
+  color: var(--red);
+}
+
+.verdict ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.parse-result {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  background: var(--green-50);
+}
+
+.parse-result.warn {
+  background: #fff6e8;
+}
+
+.parse-result ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.add-row {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.stepper-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepper-ctrl button {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--paper-line);
+  background: #fff;
+  cursor: pointer;
+}
+
+.stepper-ctrl input {
+  width: 48px;
+  height: 28px;
+  text-align: center;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.stepper-ctrl .unit {
+  min-width: 34px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.advanced {
+  margin-top: 12px;
+}
+
+.advanced summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 14px;
+}

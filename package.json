@@ -7,8 +7,11 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "start": ".venv/bin/python -m uvicorn --factory backend.app.main:create_app --host 0.0.0.0 --port ${PORT:-8787}",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "setup:py": "uv venv .venv --python 3.12 && uv pip install --python .venv -r backend/requirements-dev.txt",
+    "test:py": ".venv/bin/python -m pytest backend -q -p no:warnings"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

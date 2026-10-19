@@ -89,7 +89,10 @@ export function ExcelHelpDialog({ onClose }: { onClose(): void }) {
       </div>
 
       <ul className="help-notes">
-        <li>파일 형식: .xlsx · .xls · .csv</li>
+        <li>
+          파일 형식: .xlsx · .xls · .csv · .numbers(맥 Numbers) · 예시 파일: <a href={`${import.meta.env.BASE_URL}sample-tutorial.xlsx`} download>5블록</a> ·{' '}
+          <a href={`${import.meta.env.BASE_URL}sample-30-blocks.xlsx`} download>30블록</a>
+        </li>
         <li>납기일이 날짜면 공통 설정 입력의 계획 시작일(오늘)을 1일로 세어 남은 일수로 바꿉니다. 계획 시작일보다 이른 날짜는 오류입니다.</li>
         <li>열 이름 줄이 없으면 A~D 열을 블록 ID · 납기 · 필요 작업 시간 · 자재 순서로 읽습니다.</li>
         <li>잘못된 줄(ID 중복·빈 값·해석할 수 없는 값)은 건너뛰고, 몇 번째 줄이 왜 틀렸는지 알려 줍니다.</li>

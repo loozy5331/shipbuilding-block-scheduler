@@ -1,6 +1,6 @@
 import type { Evaluation } from '../../domain/evaluate';
 import type { LoadKind } from '../../domain/types';
-import { COL } from './GanttChart';
+import { COL } from './ganttLayout';
 
 const LABEL: Record<LoadKind, { name: string; unit: string }> = {
   slots: { name: '동시 처리 블록', unit: '블록' },
@@ -70,6 +70,9 @@ export function Legend() {
       </span>
       <span>
         <i className="lg-bar blocked" /> 착수 불가(사전 요건 없음)
+      </span>
+      <span>
+        <i className="lg-bar ghost" /> 대기(작업자 1명 기준 길이)
       </span>
       <span>
         <i className="lg-due" /> 납기(그날 끝)

@@ -17,11 +17,11 @@ describe('튜토리얼 시나리오', () => {
     expect(sol.assignments['C-115'].emergency).toBe(true);
   });
 
-  it('입력 순서대로 배치하면 지연이 생기고, 납기 빠른 순은 해소한다', () => {
+  it('입력 순서대로 배치하면 지연이 생기고, 최적화는 해소한다', () => {
     const input = solvePolicy('input', TUTORIAL_BLOCKS, TUTORIAL_RESOURCES);
-    const edd = solvePolicy('edd', TUTORIAL_BLOCKS, TUTORIAL_RESOURCES);
+    const optimal = solvePolicy('optimal', TUTORIAL_BLOCKS, TUTORIAL_RESOURCES, { budgetMs: 200 });
     expect(input.kpi.late).toBeGreaterThan(0);
-    expect(edd.kpi.onTime).toBe(5);
+    expect(optimal.kpi.onTime).toBe(5);
   });
 
   it('용량 요약: 전체 80MH, 하루 인력 40MH', () => {
@@ -78,16 +78,16 @@ describe('대규모 입력', () => {
     expect(Date.now() - t0).toBeLessThan(1000 + 5 * 3 * 120 + 500);
     const ev = evaluate(blocks, r, res.solutions.optimal.assignments);
     expect(ev.kpi.overloadCells).toBe(0);
-    expect(res.solutions.optimal.kpi.late).toBeLessThanOrEqual(res.solutions.edd.kpi.late);
+    expect(res.solutions.optimal.kpi.late).toBeLessThanOrEqual(res.solutions.input.kpi.late);
   });
 });
 
 describe('차선책', () => {
-  it('최적해와 착수 순서가 다른 차선책을 최대 3개, 좋은 순으로 준다', () => {
+  it('최적해와 착수 순서가 다른 차선·차차선을 최대 2개, 좋은 순으로 준다', () => {
     const sol = solvePolicy('optimal', TUTORIAL_BLOCKS, TUTORIAL_RESOURCES, { budgetMs: 300 });
     const alts = sol.alternatives!;
     expect(alts.length).toBeGreaterThan(0);
-    expect(alts.length).toBeLessThanOrEqual(3);
+    expect(alts.length).toBeLessThanOrEqual(2);
     const order = (a: typeof sol.assignments) =>
       Object.values(a)
         .filter((x) => x.startDay !== null)

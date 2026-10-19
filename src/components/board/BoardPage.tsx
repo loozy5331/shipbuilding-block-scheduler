@@ -1,60 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  DndContext,
-  DragOverlay,
-  MouseSensor,
-  TouchSensor,
-  pointerWithin,
-  rectIntersection,
-  useSensor,
-  useSensors,
-  type CollisionDetection,
-  type DragEndEvent,
-  type DragStartEvent,
-  type Modifier,
-} from '@dnd-kit/core';
-import type { Assignments, ResourceKind } from '../../domain/types';
-import { evaluate } from '../../domain/evaluate';
+import { useEffect, useState } from 'react';
+import { DndContext, DragOverlay } from '@dnd-kit/core';
+import { useEvaluation } from '../../store/evaluation';
 import { nextHint, type Hint } from '../../domain/hint';
-import { samePlan, workplaceOf } from '../../domain/lanes';
+import { samePlan, startOrder } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { runSolve } from '../../store/actions';
 import { ResourceIcon } from '../icons/ResourceIcons';
 import { LineIcon } from '../icons/LineIcons';
 import { ResourcePalette } from './ResourcePalette';
-import { COL, GanttChart, MAX_DAYS } from './GanttChart';
+import { GanttChart, MAX_DAYS } from './GanttChart';
+import { useBoardDnd } from './useBoardDnd';
 import { Legend, LoadGrid } from './LoadGrid';
 import { KpiCards, WhatIfCard } from './Insights';
 import { BlockEditor } from './BlockEditor';
+import { prefersReducedMotion } from '../assembly/AssemblyShow';
 
-/** 막대는 하루 단위로 스냅하고 1일 앞으로는 못 간다. 위아래로는 다른 작업장으로 옮길 수 있다. */
-const barModifier: Modifier = ({ transform, active }) => {
-  if (!String(active?.id).startsWith('bar:')) return transform;
-  const start = (active?.data.current?.start as number) ?? 1;
-  return { ...transform, x: Math.max((1 - start) * COL, Math.round(transform.x / COL) * COL) };
-};
-
-/** 자원 아이콘은 블록 줄에, 막대·대기 블록은 작업장 테두리 안에만 놓인다 */
-const collide: CollisionDetection = (args) => {
-  const prefix = String(args.active.id).startsWith('res:') ? 'blk:' : 'wp:';
-  const scoped = { ...args, droppableContainers: args.droppableContainers.filter((c) => String(c.id).startsWith(prefix)) };
-  const hits = pointerWithin(scoped);
-  return hits.length ? hits : rectIntersection(scoped);
-};
-
-/** 착수 순서 (같은 날은 ID 순) */
-function startOrder(a: Assignments): string[] {
-  return Object.values(a)
-    .filter((x) => x.startDay !== null)
-    .sort((x, y) => x.startDay! - y.startDay! || x.blockId.localeCompare(y.blockId))
-    .map((x) => x.blockId);
-}
-
-function pointerX(e: Event | null): number {
-  if (!e) return 0;
-  if ('touches' in e) return (e as TouchEvent).touches[0]?.clientX ?? 0;
-  return (e as MouseEvent).clientX;
-}
+const PLAN_NAME = ['최적 배치', '차선', '차차선'];
 
 export function BoardPage() {
   const blocks = useStore((s) => s.blocks);
@@ -64,18 +25,15 @@ export function BoardPage() {
   const mode = useStore((s) => s.mode);
   const hintCount = useStore((s) => s.hintCount);
   const setPage = useStore((s) => s.setPage);
-  const assign = useStore((s) => s.assign);
-  const moveBlock = useStore((s) => s.moveBlock);
-  const moveToWorkplace = useStore((s) => s.moveToWorkplace);
+  const goToResult = useStore((s) => s.goToResult);
   const clear = useStore((s) => s.clearAssignments);
   const showFull = useStore((s) => s.showFull);
   const setShowFull = useStore((s) => s.setShowFull);
-  const [drag, setDrag] = useState<{ kind?: ResourceKind; blockId?: string } | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<Hint | null>(null);
 
-  const ev = useMemo(() => evaluate(blocks, resources, assignments), [blocks, resources, assignments]);
+  const ev = useEvaluation();
   // 막대를 오른쪽으로 더 끌 수 있도록 여유 열을 두고, 너무 길면 90일까지만 그린다
   const needed = ev.horizon + 2;
   const days = showFull ? needed : Math.min(MAX_DAYS, needed);
@@ -93,39 +51,7 @@ export function BoardPage() {
   // 배치가 바뀌면 지난 힌트는 낡는다
   useEffect(() => setHint(null), [assignments]);
 
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
-  );
-
-  const onDragStart = (e: DragStartEvent) => {
-    const id = String(e.active.id);
-    if (id.startsWith('res:')) setDrag({ kind: e.active.data.current?.kind as ResourceKind });
-    else if (id.startsWith('wait:')) setDrag({ blockId: id.slice(5) });
-    else setDrag(null);
-  };
-  const onDragEnd = (e: DragEndEvent) => {
-    setDrag(null);
-    const id = String(e.active.id);
-    const wp = e.over?.data.current?.wp as number | undefined;
-    if (id.startsWith('res:')) {
-      const target = e.over?.data.current?.blockId as string | undefined;
-      if (target) assign(target, id.slice(4) as ResourceKind);
-    } else if (id.startsWith('bar:')) {
-      const blockId = id.slice(4);
-      const a = assignments[blockId];
-      if (!a?.startDay) return;
-      const start = a.startDay + Math.round(e.delta.x / COL);
-      const fromWp = a.lane === undefined ? -1 : workplaceOf(a.lane, resources);
-      if (wp !== undefined && wp !== fromWp) moveToWorkplace(blockId, start, wp);
-      else if (start !== a.startDay) moveBlock(blockId, start);
-    } else if (id.startsWith('wait:') && wp !== undefined) {
-      // 놓은 자리의 날짜: 첫 날짜 칸 기준
-      const firstDay = document.querySelector('.g-header .g-day')?.getBoundingClientRect().left ?? 0;
-      const x = pointerX(e.activatorEvent) + e.delta.x;
-      moveToWorkplace(id.slice(5), Math.floor((x - firstDay) / COL) + 1, wp);
-    }
-  };
+  const { dragKind, dndProps } = useBoardDnd();
 
   // 최적 배치 + 차선책. 지금 적용된 안이 몇 번째인지 (직접 고쳤으면 -1)
   const options = solve ? [solve.solutions.optimal, ...(solve.solutions.optimal.alternatives ?? [])] : [];
@@ -187,14 +113,14 @@ export function BoardPage() {
           </button>
           {expert ? (
             <button type="button" className="btn primary" onClick={optimize} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="optimize-btn">
-              {busy ? '계산 중…' : applied < 0 || options.length < 2 ? '최적 배치' : `다음 안 보기 (${applied + 1}/${options.length})`}
+              {busy ? '계산 중…' : applied < 0 || options.length < 2 ? '최적 배치' : `다음 최적배치 후보 (${applied + 1}/${options.length})`}
             </button>
           ) : (
             <button type="button" className="btn primary" onClick={askHint} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="hint-btn">
               <LineIcon name="bulb" size={16} /> {busy ? '계산 중…' : '힌트'}
             </button>
           )}
-          <button type="button" className="btn primary" onClick={() => setPage('result')} disabled={blocks.length === 0}>
+          <button type="button" className="btn primary" onClick={() => goToResult(!prefersReducedMotion())} disabled={blocks.length === 0}>
             다음: 결과 →
           </button>
         </div>
@@ -203,7 +129,7 @@ export function BoardPage() {
       {expert && applied >= 0 && options.length > 0 && (
         <div className="notice alt" role="status" data-testid="plan-option">
           <p>
-            <b>{applied === 0 ? '최적 배치' : `차선책 ${applied}`}</b> ({applied + 1}/{options.length}) · 납기 준수 {options[applied].kpi.onTime}/{options[applied].kpi.total} · 지연{' '}
+            <b>{PLAN_NAME[applied]}</b> ({applied + 1}/{options.length}) · 납기 준수 {options[applied].kpi.onTime}/{options[applied].kpi.total} · 지연{' '}
             {options[applied].kpi.totalLateDays}일 · 착수 순서: {startOrder(options[applied].assignments).join(' → ')}
           </p>
           <small className="muted">
@@ -231,7 +157,7 @@ export function BoardPage() {
         </div>
       )}
 
-      <KpiCards ev={ev} />
+      <KpiCards ev={ev} onlyOnTime />
       {!showFull && needed > MAX_DAYS && (
         <div className="notice warn">
           표시는 1~{days}일로 제한했습니다. 자원 충돌·KPI는 {ev.horizon}일까지 전체 배치를 분석합니다.{' '}
@@ -241,7 +167,7 @@ export function BoardPage() {
         </div>
       )}
 
-      <DndContext sensors={sensors} collisionDetection={collide} modifiers={[barModifier]} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDrag(null)}>
+      <DndContext {...dndProps}>
         <ResourcePalette />
         <div className="gantt-scroll">
           <GanttChart
@@ -255,12 +181,11 @@ export function BoardPage() {
           <LoadGrid ev={ev} days={days} />
         </div>
         <DragOverlay dropAnimation={null}>
-          {drag?.kind && (
+          {dragKind && (
             <div className="drag-ghost">
-              <ResourceIcon kind={drag.kind} size={36} />
+              <ResourceIcon kind={dragKind} size={36} />
             </div>
           )}
-          {drag?.blockId && <div className="drag-ghost block-ghost">{drag.blockId}</div>}
         </DragOverlay>
       </DndContext>
       <Legend />

@@ -67,7 +67,8 @@ export function parseDue(v: unknown, planStart: string): number | null {
 }
 
 function parseNumber(v: unknown): number | null {
-  if (typeof v === 'number') return v;
+  // 부동소수점 오차(24.000000000000004 등)를 걷어 낸다
+  if (typeof v === 'number') return Math.round(v * 1e6) / 1e6;
   const n = parseFloat(String(v ?? '').replace(/[^\d.\-]/g, ''));
   return isNaN(n) ? null : n;
 }

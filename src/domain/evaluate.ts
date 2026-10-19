@@ -73,6 +73,11 @@ export function durationOf(requiredMH: number, dailyMH: number): number | null {
   return Math.max(1, Math.ceil(requiredMH / dailyMH));
 }
 
+/** 작업자를 배정하기 전 막대 길이: 필요 작업시간을 하루 8시간(일반 작업자 1명)으로 나눈 일수 */
+export function nominalDuration(requiredMH: number, r: Resources): number {
+  return Math.max(1, Math.ceil(requiredMH / Math.max(1, r.generalMHPerDay)));
+}
+
 export function loadCapacity(kind: LoadKind, r: Resources): number {
   switch (kind) {
     case 'slots':
@@ -106,10 +111,12 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
   for (const b of blocks) {
     const a = assignments[b.id];
     const dailyMH = a ? dailyMHOf(a, r) : 0;
-    const duration = durationOf(b.requiredMH, dailyMH);
+    const crewDuration = durationOf(b.requiredMH, dailyMH);
+    // 작업자가 없으면 필요 작업시간 기준 길이로 잡아 둔다 (착수 불가로 판정)
+    const duration = a ? (crewDuration ?? nominalDuration(b.requiredMH, r)) : null;
     const reasons: BlockedReason[] = [];
     if (a) {
-      if (duration === null) reasons.push('noCrew');
+      if (crewDuration === null) reasons.push('noCrew');
       if (a.general + a.skilled > r.maxCrewPerBlock) reasons.push('crewLimit');
       if (!a.crane) reasons.push('noCrane');
       if (!b.materialReady && !a.emergency) reasons.push('noMaterial');

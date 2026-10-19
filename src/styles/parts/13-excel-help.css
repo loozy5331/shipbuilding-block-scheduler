@@ -1,0 +1,191 @@
+/* ---------- 엑셀 양식 도움말 ---------- */
+.help-table td {
+  white-space: normal;
+}
+
+.sheet-example {
+  width: auto;
+}
+
+.sheet-example th {
+  width: 28px;
+  text-align: center;
+}
+
+.sheet-example td {
+  min-width: 96px;
+  border-left: 1px solid var(--line);
+}
+
+.help-notes {
+  margin: 14px 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.dialog h4 {
+  margin: 16px 0 6px;
+}
+
+.dialog {
+  text-align: left;
+}
+
+/* 블록 스케줄링: 납기 준수 카드 하나만 */
+.stat-row.single {
+  grid-template-columns: minmax(0, 340px);
+}
+
+/* 결과: 평가서(왼쪽) · TBM(오른쪽) 한 줄 */
+.result-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.result-row > .panel {
+  margin: 0;
+}
+
+@media (max-width: 860px) {
+  .result-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 대기 블록의 점선 막대: 작업자 1명 기준 길이 */
+.g-bar.ghost {
+  background: repeating-linear-gradient(45deg, #f4f6f8 0 6px, #fff 6px 12px);
+  border: 1.5px dashed var(--muted);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.g-bar.ghost.dragging {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.lg-bar.ghost {
+  background: #fff;
+  border: 1.5px dashed var(--muted);
+}
+
+.setup .panel h3 small {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.plan-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.plan-start input {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.setup .add-row {
+  margin-top: 8px;
+}
+
+/* 자원은 한 줄에 하나씩, 읽기 전용 목록과 같은 모양 */
+.tour-next-hint {
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--green-50);
+  color: var(--green);
+  font-size: 13px;
+}
+
+/* 블록 표 위 도구 줄 (엑셀 파일을 끌어 놓을 수도 있음) */
+.source-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 6px;
+  border: 1px dashed transparent;
+  border-radius: 10px;
+}
+
+.source-bar.over {
+  border-color: var(--green);
+  background: var(--green-50);
+}
+
+.drop-hint {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.paste-area {
+  width: 100%;
+  min-height: 160px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+
+/* 편집 칸은 읽기 전용 표와 같은 글자처럼 보이고, 마우스를 올리거나 누르면 칸이 드러난다 */
+.edit-table .cell-input {
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.edit-table .cell-input:hover,
+.edit-table .cell-input:focus {
+  border-color: var(--line);
+  background: #fff;
+}
+
+.edit-table .cell-input.id {
+  width: 110px;
+  font-weight: 700;
+}
+
+.edit-table input.cell-input[type='number'] {
+  width: 64px;
+  text-align: right;
+}
+
+.edit-table .cell-input.invalid {
+  border-color: var(--red);
+  background: var(--red-50);
+}
+
+.edit-table select.cell-input.not-ready {
+  color: var(--orange);
+  font-weight: 700;
+}
+
+.edit-table td {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.edit-table .icon-btn {
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+}
+
+.edit-table input.cell-input[aria-label='남은 기간'] {
+  width: 44px;
+  text-align: left;
+}

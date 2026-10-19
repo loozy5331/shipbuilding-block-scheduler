@@ -77,3 +77,25 @@ describe('evaluate (수동 배치)', () => {
     expect(ev.feasible).toBe(false);
   });
 });
+
+describe('맥 Numbers 파일', () => {
+  it('.numbers 파일을 엑셀처럼 읽는다', async () => {
+    const XLSX = await import('xlsx');
+    const { default: zahl } = await import('xlsx/dist/xlsx.zahl.mjs');
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['블록 ID', '남은 기간', '필요 작업 시간', '자재준비 여부'],
+      ['A-101', 1, 16, '준비'],
+      ['B-203', 3, 24, '미준비'],
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '블록');
+    const buf: ArrayBuffer = XLSX.write(wb, { bookType: 'numbers', type: 'array', numbers: zahl });
+    const { readBlocksFromFile } = await import('../src/io/excel');
+    const r = await readBlocksFromFile(new File([buf], '블록.numbers'), START);
+    expect(r.errors).toEqual([]);
+    expect(r.blocks).toEqual([
+      { id: 'A-101', dueDay: 1, requiredMH: 16, materialReady: true },
+      { id: 'B-203', dueDay: 3, requiredMH: 24, materialReady: false },
+    ]);
+  });
+});
