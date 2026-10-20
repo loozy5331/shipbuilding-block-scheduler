@@ -11,7 +11,7 @@ import { dayInfo, isWorkDay, type DayInfo } from '../../domain/calendar';
 import { useCalendar } from '../../store/evaluation';
 import { weatherLabel, weatherText } from '../../io/weather';
 import { useWeather } from '../common/useWeather';
-import { COL } from './ganttLayout';
+import type { Columns } from './ganttLayout';
 import { LineIcon } from '../icons/LineIcons';
 import { AssignedIcons, Bar, blockTitle, GhostBar } from './GanttBars';
 import { useRowFlip } from './useRowFlip';
@@ -27,20 +27,63 @@ function dayTitle(md: string, info: DayInfo): string {
   return `${md} 누르면 작업 불가 날짜로 지정합니다 (천재지변 등, 납기는 그대로)`;
 }
 
-/** 날짜 머리. 쉬는 날은 음영으로 보이고, 누르면 작업 불가 ↔ 작업일을 바꾼다 (튜토리얼 중에는 매일 작업) */
-export function DayHeader({ days, planStart, label }: { days: number; planStart: string; label: string }) {
+const FOLD_TEXT = { weekend: '주말', holiday: '공휴일' } as const;
+
+/** 주말·공휴일 칸 접기 스위치 (엑셀의 열 숨기기처럼) */
+function FoldToggles() {
+  const fold = useStore((s) => s.fold);
+  const setFold = useStore((s) => s.setFold);
+  return (
+    <span className="fold-toggles">
+      {(['weekend', 'holiday'] as const).map((k) => (
+        <button
+          key={k}
+          type="button"
+          className={`fold-chip ${fold[k] ? 'on' : ''}`}
+          aria-pressed={fold[k]}
+          data-testid={`fold-${k}`}
+          title={fold[k] ? `${FOLD_TEXT[k]} 칸 펼치기` : `${FOLD_TEXT[k]} 칸 접기`}
+          onClick={() => setFold(k, !fold[k])}
+        >
+          {FOLD_TEXT[k]} {fold[k] ? '펼치기' : '접기'}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+/** 날짜 머리. 쉬는 날은 음영으로 보이고, 누르면 작업 불가 ↔ 작업일을 바꾼다. 접힌 칸은 누르면 펼친다 (튜토리얼 중에는 매일 작업) */
+export function DayHeader({ cols, planStart, label }: { cols: Columns; planStart: string; label: string }) {
   const options = useStore((s) => s.calendar);
   const touring = useStore((s) => s.tutorialActive);
   const toggle = useStore((s) => s.toggleOffDay);
+  const setFold = useStore((s) => s.setFold);
   const showToast = useStore((s) => s.showToast);
   const weather = useWeather();
   return (
-    <div className="g-row g-header" style={{ gridTemplateColumns: `var(--left) repeat(${days}, ${COL}px)` }}>
-      <div className="g-left">{label}</div>
-      {Array.from({ length: days }, (_, i) => {
+    <div className="g-row g-header" style={{ gridTemplateColumns: `var(--left) ${cols.template}` }}>
+      <div className="g-left">
+        {label}
+        {!touring && <FoldToggles />}
+      </div>
+      {Array.from({ length: cols.days }, (_, i) => {
         const day = i + 1;
         const md = formatMD(dayToDate(planStart, day));
         const info: DayInfo = touring ? { off: null, preset: false } : dayInfo(planStart, day, options);
+        if (cols.folded(day) && (info.off === 'weekend' || info.off === 'holiday')) {
+          const kind = info.off;
+          return (
+            <button
+              key={i}
+              type="button"
+              className={`g-day folded ${kind}`}
+              data-testid={`day-${day}`}
+              title={`${md} ${info.holiday ?? '주말'} (접힘) — 누르면 ${FOLD_TEXT[kind]} 칸을 펼칩니다`}
+              aria-label={`${md} ${FOLD_TEXT[kind]} 펼치기`}
+              onClick={() => setFold(kind, false)}
+            />
+          );
+        }
         const cls = ['g-day', i === 0 && 'today', info.off && `off ${info.off}`, !info.off && info.preset && 'restored'].filter(Boolean).join(' ');
         const w = weather(day);
         const body = (
@@ -84,14 +127,15 @@ interface RowProps {
   res: BlockResult;
   a: Assignment | undefined;
   assignments: Assignments;
-  days: number;
+  cols: Columns;
   workplaces: number;
   hinted: boolean;
   onEdit(id: string): void;
 }
 
 /** 블록 한 줄: 왼쪽은 블록 정보와 배정된 자원, 오른쪽은 날짜 칸과 막대 */
-function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit }: RowProps) {
+function BlockRow({ block, res, a, assignments, cols, workplaces, hinted, onEdit }: RowProps) {
+  const days = cols.days;
   const { setNodeRef, isOver } = useDroppable({ id: `blk:${block.id}`, data: { blockId: block.id } });
   const { active } = useDndContext();
   const resources = useStore((s) => s.resources);
@@ -112,7 +156,7 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
       ref={setNodeRef}
       className={`g-row g-block ${dropCls} ${selected ? 'selectable' : ''} ${hinted ? 'hinted' : ''}`}
       data-testid={`row-${block.id}`}
-      style={{ gridTemplateColumns: `var(--left) repeat(${days}, ${COL}px)` }}
+      style={{ gridTemplateColumns: `var(--left) ${cols.template}` }}
     >
       <div
         className="g-left"
@@ -168,16 +212,16 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
       </div>
       <div className="g-track" style={{ gridColumn: `2 / span ${days}` }}>
         {Array.from({ length: days }, (_, i) => (
-          <div key={i} className={`g-cell ${isWorkDay(cal, i + 1) ? '' : 'off'}`} style={{ left: i * COL, width: COL }} />
+          <div key={i} className={`g-cell ${isWorkDay(cal, i + 1) ? '' : 'off'} ${cols.folded(i + 1) ? 'folded' : ''}`} style={{ left: cols.left(i + 1), width: cols.width(i + 1) }} />
         ))}
         {res.overDays
           .filter((d) => d <= days)
           .map((d) => (
-            <span key={d} className="over-day" style={{ left: (d - 1) * COL, width: COL }} title={`${d}일 자원 용량 초과·겹침`} />
+            <span key={d} className="over-day" style={{ left: cols.left(d), width: cols.width(d) }} title={`${d}일 자원 용량 초과·겹침`} />
           ))}
-        {res.due <= days && <div className="due-line" style={{ left: res.due * COL }} title={`납기: ${res.due}일 끝`} />}
-        {res.start !== null && a && <Bar block={block} res={res} a={a} days={days} workplaces={workplaces} onEdit={onEdit} />}
-        {waiting && <GhostBar block={block} days={days} />}
+        {res.due <= days && <div className="due-line" style={{ left: cols.left(res.due + 1) }} title={`납기: ${res.due}일 끝`} />}
+        {res.start !== null && a && <Bar block={block} res={res} a={a} cols={cols} workplaces={workplaces} onEdit={onEdit} />}
+        {waiting && <GhostBar block={block} cols={cols} />}
       </div>
     </div>
   );
@@ -203,12 +247,12 @@ interface Props {
   blocks: Block[];
   assignments: Assignments;
   ev: Evaluation;
-  days: number;
+  cols: Columns;
   hintBlock: string | null;
   onEdit(id: string): void;
 }
 
-export function GanttChart({ blocks, assignments, ev, days, hintBlock, onEdit }: Props) {
+export function GanttChart({ blocks, assignments, ev, cols, hintBlock, onEdit }: Props) {
   const planStart = useStore((s) => s.planStart);
   const r = useStore((s) => s.resources);
   const n = laneCount(r);
@@ -227,7 +271,7 @@ export function GanttChart({ blocks, assignments, ev, days, hintBlock, onEdit }:
       res={ev.blocks[b.id]}
       a={assignments[b.id]}
       assignments={assignments}
-      days={days}
+      cols={cols}
       workplaces={workplaces}
       hinted={hintBlock === b.id}
       onEdit={onEdit}
@@ -237,7 +281,7 @@ export function GanttChart({ blocks, assignments, ev, days, hintBlock, onEdit }:
 
   return (
     <div ref={ref} className="gantt" data-tour="gantt">
-      <DayHeader days={days} planStart={planStart} label="블록 · 배정 자원" />
+      <DayHeader cols={cols} planStart={planStart} label="블록 · 배정 자원" />
       {Array.from({ length: workplaces }, (_, wp) => {
         const rows = blocks.filter((b) => wpOf(b) === wp).sort(byStart);
         return (

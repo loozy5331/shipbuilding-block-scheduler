@@ -1,6 +1,6 @@
 import type { Evaluation } from '../../domain/evaluate';
 import type { LoadKind } from '../../domain/types';
-import { COL } from './ganttLayout';
+import type { Columns } from './ganttLayout';
 import { isWorkDay } from '../../domain/calendar';
 import { useCalendar } from '../../store/evaluation';
 
@@ -12,7 +12,7 @@ const LABEL: Record<LoadKind, { name: string; unit: string }> = {
 };
 
 /** 네모 한 칸 = 용량 1. 채운 칸 = 쓰는 양, 빨간 칸 = 용량을 넘은 양 */
-export function LoadGrid({ ev, days }: { ev: Evaluation; days: number }) {
+export function LoadGrid({ ev, cols }: { ev: Evaluation; cols: Columns }) {
   const cal = useCalendar();
   return (
     <div className="load" data-tour="load">
@@ -21,7 +21,7 @@ export function LoadGrid({ ev, days }: { ev: Evaluation; days: number }) {
         <span className="muted">네모 한 칸 = 용량 1. 채운 칸 = 쓰는 양, 빨간 칸 = 용량을 넘은 양</span>
       </div>
       {ev.load.map((row) => (
-        <div key={row.kind} className="g-row load-row" style={{ gridTemplateColumns: `var(--left) repeat(${days}, ${COL}px)` }}>
+        <div key={row.kind} className="g-row load-row" style={{ gridTemplateColumns: `var(--left) ${cols.template}` }}>
           <div className="g-left">
             <strong>{LABEL[row.kind].name}</strong>
             <span className="muted">
@@ -29,7 +29,9 @@ export function LoadGrid({ ev, days }: { ev: Evaluation; days: number }) {
               {LABEL[row.kind].unit}
             </span>
           </div>
-          {Array.from({ length: days }, (_, d) => {
+          {Array.from({ length: cols.days }, (_, d) => {
+            // 접힌 날은 쉬는 날이라 쓰는 자원이 없다
+            if (cols.folded(d + 1)) return <div key={d} className="load-cell off folded" />;
             const used = row.usage[d] ?? 0;
             const n = Math.max(row.capacity, used);
             const over = used > row.capacity;

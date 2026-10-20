@@ -12,6 +12,7 @@ import { ResourcePalette } from './ResourcePalette';
 import { GanttChart, MAX_DAYS } from './GanttChart';
 import { ganttDays } from './ganttLayout';
 import { useBoardDnd } from './useBoardDnd';
+import { useColumns } from './useColumns';
 import { Legend, LoadGrid } from './LoadGrid';
 import { KpiCards, WhatIfCard } from './Insights';
 import { BlockEditor } from './BlockEditor';
@@ -60,7 +61,8 @@ export function BoardPage() {
   // 배치가 바뀌면 지난 힌트는 낡는다
   useEffect(() => setHint(null), [assignments]);
 
-  const { dragKind, dndProps } = useBoardDnd();
+  const cols = useColumns(days);
+  const { dragKind, dndProps } = useBoardDnd(cols);
 
   // 고정한 블록이 있으면 그 블록은 두고 다시 최적화한 결과를 쓴다
   const pinned = Object.keys(pinnedOf(assignments));
@@ -202,11 +204,11 @@ export function BoardPage() {
             blocks={blocks}
             assignments={assignments}
             ev={ev}
-            days={days}
+            cols={cols}
             hintBlock={hint?.blockId ?? null}
             onEdit={setEditing}
           />
-          <LoadGrid ev={ev} days={days} />
+          <LoadGrid ev={ev} cols={cols} />
         </div>
         <DragOverlay dropAnimation={null}>
           {dragKind && (
