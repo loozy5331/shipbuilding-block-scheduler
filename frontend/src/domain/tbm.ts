@@ -63,7 +63,9 @@ export function tbmMessage(day: number, blocks: Block[], assignments: Assignment
   for (const w of work) {
     const crew = [w.general && `일반 ${w.general}명`, w.skilled && `숙련 ${w.skilled}명`].filter(Boolean).join(' · ') || '작업자 미배정';
     const extra = [w.crane && '크레인 1대', w.emergency && '비상 자재'].filter(Boolean).join(' · ');
-    const due = ev.blocks[w.block.id].due - day;
+    // 남은 날도 작업일로 센다
+    const x = ev.blocks[w.block.id];
+    const due = x.due >= day ? workDaysIn(cal, day + 1, x.due) : -workDaysIn(cal, x.due + 1, day);
     const dueText = due === 0 ? '오늘 납기' : due < 0 ? `납기 ${-due}일 지남` : `납기 ${due}일 남음`;
     const place = w.workplace === null ? '작업장 미정' : `작업장 ${w.workplace + 1}`;
     lines.push(`- [${place}] ${w.block.id}: ${crew}${extra ? ` · ${extra}` : ''} (${w.nth}/${w.duration}일차, ${dueText})`);

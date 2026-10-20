@@ -1,6 +1,6 @@
 import type { Assignment, Assignments, Block, BlockStatus, LoadKind, Resources } from './types';
 import { laneOverlapDays } from './lanes';
-import { effectiveDue, isWorkDay, NO_OFF, workEnd, type Calendar } from './calendar';
+import { effectiveDue, isWorkDay, NO_OFF, workDaysIn, workEnd, type Calendar } from './calendar';
 import { materialOk } from './material';
 
 export type BlockedReason = 'noCrane' | 'noMaterial' | 'materialLate' | 'noCrew' | 'crewLimit';
@@ -149,7 +149,8 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
       dailyMH,
       mhByDue: 0,
       creditedMH: 0,
-      lateDays: status === 'late' ? end! - due : 0,
+      // 지연·여유는 작업일로 센다 (주말·공휴일·작업 불가일 제외)
+      lateDays: status === 'late' ? workDaysIn(cal, due + 1, end!) : 0,
       overDays: [],
       laneClash: false,
       slackDays: 0,
@@ -204,8 +205,8 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
       res.creditedMH += earned;
       if (d <= res.due) res.mhByDue += earned;
     }
-    if (res.status === 'conflict') res.lateDays = Math.max(0, res.end! - res.due);
-    if (res.status === 'ok') res.slackDays = res.due - res.end!;
+    if (res.status === 'conflict') res.lateDays = workDaysIn(cal, res.due + 1, res.end!);
+    if (res.status === 'ok') res.slackDays = workDaysIn(cal, res.end! + 1, res.due);
   }
 
   const results = Object.values(pre);
