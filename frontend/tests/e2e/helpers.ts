@@ -33,18 +33,15 @@ export async function drag(page: Page, from: string, to: string | { dx?: number;
 
 export const step = (page: Page, label: string) => page.locator('.steps button', { hasText: label });
 
-/** 체험하기로 들어가 모드를 고르고(첫 방문이면 튜토리얼 가이드가 열리므로 건너뛴다) 샘플로 블록 스케줄링까지. sample이 아니면 메뉴에서 멈춘다 */
+/** 체험하기로 들어가 모드를 고르고(가이드 없이 메뉴로) 샘플로 블록 스케줄링까지. sample이 아니면 메뉴에서 멈춘다 */
 export async function start(page: Page, mode: 'expert' | 'novice', sample = true) {
   await page.goto('/');
   await page.getByTestId(`mode-${mode}`).click();
   await page.getByTestId('try-btn').click();
-  await page.getByRole('button', { name: '건너뛰기' }).click();
+  await expect(page.locator('.tile')).toHaveCount(4);
+  if (!sample) return;
+  await page.getByRole('button', { name: /직접 입력하기|이어서 하기/ }).click();
   await expect(page.getByTestId('setup-title')).toBeVisible();
-  if (!sample) {
-    await step(page, '메뉴').click();
-    await expect(page.locator('.tile')).toHaveCount(4);
-    return;
-  }
   await page.getByRole('button', { name: '샘플 불러오기' }).click();
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
 }
