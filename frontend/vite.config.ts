@@ -8,7 +8,8 @@ const FRONTEND = fileURLToPath(new URL('.', import.meta.url));
 // .venv와 backend 패키지는 저장소 루트에 있다 (vite를 어느 폴더에서 띄우든 같은 곳을 쓰도록)
 const REPO = fileURLToPath(new URL('..', import.meta.url));
 const API_PORT = Number(process.env.API_PORT ?? 8000);
-const PYTHON = `${REPO}.venv/bin/python`;
+// Windows venv는 bin 대신 Scripts 아래에 python.exe를 둔다
+const PYTHON = process.platform === 'win32' ? `${REPO}.venv/Scripts/python.exe` : `${REPO}.venv/bin/python`;
 
 /** 개발·미리보기 서버를 띄울 때 프로젝트 .venv의 FastAPI 서버(backend/)도 함께 띄운다 */
 function pythonApi(): Plugin {
