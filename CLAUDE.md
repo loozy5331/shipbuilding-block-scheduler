@@ -27,7 +27,7 @@ React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 
 | 최적화 실행·결과 저장 | `src/store/actions.ts` `runSolve()` |
 | 엑셀/Numbers/CSV 읽기·쓰기, 붙여넣기 파싱 | `src/io/{excel,parse}.ts` |
 | 로그인 API | 호출 `src/io/auth.ts` ↔ FastAPI `backend/app/main.py`(라우트), `backend/app/users.py`(SQLite·scrypt). 개발 시 `frontend/vite.config.ts`가 uvicorn을 띄우고 /api 프록시 |
-| 페이지 | `components/home/{LoginPage,MenuPage}` → `input/InputPage` → `board/BoardPage` → `result/ResultPage` (`App.tsx`가 전환). 입력·스케줄링은 좌 입력/우 상태 `common/SideLayout.tsx`(스타일 `15-side-layout.css`) |
+| 페이지 | `components/home/{LoginPage,MenuPage}` → `input/InputPage` → `board/BoardPage` → `result/ResultPage` (`App.tsx`가 전환). 입력·스케줄링·결과는 좌 입력/우 상태 `common/SideLayout.tsx`(스타일 `15-side-layout.css`) |
 | 간트 | `board/GanttChart.tsx`(줄·작업장), `board/GanttBars.tsx`(막대·아이콘), 드래그 `board/useBoardDnd.ts`, 칸 폭 `board/ganttLayout.ts` |
 | 튜토리얼 가이드 | 단계 `src/tutorial/steps.ts`, 화면 `Tour.tsx`, 예시 데이터 `scenario.ts` |
 | 조립 애니메이션 | 장면 데이터 `assembly/scene.ts`, 시간표 `timeline.ts`, three.js 연출 `three/runShow.ts`(카메라·빛·장면별 동작), 모델(선박 블록 단면·이음부 경로 포함) `three/models.ts`, 용접 비드 `three/weldBead.ts`, 불꽃·먼지 `three/effects.ts`, 오버레이 `AssemblyShow.tsx`(three.js는 재생 때만 로드) |
