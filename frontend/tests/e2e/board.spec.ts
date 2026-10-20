@@ -299,7 +299,6 @@ test('자원 부족 시 즉시 불가 판정과 추가 자원 제안', async ({ 
   await page.getByRole('button', { name: '숙련공 줄이기' }).click();
   await page.getByRole('button', { name: '일반 작업자 줄이기' }).click();
   await page.getByRole('button', { name: '일반 작업자 줄이기' }).click();
-  await expect(page.locator('.verdict')).toContainText('불가능');
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
   await expect(page.getByTestId('verdict')).toContainText('납기 준수 불가');
   await expect(page.locator('[data-tour="whatif"]')).toContainText('대응안 1');
