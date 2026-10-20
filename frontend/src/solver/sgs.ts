@@ -1,5 +1,6 @@
-import type { Assignments, Block, Resources } from '../domain/types';
+import type { Assignment, Assignments, Block, Resources } from '../domain/types';
 import { emptyAssignment } from '../domain/types';
+import { spanOf } from '../domain/lanes';
 import { buildModes, type Mode } from './modes';
 
 /** fast: 가장 빨리 끝나는 배치 / lean: 납기 안이면 낭비 MH가 적은 배치 우선 */
@@ -37,10 +38,11 @@ class FreeTable {
     return true;
   }
 
-  take(start: number, m: Mode) {
+  take(start: number, m: Pick<Mode, 'general' | 'skilled' | 'duration'>, crane = true) {
+    this.ensure(start + m.duration - 1);
     for (let d = start - 1; d < start - 1 + m.duration; d++) {
       this.slots[d] -= 1;
-      this.crane[d] -= 1;
+      if (crane) this.crane[d] -= 1;
       this.general[d] -= m.general;
       this.skilled[d] -= m.skilled;
     }
@@ -66,13 +68,28 @@ function key(o: Option, rule: PickRule, due: number): number[] {
   return [rule === 'lean' ? 1 : 0, o.end, o.mode.wasteMH, crew, o.mode.skilled];
 }
 
-/** 주어진 순서대로 블록을 하나씩 가장 좋은 위치에 배치하는 직렬 스케줄 생성 */
-export function serialSchedule(order: Block[], r: Resources, modes: ModeTable, rule: PickRule = 'fast'): Assignments {
+/** 사용자가 고정한 블록: 배치를 그대로 두고 자원만 먼저 차지한다 */
+export interface Fixed {
+  block: Block;
+  a: Assignment;
+}
+
+/** 주어진 순서대로 블록을 하나씩 가장 좋은 위치에 배치하는 직렬 스케줄 생성 (fixed는 먼저 제자리에 둔다) */
+export function serialSchedule(order: Block[], r: Resources, modes: ModeTable, rule: PickRule = 'fast', fixed: Fixed[] = []): Assignments {
   const free = new FreeTable(r);
   const out: Assignments = {};
   let emergencyLeft = r.emergencyMaterials;
+  let fixedEnd = 0;
+  for (const { block, a } of fixed) {
+    out[block.id] = a;
+    if (a.emergency) emergencyLeft--;
+    const span = spanOf(block, a, r);
+    if (!span) continue;
+    free.take(span[0], { general: a.general, skilled: a.skilled, duration: span[1] - span[0] + 1 }, a.crane);
+    fixedEnd = Math.max(fixedEnd, span[1]);
+  }
   const canRun = r.cranes > 0 && r.workplaces * r.blocksPerWorkplace > 0;
-  const limit = order.reduce((s, b) => s + (modes[b.id].at(-1)?.duration ?? 0), 0) + Math.max(0, ...order.map((b) => b.dueDay)) + 1;
+  const limit = fixedEnd + order.reduce((s, b) => s + (modes[b.id].at(-1)?.duration ?? 0), 0) + Math.max(0, ...order.map((b) => b.dueDay)) + 1;
 
   for (const b of order) {
     out[b.id] = emptyAssignment(b.id);

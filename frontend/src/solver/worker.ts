@@ -1,6 +1,6 @@
-import { solveAll, type SolveRequest } from './index';
+import { solveAll, solvePinned, type PinnedRequest, type SolveRequest } from './index';
 
-self.onmessage = (e: MessageEvent<SolveRequest & { id: number }>) => {
+self.onmessage = (e: MessageEvent<(SolveRequest | PinnedRequest) & { id: number }>) => {
   const { id, ...req } = e.data;
-  self.postMessage({ id, result: solveAll(req) });
+  self.postMessage({ id, result: 'fixed' in req ? solvePinned(req) : solveAll(req) });
 };

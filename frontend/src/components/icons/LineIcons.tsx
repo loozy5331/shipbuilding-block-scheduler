@@ -1,5 +1,5 @@
 /** 발표 자료의 원형 배경 위 라인 아이콘 */
-type Name = 'ship' | 'block' | 'yard' | 'clock' | 'clipboard' | 'gear' | 'bulb' | 'chart' | 'alert' | 'check' | 'sort' | 'coins' | 'upload' | 'download' | 'camera' | 'play';
+type Name = 'ship' | 'block' | 'yard' | 'clock' | 'clipboard' | 'gear' | 'bulb' | 'chart' | 'alert' | 'check' | 'sort' | 'coins' | 'upload' | 'download' | 'camera' | 'play' | 'lock';
 
 const PATHS: Record<Name, string> = {
   ship: 'M12 3v4M9 7h6v4H9zM4 14l8-3 8 3-2 5H6zM3 21c1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1',
@@ -18,6 +18,7 @@ const PATHS: Record<Name, string> = {
   download: 'M12 4v12M7 11l5 5 5-5M4 16v4h16v-4',
   camera: 'M3 8h4l2-3h6l2 3h4v11H3zM12 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
   play: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 8.5v7l5.5-3.5z',
+  lock: 'M8 11V8a4 4 0 0 1 8 0v3M5 11h14v10H5zM12 15v2',
 };
 
 export function LineIcon({ name, size = 24, color = 'currentColor' }: { name: Name; size?: number; color?: string }) {

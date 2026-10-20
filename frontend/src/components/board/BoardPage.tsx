@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { useEvaluation } from '../../store/evaluation';
 import { nextHint, type Hint } from '../../domain/hint';
-import { samePlan, startOrder } from '../../domain/lanes';
+import { pinKey, pinnedOf, samePlan, startOrder } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
-import { runSolve } from '../../store/actions';
+import { runPinnedSolve, runSolve } from '../../store/actions';
 import { ResourceIcon } from '../icons/ResourceIcons';
 import { LineIcon } from '../icons/LineIcons';
 import { ResourcePalette } from './ResourcePalette';
@@ -22,6 +22,8 @@ export function BoardPage() {
   const resources = useStore((s) => s.resources);
   const assignments = useStore((s) => s.assignments);
   const solve = useStore((s) => s.solve);
+  const pinSolve = useStore((s) => s.pinSolve);
+  const unpinAll = useStore((s) => s.unpinAll);
   const mode = useStore((s) => s.mode);
   const hintCount = useStore((s) => s.hintCount);
   const setPage = useStore((s) => s.setPage);
@@ -57,18 +59,23 @@ export function BoardPage() {
 
   const { dragKind, dndProps } = useBoardDnd();
 
+  // 고정한 블록이 있으면 그 블록은 두고 다시 최적화한 결과를 쓴다
+  const pinned = Object.keys(pinnedOf(assignments));
+  const pinFresh = pinSolve && pinSolve.blocks === blocks && pinSolve.resources === resources && pinSolve.key === pinKey(pinnedOf(assignments));
+  const best = pinned.length > 0 ? (pinFresh ? pinSolve.solution : null) : (solve?.solutions.optimal ?? null);
   // 최적 배치 + 차선책. 지금 적용된 안이 몇 번째인지 (직접 고쳤으면 -1)
-  const options = solve ? [solve.solutions.optimal, ...(solve.solutions.optimal.alternatives ?? [])] : [];
+  const options = best ? [best, ...(best.alternatives ?? [])] : [];
   const applied = options.findIndex((o) => samePlan(assignments, o.assignments));
 
   /** 처음엔 최적 배치, 다시 누르면 차선책을 차례로 보여 준다 (현장 사정으로 먼저 해야 할 블록이 있을 수 있음) */
   const optimize = async () => {
     setBusy(true);
     try {
-      const res = await runSolve(null);
-      const opts = [res.solutions.optimal, ...(res.solutions.optimal.alternatives ?? [])];
+      const top = Object.keys(pinnedOf(useStore.getState().assignments)).length > 0 ? await runPinnedSolve() : (await runSolve(null)).solutions.optimal;
+      const opts = [top, ...(top.alternatives ?? [])];
       const cur = opts.findIndex((o) => samePlan(useStore.getState().assignments, o.assignments));
-      useStore.getState().applyAssignments(opts[(cur + 1) % opts.length].assignments);
+      // 보고 있던 안이 후보가 아니었으면(직접 고침·고정 변경) 최적부터
+      useStore.getState().applyAssignments(opts[applied < 0 ? 0 : (cur + 1) % opts.length].assignments);
     } finally {
       setBusy(false);
     }
@@ -86,6 +93,8 @@ export function BoardPage() {
     }
   };
 
+  const optimizeLabel =
+    applied >= 0 && options.length > 1 ? `다음 최적배치 후보 (${applied + 1}/${options.length})` : pinned.length > 0 ? '고정 외 다시 최적화' : '최적 배치';
   const verdict = solve ? (solve.solutions.optimal.feasible ? 'good' : 'bad') : null;
   const expert = mode !== 'novice';
 
@@ -117,7 +126,7 @@ export function BoardPage() {
           </button>
           {expert ? (
             <button type="button" className="btn primary" onClick={optimize} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="optimize-btn">
-              {busy ? '계산 중…' : applied < 0 || options.length < 2 ? '최적 배치' : `다음 최적배치 후보 (${applied + 1}/${options.length})`}
+              {busy ? '계산 중…' : optimizeLabel}
             </button>
           ) : (
             <button type="button" className="btn primary" onClick={askHint} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="hint-btn">
@@ -133,14 +142,26 @@ export function BoardPage() {
       {expert && applied >= 0 && options.length > 0 && (
         <div className="notice alt" role="status" data-testid="plan-option">
           <p>
-            <b>{PLAN_NAME[applied]}</b> ({applied + 1}/{options.length}) · 납기 준수 {options[applied].kpi.onTime}/{options[applied].kpi.total} · 지연{' '}
-            {options[applied].kpi.totalLateDays}일 · 착수 순서: {startOrder(options[applied].assignments).join(' → ')}
+            <b>{PLAN_NAME[applied]}</b> ({applied + 1}/{options.length}){pinned.length > 0 && <> · 고정 {pinned.length}개 유지</>} · 납기 준수 {options[applied].kpi.onTime}/
+            {options[applied].kpi.total} · 지연 {options[applied].kpi.totalLateDays}일 · 착수 순서: {startOrder(options[applied].assignments).join(' → ')}
           </p>
           <small className="muted">
             {options.length > 1
               ? '버튼을 다시 누르면 착수 순서가 다른 안을 봅니다. 차선책도 모두 최소 요건(자재·크레인·작업자, 자원 초과 없음)을 만족합니다. 현장 사정으로 먼저 해야 할 블록이 있으면 차선책을 고르세요.'
               : '최소 요건(자재·크레인·작업자, 자원 초과 없음)을 만족하는 차선책이 없습니다.'}
           </small>
+        </div>
+      )}
+
+      {expert && pinned.length > 0 && (
+        <div className="notice pin" role="status" data-testid="pin-notice">
+          <LineIcon name="lock" size={18} />
+          <p>
+            <b>고정 {pinned.length}개</b> · {pinned.join(', ')} — 최적화를 누르면 이 블록은 그대로 두고 나머지만 다시 배치합니다.
+          </p>
+          <button type="button" className="btn small ghost" onClick={unpinAll}>
+            고정 모두 풀기
+          </button>
         </div>
       )}
 

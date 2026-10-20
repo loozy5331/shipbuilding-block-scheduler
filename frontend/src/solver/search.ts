@@ -1,7 +1,7 @@
 import type { Assignments, Block, Policy, Resources } from '../domain/types';
 import { compareObjective, evaluate, meetsMinimum, objective, type Kpi } from '../domain/evaluate';
 import { startOrder } from '../domain/lanes';
-import { buildModeTable, serialSchedule, type ModeTable, type PickRule } from './sgs';
+import { buildModeTable, serialSchedule, type Fixed, type ModeTable, type PickRule } from './sgs';
 
 export interface Plan {
   assignments: Assignments;
@@ -42,25 +42,35 @@ interface Candidate {
   score: number[];
 }
 
-function run(order: Block[], rule: PickRule, blocks: Block[], r: Resources, modes: ModeTable): Candidate {
-  const assignments = serialSchedule(order, r, modes, rule);
-  return { order, rule, assignments, score: objective(evaluate(blocks, r, assignments).kpi) };
+/** 착수 순서·배치 규칙 → 배치와 목적함수 점수. 고정 블록은 순서에 넣지 않고 제자리에 둔다 */
+type Run = (order: Block[], rule: PickRule) => Candidate;
+
+function runner(blocks: Block[], r: Resources, modes: ModeTable, fixed: Fixed[]): Run {
+  return (order, rule) => {
+    const assignments = serialSchedule(order, r, modes, rule, fixed);
+    return { order, rule, assignments, score: objective(evaluate(blocks, r, assignments).kpi) };
+  };
 }
 
 export interface SolveOptions {
   budgetMs?: number;
   seed?: number;
+  /** 고정한 블록의 배치 (이 블록들은 그대로 두고 나머지만 배치한다) */
+  fixed?: Assignments;
 }
 
 export function solvePolicy(policy: Policy, blocks: Block[], r: Resources, opts: SolveOptions = {}): Solution {
   const modes = buildModeTable(blocks, r);
+  const fixed: Fixed[] = blocks.filter((b) => opts.fixed?.[b.id]).map((b) => ({ block: b, a: opts.fixed![b.id] }));
+  const free = blocks.filter((b) => !opts.fixed?.[b.id]);
+  const run = runner(blocks, r, modes, fixed);
   const plan = (c: Candidate): Plan => {
     const ev = evaluate(blocks, r, c.assignments);
     return { assignments: c.assignments, kpi: ev.kpi, feasible: ev.feasible };
   };
-  if (policy === 'input') return { policy, ...plan(run(blocks, 'fast', blocks, r, modes)) };
+  if (policy === 'input') return { policy, ...plan(run(free, 'fast')) };
   const archive = new Archive();
-  const best = localSearch(blocks, r, modes, opts, archive);
+  const best = localSearch(free, modes, run, opts, archive);
   return { policy, ...plan(best), alternatives: archive.top(MAX_ALTERNATIVES, best, blocks, r).map(plan) };
 }
 
@@ -99,14 +109,14 @@ class Archive {
   }
 }
 
-/** EDD/여유시간/입력순서 초기해에서 시작해 교환·삽입 이웃을 탐색하고, 정체되면 섞어서 재시작한다. */
-function localSearch(blocks: Block[], r: Resources, modes: ModeTable, { budgetMs = 800, seed = 7 }: SolveOptions, archive: Archive): Candidate {
+/** EDD/여유시간/입력순서 초기해에서 시작해 교환·삽입 이웃을 탐색하고, 정체되면 섞어서 재시작한다. blocks는 순서를 정할 (고정 안 된) 블록 */
+function localSearch(blocks: Block[], modes: ModeTable, run: Run, { budgetMs = 800, seed = 7 }: SolveOptions, archive: Archive): Candidate {
   const rand = rng(seed);
   const deadline = Date.now() + budgetMs;
   const edd = eddOrder(blocks, modes);
   const slack = [...blocks].sort((a, b) => a.dueDay - (modes[a.id][0]?.duration ?? 0) - (b.dueDay - (modes[b.id][0]?.duration ?? 0)));
   const starts: Candidate[] = [];
-  for (const order of [edd, slack, blocks]) for (const rule of ['fast', 'lean'] as PickRule[]) starts.push(run(order, rule, blocks, r, modes));
+  for (const order of [edd, slack, blocks]) for (const rule of ['fast', 'lean'] as PickRule[]) starts.push(run(order, rule));
   starts.forEach((c) => archive.add(c));
   starts.sort((a, b) => compareObjective(a.score, b.score));
   let best = starts[0];
@@ -127,7 +137,7 @@ function localSearch(blocks: Block[], r: Resources, modes: ModeTable, { budgetMs
     if (rand() < 0.5) [order[i], order[j]] = [order[j], order[i]];
     else order.splice(j, 0, order.splice(i, 1)[0]);
     const rule: PickRule = rand() < 0.15 ? (cur.rule === 'fast' ? 'lean' : 'fast') : cur.rule;
-    const next = run(order, rule, blocks, r, modes);
+    const next = run(order, rule);
     archive.add(next);
 
     const c = compareObjective(next.score, cur.score);
@@ -145,7 +155,7 @@ function localSearch(blocks: Block[], r: Resources, modes: ModeTable, { budgetMs
         const b = Math.floor(rand() * order2.length);
         [order2[a], order2[b]] = [order2[b], order2[a]];
       }
-      cur = run(order2, best.rule, blocks, r, modes);
+      cur = run(order2, best.rule);
       stall = 0;
     }
   }

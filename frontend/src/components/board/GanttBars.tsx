@@ -5,6 +5,7 @@ import { REASON_LABEL } from '../../domain/labels';
 import { workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { CraneIcon, MaterialIcon, SkilledIcon, WorkerIcon } from '../icons/ResourceIcons';
+import { LineIcon } from '../icons/LineIcons';
 import { COL } from './ganttLayout';
 
 function statusText(res: BlockResult): string | null {
@@ -19,7 +20,7 @@ export function blockTitle(block: Block, res: BlockResult) {
   return `${block.id}: ${when}. 남은 ${block.dueDay}일 · ${block.requiredMH} MH · ${block.materialReady ? '자재 준비' : '자재 미준비'} · 납기까지 ${res.mhByDue}/${block.requiredMH} MH`;
 }
 
-/** 배정된 자원 아이콘. 누르면 뺀다. 필요한데 없는 크레인·비상 자재는 흐린 자리로 보여 준다. */
+/** 배정된 자원 아이콘. 누르면 뺀다(고정한 블록은 못 뺀다). 필요한데 없는 크레인·비상 자재는 흐린 자리로 보여 준다. */
 export function AssignedIcons({ block, a, size = 16 }: { block: Block; a: Assignment | undefined; size?: number }) {
   const unassign = useStore((s) => s.unassign);
   const icon = (key: string, kind: ResourceKind, title: string, node: React.ReactNode) => (
@@ -27,7 +28,8 @@ export function AssignedIcons({ block, a, size = 16 }: { block: Block; a: Assign
       key={key}
       type="button"
       className="placed"
-      title={`${title} 빼기`}
+      disabled={a?.pinned}
+      title={a?.pinned ? `${title} (고정됨)` : `${title} 빼기`}
       aria-label={`${block.id}에서 ${title} 빼기`}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
@@ -76,11 +78,11 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
   const moveBlock = useStore((s) => s.moveBlock);
   const resources = useStore((s) => s.resources);
   const start = res.start ?? 1;
-  const drag = useDraggable({ id: `bar:${block.id}`, data: { blockId: block.id, start } });
+  const drag = useDraggable({ id: `bar:${block.id}`, data: { blockId: block.id, start }, disabled: a.pinned });
   const length = Math.max(1, Math.min(res.duration ?? 1, days - start + 1));
   const shift = drag.transform ? Math.round(drag.transform.x / COL) : 0;
   const status = statusText(res);
-  const cls = ['g-bar', res.status, res.lateDays > 0 && 'is-late', res.overloaded && 'overloaded', drag.isDragging && 'dragging', length === 1 && 'short']
+  const cls = ['g-bar', res.status, res.lateDays > 0 && 'is-late', res.overloaded && 'overloaded', drag.isDragging && 'dragging', length === 1 && 'short', a.pinned && 'pinned']
     .filter(Boolean)
     .join(' ');
 
@@ -98,7 +100,7 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
       className={cls}
       data-testid={`bar-${block.id}`}
       data-day={drag.isDragging ? `${Math.max(1, start + shift)}일 착수` : undefined}
-      title={`${blockTitle(block, res)}. 좌우로 끌면 착수일, 다른 작업장으로 끌면 작업장이 바뀝니다`}
+      title={`${blockTitle(block, res)}. ${a.pinned ? '고정됨: 다시 최적화해도 그대로 둡니다' : '좌우로 끌면 착수일, 다른 작업장으로 끌면 작업장이 바뀝니다'}`}
       style={{
         left: (start - 1) * COL + 3,
         width: length * COL - 6,
@@ -109,6 +111,7 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
       aria-label={`${block.id} ${start}일 착수. 좌우 방향키로 착수일, 위아래로 작업장 이동, Enter로 편집`}
       tabIndex={0}
       onKeyDown={(e) => {
+        if (a.pinned && e.key.startsWith('Arrow')) return;
         if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
           e.preventDefault();
           moveBlock(block.id, start + (e.key === 'ArrowRight' ? 1 : -1));
@@ -122,6 +125,7 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
         }
       }}
     >
+      {a.pinned && <LineIcon name="lock" size={14} />}
       {status ?? (length === 1 ? `${res.duration}일 · ${res.dailyMH}MH` : `${res.duration}일 · 하루 ${res.dailyMH} MH`)}
     </div>
   );
