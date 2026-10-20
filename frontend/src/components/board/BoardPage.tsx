@@ -97,7 +97,7 @@ export function BoardPage() {
   };
 
   const optimizeLabel =
-    applied >= 0 && options.length > 1 ? `다음 최적배치 후보 (${applied + 1}/${options.length})` : pinned.length > 0 ? '고정 외 다시 최적화' : '최적 배치';
+    applied >= 0 && options.length > 1 ? `다음 최적배치 후보 (${applied + 1}/${options.length})` : pinned.length > 0 ? '합의 외 다시 최적화' : '최적 배치';
   const verdict = solve ? (solve.solutions.optimal.feasible ? 'good' : 'bad') : null;
   const expert = mode !== 'novice';
 
@@ -145,7 +145,7 @@ export function BoardPage() {
       {expert && applied >= 0 && options.length > 0 && (
         <div className="notice alt" role="status" data-testid="plan-option">
           <p>
-            <b>{PLAN_NAME[applied]}</b> ({applied + 1}/{options.length}){pinned.length > 0 && <> · 고정 {pinned.length}개 유지</>} · 납기 준수 {options[applied].kpi.onTime}/
+            <b>{PLAN_NAME[applied]}</b> ({applied + 1}/{options.length}){pinned.length > 0 && <> · 합의 {pinned.length}개 유지</>} · 납기 준수 {options[applied].kpi.onTime}/
             {options[applied].kpi.total} · 지연 {options[applied].kpi.totalLateDays}일 · 착수 순서: {startOrder(options[applied].assignments).join(' → ')}
           </p>
           <small className="muted">
@@ -160,10 +160,10 @@ export function BoardPage() {
         <div className="notice pin" role="status" data-testid="pin-notice">
           <LineIcon name="lock" size={18} />
           <p>
-            <b>고정 {pinned.length}개</b> · {pinned.join(', ')} — 최적화를 누르면 이 블록은 그대로 두고 나머지만 다시 배치합니다.
+            <b>합의 {pinned.length}개</b> · {pinned.join(', ')} — 최적화를 누르면 합의한 블록은 그대로 두고 나머지만 다시 배치합니다.
           </p>
           <button type="button" className="btn small ghost" onClick={unpinAll}>
-            고정 모두 풀기
+            합의 모두 풀기
           </button>
         </div>
       )}

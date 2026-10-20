@@ -138,7 +138,7 @@ test('숙련자는 최적 배치로 시작하고, 다시 누르면 차선·차�
   await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
 });
 
-test('블록을 고정하고 다시 최적화하면 고정 블록은 그대로, 나머지만 다시 배치한다', async ({ page }) => {
+test('블록을 합의하고 다시 최적화하면 합의 블록은 그대로, 나머지만 다시 배치한다', async ({ page }) => {
   await start(page, 'expert');
   await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
   // E-320을 최적과 다른 날로 옮기고 고정한다
@@ -150,24 +150,31 @@ test('블록을 고정하고 다시 최적화하면 고정 블록은 그대로, 
   const at = new RegExp(`^E-320 ${day}일 착수`);
   await page.getByTestId('pin-E-320').click();
   await expect(page.getByTestId('pin-E-320')).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByTestId('pin-notice')).toContainText('고정 1개');
+  await expect(page.getByTestId('pin-notice')).toContainText('합의 1개');
   await expect(bar).toHaveClass(/pinned/);
-  // 고정한 막대는 방향키로 옮겨지지 않는다
+  // 합의한 막대는 방향키로 옮겨지지 않는다
   await bar.focus();
   await page.keyboard.press('ArrowRight');
   await expect(bar).toHaveAttribute('aria-label', at);
 
   const btn = page.getByTestId('optimize-btn');
-  await expect(btn).toHaveText('고정 외 다시 최적화');
+  await expect(btn).toHaveText('합의 외 다시 최적화');
   await btn.click();
-  await expect(page.getByTestId('plan-option')).toContainText('고정 1개 유지');
+  await expect(page.getByTestId('plan-option')).toContainText('합의 1개 유지');
   await expect(bar).toHaveAttribute('aria-label', at);
   await expect(page.getByTestId('waiting')).toHaveCount(0);
   await shot(page, '13b-pinned');
 
-  await page.getByRole('button', { name: '고정 모두 풀기' }).click();
+  await page.getByRole('button', { name: '합의 모두 풀기' }).click();
   await expect(page.getByTestId('pin-notice')).toHaveCount(0);
   await expect(page.getByTestId('pin-E-320')).toHaveAttribute('aria-pressed', 'false');
+
+  // 공통 설정 입력의 블록 표에서도 합의를 체크한다
+  await step(page, '공통 설정 입력').click();
+  await page.getByTestId('agree-D-208').check();
+  await step(page, '블록 스케줄링').click();
+  await expect(page.getByTestId('pin-D-208')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('pin-notice')).toContainText('D-208');
 });
 
 test('최적 배치로 줄이 재정렬되면 줄이 새 자리로 미끄러진다', async ({ page }) => {

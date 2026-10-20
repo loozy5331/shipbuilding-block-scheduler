@@ -2,7 +2,7 @@ import type { Assignment, Assignments, Block, ResourceKind, Resources } from './
 
 /** 이 자원을 이 블록에 더 놓을 수 없는 이유. 놓을 수 있으면 null. */
 export function assignBlockedReason(block: Block, a: Assignment | undefined, kind: ResourceKind, r: Resources, assignments: Assignments): string | null {
-  if (a?.pinned) return '고정된 블록입니다. 고정을 풀고 바꾸세요';
+  if (a?.pinned) return '합의된 블록입니다. 합의를 풀고 바꾸세요';
   const crew = (a?.general ?? 0) + (a?.skilled ?? 0);
   switch (kind) {
     case 'general':
