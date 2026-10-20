@@ -37,24 +37,6 @@
   grid-template-columns: minmax(0, 340px);
 }
 
-/* 결과: 평가서(왼쪽) · TBM(오른쪽) 한 줄 */
-.result-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-
-.result-row > .panel {
-  margin: 0;
-}
-
-@media (max-width: 860px) {
-  .result-row {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* 대기 블록의 점선 막대: 작업자 1명 기준 길이 */
 .g-bar.ghost {
   background: repeating-linear-gradient(45deg, #f4f6f8 0 6px, #fff 6px 12px);

@@ -7,11 +7,10 @@ import { runSolve } from '../../store/actions';
 import { exportSchedule } from '../../io/excel';
 import { dayToDate, formatMD } from '../../io/dates';
 import { LineIcon } from '../icons/LineIcons';
-import { KpiCards } from '../board/Insights';
 import { TodayPanel } from './TodayPanel';
 import { ReportCard } from './ReportCard';
 
-/** ⑤ 블록 스케줄 결과: 배치표, 오늘 작업·TBM, 최적 대비 평가서, 엑셀 저장 */
+/** ⑤ 블록 스케줄 결과: 최적 대비 평가 → 배치표 → 날짜별 작업·TBM, 엑셀 저장 */
 export function ResultPage() {
   const blocks = useStore((s) => s.blocks);
   const resources = useStore((s) => s.resources);
@@ -26,6 +25,12 @@ export function ResultPage() {
   const expert = mode !== 'novice';
   const lanes = laneCount(resources);
   const date = (d: number | null) => (d === null ? '-' : formatMD(dayToDate(planStart, d)));
+  const wpOf = (id: string) => {
+    const lane = assignments[id]?.lane;
+    return ev.blocks[id].start !== null && lane !== undefined && lane < lanes ? workplaceOf(lane, resources) : null;
+  };
+  const usedWorkplaces = new Set(blocks.map((b) => wpOf(b.id)).filter((w) => w !== null)).size;
+  const rows = [...blocks].sort((a, b) => (ev.blocks[a.id].start ?? Infinity) - (ev.blocks[b.id].start ?? Infinity) || a.id.localeCompare(b.id));
 
   // 평가서에 필요한 최적 배치
   useEffect(() => {
@@ -33,7 +38,7 @@ export function ResultPage() {
   }, [solve, blocks, resources]);
 
   return (
-    <div className="board">
+    <div className="board result">
       <div className="board-head">
         <div>
           <span className="eyebrow-label">— 결과</span>
@@ -43,6 +48,16 @@ export function ResultPage() {
               {ev.kpi.onTime}/{ev.kpi.total}
             </em>
           </h1>
+          <p className="result-sub muted" data-testid="result-sub">
+            블록 {blocks.length}개
+            {ev.kpi.makespan > 0 && (
+              <>
+                {' '}
+                · {date(1)} ~ {date(ev.kpi.makespan)} ({ev.kpi.makespan}일)
+              </>
+            )}{' '}
+            · 작업장 {usedWorkplaces}/{resources.workplaces}곳 사용
+          </p>
         </div>
         <div className="board-actions">
           <button type="button" className="btn ghost" onClick={() => setPage('schedule')}>
@@ -58,66 +73,57 @@ export function ResultPage() {
         </div>
       </div>
 
-      <KpiCards ev={ev} />
+      <ReportCard ev={ev} solve={solve} hintCount={expert ? null : hintCount} />
 
       <section className="panel">
         <h3>
-          <LineIcon name="clipboard" /> 배치표
+          <LineIcon name="clipboard" /> 배치표 <small className="muted">착수 순</small>
         </h3>
         <div className="table-scroll">
           <table className="report-table plan-table" data-testid="plan-table">
             <thead>
               <tr>
-                <th>블록 ID</th>
+                <th>블록</th>
+                <th>판정</th>
                 <th>작업장</th>
                 <th>작업 기간</th>
-                <th>작업자 수</th>
+                <th>납기</th>
+                <th>투입 인원</th>
                 <th>크레인·비상 자재</th>
-                <th>판정</th>
               </tr>
             </thead>
             <tbody>
-              {[...blocks]
-                .sort((a, b) => (ev.blocks[a.id].start ?? Infinity) - (ev.blocks[b.id].start ?? Infinity) || a.id.localeCompare(b.id))
-                .map((b) => {
-                  const a = assignments[b.id];
-                  const x = ev.blocks[b.id];
-                  return (
-                    <tr key={b.id} className={x.status === 'ok' ? '' : 'worse'}>
-                      <td>
-                        <b>{b.id}</b>
-                      </td>
-                      <td>{x.start !== null && a?.lane !== undefined && a.lane < lanes ? `작업장 ${workplaceOf(a.lane, resources) + 1}` : '-'}</td>
-                      <td>
-                        {x.start === null ? '-' : `${date(x.start)} ~ ${date(x.end)}`}
-                        {x.duration ? <small className="muted"> ({x.duration}일)</small> : null}
-                      </td>
-                      <td>
-                        {(a?.general ?? 0) + (a?.skilled ?? 0)}명
-                        {a?.skilled ? <small className="muted"> (숙련 {a.skilled})</small> : null}
-                      </td>
-                      <td>{[a?.crane && '크레인', a?.emergency && '비상 자재'].filter(Boolean).join(' · ') || '-'}</td>
-                      <td>{verdictText(x)}</td>
-                    </tr>
-                  );
-                })}
+              {rows.map((b) => {
+                const a = assignments[b.id];
+                const x = ev.blocks[b.id];
+                const wp = wpOf(b.id);
+                const crew = [a?.general && `일반 ${a.general}`, a?.skilled && `숙련 ${a.skilled}`].filter(Boolean).join(' · ');
+                return (
+                  <tr key={b.id}>
+                    <th scope="row">{b.id}</th>
+                    <td>
+                      <span className={`status-chip ${x.status}`}>{verdictText(x)}</span>
+                    </td>
+                    <td>{wp === null ? '-' : `작업장 ${wp + 1}`}</td>
+                    <td>
+                      {x.start === null ? '-' : x.start === x.end ? date(x.start) : `${date(x.start)} ~ ${date(x.end)}`}
+                      {x.duration ? <small className="muted"> ({x.duration}일)</small> : null}
+                    </td>
+                    <td>
+                      {date(b.dueDay)}
+                      {x.status === 'ok' && <small className="muted"> ({x.slackDays > 0 ? `여유 ${x.slackDays}일` : '당일 완료'})</small>}
+                    </td>
+                    <td>{crew || '-'}</td>
+                    <td>{[a?.crane && '크레인', a?.emergency && '비상 자재'].filter(Boolean).join(' · ') || '-'}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </section>
 
-      {/* 한 줄: 왼쪽 최적 대비 평가서, 오른쪽 TBM 메시지 */}
-      <div className="result-row">
-        {solve ? (
-          <ReportCard ev={ev} solve={solve} hintCount={expert ? null : hintCount} />
-        ) : (
-          <div className="panel muted-panel">
-            <LineIcon name="bulb" />
-            <span>최적 배치를 계산하고 있습니다.</span>
-          </div>
-        )}
-        <TodayPanel ev={ev} day={day} onDay={setDay} maxDay={ev.horizon} />
-      </div>
+      <TodayPanel ev={ev} day={day} onDay={setDay} maxDay={ev.horizon} />
     </div>
   );
 }

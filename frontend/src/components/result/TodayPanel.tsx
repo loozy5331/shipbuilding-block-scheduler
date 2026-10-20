@@ -42,38 +42,45 @@ export function TodayPanel({ ev, day, onDay, maxDay }: { ev: Evaluation; day: nu
           </button>
         </div>
       </div>
-      {work.length === 0 ? (
-        <p className="muted">이날 작업 중인 블록이 없습니다.</p>
-      ) : (
-        <ul className="today-list">
-          {work.map((w) => (
-            <li key={w.block.id}>
-              <b>{w.block.id}</b>
-              <span className="muted">{w.workplace === null ? '작업장 미정' : `작업장 ${w.workplace + 1}`}</span>
-              <span>
-                일반 {w.general} · 숙련 {w.skilled}
-                {w.crane ? ' · 크레인' : ''}
-              </span>
-              <span className="muted">
-                {w.nth}/{w.duration}일차
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <h4>TBM 공유 메시지</h4>
-      <pre className="tbm" data-testid="tbm">
-        {message}
-      </pre>
-      <div className="dialog-actions">
-        {'share' in navigator && (
-          <button type="button" className="btn small ghost" onClick={share}>
-            공유
-          </button>
-        )}
-        <button type="button" className="btn small" onClick={copy}>
-          복사
-        </button>
+      <div className="today-body">
+        <div>
+          <h4>작업 블록 {work.length}개</h4>
+          {work.length === 0 ? (
+            <p className="muted">이날 작업 중인 블록이 없습니다.</p>
+          ) : (
+            <ul className="today-list">
+              {work.map((w) => (
+                <li key={w.block.id}>
+                  <b>{w.block.id}</b>
+                  <span className="muted">{w.workplace === null ? '작업장 미정' : `작업장 ${w.workplace + 1}`}</span>
+                  <span>
+                    일반 {w.general} · 숙련 {w.skilled}
+                    {w.crane ? ' · 크레인' : ''}
+                  </span>
+                  <span className="muted">
+                    {w.nth}/{w.duration}일차
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <h4>TBM 공유 메시지</h4>
+          <pre className="tbm" data-testid="tbm">
+            {message}
+          </pre>
+          <div className="dialog-actions">
+            {'share' in navigator && (
+              <button type="button" className="btn small ghost" onClick={share}>
+                공유
+              </button>
+            )}
+            <button type="button" className="btn small" onClick={copy}>
+              복사
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );
