@@ -95,6 +95,11 @@ test('작업하지 않는 날: 주말 음영, 날짜 칸을 눌러 작업 불가
   await expect(page.getByTestId('day-6')).toHaveClass(/off weekend/);
   await expect(page.getByTestId('day-7')).toContainText('주말');
   await expect(page.getByTestId('fold-weekend')).toHaveAttribute('aria-pressed', 'false');
+  // 펼친 주말 칸의 손잡이로 다시 접고, 왼쪽 위 스위치로도 펼치고 접는다
+  await page.getByTestId('fold-handle-7').click();
+  await expect(page.getByTestId('day-6')).toHaveClass(/folded weekend/);
+  await page.getByTestId('fold-weekend').click();
+  await expect(page.getByTestId('day-7')).toHaveClass(/off weekend/);
   await page.getByTestId('fold-weekend').click();
   await expect(page.getByTestId('day-7')).toHaveClass(/folded/);
   // 공휴일은 처음에 펼쳐 두고 같은 방식으로 접는다
