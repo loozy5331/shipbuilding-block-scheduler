@@ -1,6 +1,7 @@
 import type { Evaluation } from '../../domain/evaluate';
 import { tbmMessage, workOn } from '../../domain/tbm';
 import { useStore } from '../../store/schedulerStore';
+import { useCalendar } from '../../store/evaluation';
 import { dayToDate, formatMD } from '../../io/dates';
 import { LineIcon } from '../icons/LineIcons';
 
@@ -11,8 +12,9 @@ export function TodayPanel({ ev, day, onDay, maxDay }: { ev: Evaluation; day: nu
   const r = useStore((s) => s.resources);
   const planStart = useStore((s) => s.planStart);
   const showToast = useStore((s) => s.showToast);
-  const work = workOn(day, blocks, assignments, ev, r);
-  const message = tbmMessage(day, blocks, assignments, ev, r, planStart);
+  const cal = useCalendar();
+  const work = workOn(day, blocks, assignments, ev, r, cal);
+  const message = tbmMessage(day, blocks, assignments, ev, r, planStart, cal);
 
   const copy = async () => {
     try {

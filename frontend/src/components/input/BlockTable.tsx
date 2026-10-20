@@ -1,5 +1,8 @@
 import { useStore } from '../../store/schedulerStore';
 import { dayToDate, formatMD } from '../../io/dates';
+import { effectiveDue } from '../../domain/calendar';
+import { useCalendar } from '../../store/evaluation';
+import { DueShift } from '../common/DueShift';
 
 /** 블록 작업 표. 튜토리얼에서는 readOnly로 같은 표를 글자만 보여 준다. */
 export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
@@ -9,7 +12,17 @@ export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
   const removeBlock = useStore((s) => s.removeBlock);
   const addBlock = useStore((s) => s.addBlock);
   const ids = blocks.map((b) => b.id);
-  const date = (day: number) => <span className="muted">({formatMD(dayToDate(planStart, day))})</span>;
+  const cal = useCalendar();
+  // 납기 날짜는 주말·공휴일만큼 미룬 실제 납기로 보여 준다
+  const due = (b: (typeof blocks)[number]) => {
+    const d = effectiveDue(cal, b.dueDay);
+    return (
+      <>
+        <span className="muted">({formatMD(dayToDate(planStart, d))})</span>
+        <DueShift block={b} due={d} />
+      </>
+    );
+  };
 
   return (
     <div className="table-scroll">
@@ -38,7 +51,7 @@ export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
                   <b>{b.id}</b>
                 </td>
                 <td>
-                  {b.dueDay} {date(b.dueDay)}
+                  {b.dueDay} {due(b)}
                 </td>
                 <td className="num">{b.requiredMH} MH</td>
                 <td>{b.materialReady ? '준비' : <span className="tag warn">미준비</span>}</td>
@@ -62,7 +75,7 @@ export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
                     value={b.dueDay}
                     onChange={(e) => updateBlock(i, { dueDay: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                   />{' '}
-                  {date(b.dueDay)}
+                  {due(b)}
                 </td>
                 <td className="num">
                   <input

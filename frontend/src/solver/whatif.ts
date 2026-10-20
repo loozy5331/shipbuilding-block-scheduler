@@ -1,6 +1,7 @@
 import type { Block, Resources } from '../domain/types';
 import { compareObjective, objective, type Kpi } from '../domain/evaluate';
 import { solvePolicy } from './search';
+import type { Calendar } from '../domain/calendar';
 
 export type WhatIfKey = 'generalWorkers' | 'skilledWorkers' | 'cranes' | 'workplaces' | 'emergencyMaterials';
 
@@ -24,13 +25,13 @@ export interface WhatIfResult {
  * 자원을 하나씩 늘려 보며(최대 maxAdd) 개선 효과를 측정한다.
  * 해소되는 최소 추가량을, 해소가 안 되면 가장 많이 개선되는 추가량을 돌려준다.
  */
-export function whatIf(blocks: Block[], r: Resources, baseline: Kpi, maxAdd = 3, budgetMs = 120): WhatIfResult[] {
+export function whatIf(blocks: Block[], r: Resources, baseline: Kpi, cal?: Calendar, maxAdd = 3, budgetMs = 120): WhatIfResult[] {
   const out: WhatIfResult[] = [];
   const base = objective(baseline);
   for (const key of Object.keys(WHATIF_LABEL) as WhatIfKey[]) {
     let bestHere: WhatIfResult | null = null;
     for (let add = 1; add <= maxAdd; add++) {
-      const sol = solvePolicy('optimal', blocks, { ...r, [key]: r[key] + add }, { budgetMs });
+      const sol = solvePolicy('optimal', blocks, { ...r, [key]: r[key] + add }, { budgetMs, cal });
       const res = { key, added: add, kpi: sol.kpi, resolves: sol.feasible };
       if (!bestHere || compareObjective(objective(res.kpi), objective(bestHere.kpi)) < 0) bestHere = res;
       if (sol.feasible) break;

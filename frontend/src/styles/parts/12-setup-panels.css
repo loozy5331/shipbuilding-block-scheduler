@@ -71,3 +71,30 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---------- 작업하지 않는 날 ---------- */
+.workdays {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.workdays h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.workdays .check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.workdays .small {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}

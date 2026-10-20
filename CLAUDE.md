@@ -20,6 +20,7 @@ React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 
 | 배치 평가(지연·초과·KPI·목적함수) | `src/domain/evaluate.ts` |
 | 작업 자리(레인)·착수 순서·같은 배치 비교 | `src/domain/lanes.ts` |
 | 배정 가능 여부·힌트·TBM·평가서·라벨 | `src/domain/{assign,hint,tbm,report,labels}.ts` |
+| 작업하지 않는 날(주말·공휴일·직접 지정)·실제 납기 | `src/domain/{calendar,holidays}.ts`, 현재 달력 `src/store/calendar.ts` `selectCalendar()`/`useCalendar()` |
 | 최적화(직렬 SGS + 로컬 서치), 용량 검사, what-if | `src/solver/{sgs,search,feasibility,whatif}.ts`, 진입 `index.ts`, 워커 호출 `client.ts` |
 | 상태: 화면·로그인 / 블록·배치 / 튜토리얼 / UI | `src/store/slices/{session,plan,tutorial,ui}.ts` (저장 항목·마이그레이션은 `schedulerStore.ts`) |
 | 현재 배치 평가(메모이즈) | `src/store/evaluation.ts` → `useEvaluation()` |
@@ -39,5 +40,6 @@ React 19 + TypeScript + Vite, 상태는 zustand(localStorage 저장), 계산은 
 - 버전: 유의적 버전. 기능 브랜치를 합칠 때 `CHANGELOG.md`의 `[Unreleased]`에 한 줄 추가. 릴리스는 `develop`에서 `release/X.Y.Z` → `package.json` 버전·CHANGELOG 갱신 → `main`에 `--no-ff` 머지 → `vX.Y.Z` 태그(annotated) → `develop`에 되머지.
 - 배치를 바꾸는 상태 변경은 `plan.ts`의 `withLanes`로 작업 자리를 채운다.
 - 평가가 필요하면 `evaluate()`를 새로 부르지 말고 `useEvaluation()`/`selectEvaluation()`.
+- 평가·최적화·자리 계산(`evaluate`·`spanOf`·`solvePolicy` 등)에는 현재 달력(`selectCalendar`)을 넘긴다. 빼먹으면 매일 작업으로 계산된다.
 - 큰 파일 통째 읽기 피하기: 위 지도로 파일을 고르고 `grep -n`으로 위치를 찾은 뒤 필요한 범위만 읽는다.
 - Python은 프로젝트 `.venv`(Python 3.12, uv)에서만 실행한다. 의존성은 `backend/requirements*.txt`에 버전 고정.

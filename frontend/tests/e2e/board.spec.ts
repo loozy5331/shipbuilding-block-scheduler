@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import * as XLSX from 'xlsx';
-import { drag, fromFrontend, shot, start } from './helpers';
+import { drag, fromFrontend, shot, start, step } from './helpers';
 
 test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작업장 변경 → 최적 배치 → 내보내기', async ({ page }) => {
   await start(page, 'expert');
@@ -82,6 +82,39 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   expect(plan[0]).toHaveProperty('작업장');
   expect(plan[0]).toHaveProperty('작업자 수');
   expect(String(XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets.TBM)[0]['TBM 메시지'])).toContain('[TBM]');
+});
+
+test('작업하지 않는 날: 주말 음영, 날짜 칸을 눌러 작업 불가 지정·해제, 최적화는 그날을 비운다', async ({ page }) => {
+  await start(page, 'expert');
+  await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
+  // 시작일 10/19(월) → 6·7일이 주말
+  await expect(page.getByTestId('day-6')).toHaveClass(/off weekend/);
+  await expect(page.getByTestId('day-6')).toContainText('주말');
+  await expect(page.getByTestId('day-5')).not.toHaveClass(/off/);
+
+  // 2일을 작업 불가로: 그날에 걸친 막대는 빗금이 생기고 그만큼 늘어난다
+  await page.getByTestId('day-2').click();
+  await expect(page.getByTestId('day-2')).toHaveClass(/off manual/);
+  await expect(page.locator('.toast')).toContainText('작업 불가 날짜로 지정');
+  await expect(page.locator('.g-bar .bar-off').first()).toBeVisible();
+  await expect(page.getByTestId('load-general-2')).toHaveAttribute('title', /^2일: 0 \//);
+
+  // 다시 최적화해도 그날에는 착수하지 않는다 (막대 left = (2 - 1) × 96 + 3)
+  await page.getByTestId('optimize-btn').click();
+  await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
+  await expect(page.locator('.g-bar[style*="left: 99px"]')).toHaveCount(0);
+  await expect(page.getByTestId('load-general-2')).toHaveAttribute('title', /^2일: 0 \//);
+  await shot(page, '14-off-days');
+
+  // 공통 설정에 지정한 날이 보이고, 모두 풀 수 있다
+  await step(page, '공통 설정 입력').click();
+  await expect(page.getByTestId('workdays')).toContainText('작업 불가로 지정: 10/20');
+  await page.getByTestId('workdays').getByRole('button', { name: '모두 풀기' }).click();
+  await expect(page.getByTestId('workdays')).not.toContainText('작업 불가로 지정');
+  // 주말을 끄면 6일도 작업일
+  await page.getByTestId('skip-weekends').uncheck();
+  await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
+  await expect(page.getByTestId('day-6')).not.toHaveClass(/off/);
 });
 
 test('숙련자는 최적 배치로 시작하고, 다시 누르면 차선·차차선을 차례로 본다', async ({ page }) => {

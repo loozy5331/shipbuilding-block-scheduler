@@ -1,5 +1,6 @@
 import type { Assignment, Assignments, Block, BlockStatus, LoadKind, Resources } from './types';
 import { laneOverlapDays } from './lanes';
+import { effectiveDue, isWorkDay, NO_OFF, workEnd, type Calendar } from './calendar';
 
 export type BlockedReason = 'noCrane' | 'noMaterial' | 'noCrew' | 'crewLimit';
 
@@ -8,8 +9,12 @@ export interface BlockResult {
   status: BlockStatus;
   blockedReasons: BlockedReason[];
   start: number | null;
+  /** 끝나는 날. 사이의 쉬는 날을 건너뛰므로 start + duration - 1보다 늦을 수 있다 */
   end: number | null;
+  /** 작업일 수 (쉬는 날 제외) */
   duration: number | null;
+  /** 실제 납기(일차): 주말·공휴일만큼 뒤로 밀린 납기 */
+  due: number;
   dailyMH: number;
   /** 납기일까지 인정되는 MH. 자원 겹침이 있는 날의 공수는 인정하지 않는다. */
   mhByDue: number;
@@ -104,7 +109,7 @@ function loadUse(kind: LoadKind, a: Assignment): number {
   }
 }
 
-export function evaluate(blocks: Block[], r: Resources, assignments: Assignments): Evaluation {
+export function evaluate(blocks: Block[], r: Resources, assignments: Assignments, cal: Calendar = NO_OFF): Evaluation {
   const pre: Record<string, BlockResult> = {};
   let maxEnd = 0;
 
@@ -122,13 +127,14 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
       if (!b.materialReady && !a.emergency) reasons.push('noMaterial');
     }
     const start = a?.startDay ?? null;
-    const end = start !== null && duration !== null ? start + duration - 1 : null;
+    const end = start !== null && duration !== null ? workEnd(cal, start, duration) : null;
     if (end !== null) maxEnd = Math.max(maxEnd, end);
+    const due = effectiveDue(cal, b.dueDay);
 
     let status: BlockStatus;
     if (start === null) status = 'unscheduled';
     else if (reasons.length > 0) status = 'blocked';
-    else if (end! > b.dueDay) status = 'late';
+    else if (end! > due) status = 'late';
     else status = 'ok';
 
     pre[b.id] = {
@@ -138,10 +144,11 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
       start,
       end,
       duration,
+      due,
       dailyMH,
       mhByDue: 0,
       creditedMH: 0,
-      lateDays: status === 'late' ? end! - b.dueDay : 0,
+      lateDays: status === 'late' ? end! - due : 0,
       overDays: [],
       laneClash: false,
       slackDays: 0,
@@ -150,16 +157,17 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
     };
   }
 
-  const maxDue = Math.max(1, ...blocks.map((b) => b.dueDay));
+  const maxDue = Math.max(1, ...blocks.map((b) => pre[b.id].due));
   const horizon = Math.max(7, maxDue, maxEnd);
 
-  // 간트에 올라간 블록은 착수 불가 상태여도 자원을 점유한 것으로 본다(계획상 예약).
+  // 간트에 올라간 블록은 착수 불가 상태여도 자원을 점유한 것으로 본다(계획상 예약). 쉬는 날은 사람·크레인을 쓰지 않는다
   const load: LoadRow[] = LOAD_KINDS.map((kind) => ({ kind, capacity: loadCapacity(kind, r), usage: new Array(horizon).fill(0) }));
   const placed = blocks.filter((b) => pre[b.id].start !== null && pre[b.id].end !== null);
   for (const b of placed) {
     const a = assignments[b.id];
     const res = pre[b.id];
     for (let d = res.start!; d <= res.end!; d++) {
+      if (!isWorkDay(cal, d)) continue;
       for (const row of load) row.usage[d - 1] += loadUse(row.kind, a);
     }
   }
@@ -173,7 +181,7 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
   const emergencyUsed = blocks.filter((b) => assignments[b.id]?.emergency).length;
   const emergencyOver = emergencyUsed > r.emergencyMaterials;
 
-  const clash = laneOverlapDays(blocks, assignments, r);
+  const clash = laneOverlapDays(blocks, assignments, r, cal);
   const clashCells = new Set<string>();
   for (const b of placed) {
     const a = assignments[b.id];
@@ -189,14 +197,14 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
     // 겹친 날의 공수는 인정하지 않고, 미완료분을 뒤로 늘리지도 않는다
     let remaining = b.requiredMH;
     for (let d = res.start!; d <= res.end!; d++) {
-      if (res.overDays.includes(d) || (emergencyOver && a.emergency)) continue;
+      if (!isWorkDay(cal, d) || res.overDays.includes(d) || (emergencyOver && a.emergency)) continue;
       const earned = Math.min(res.dailyMH, remaining);
       remaining -= earned;
       res.creditedMH += earned;
-      if (d <= b.dueDay) res.mhByDue += earned;
+      if (d <= res.due) res.mhByDue += earned;
     }
-    if (res.status === 'conflict') res.lateDays = Math.max(0, res.end! - b.dueDay);
-    if (res.status === 'ok') res.slackDays = b.dueDay - res.end!;
+    if (res.status === 'conflict') res.lateDays = Math.max(0, res.end! - res.due);
+    if (res.status === 'ok') res.slackDays = res.due - res.end!;
   }
 
   const results = Object.values(pre);

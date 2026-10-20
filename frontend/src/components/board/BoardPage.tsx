@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import { useEvaluation } from '../../store/evaluation';
+import { selectCalendar } from '../../store/calendar';
 import { nextHint, type Hint } from '../../domain/hint';
 import { pinKey, pinnedOf, samePlan, startOrder } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
@@ -86,7 +87,7 @@ export function BoardPage() {
     try {
       const res = await runSolve(null);
       const s = useStore.getState();
-      setHint(nextHint(s.blocks, s.resources, s.assignments, res.solutions.optimal.assignments));
+      setHint(nextHint(s.blocks, s.resources, s.assignments, res.solutions.optimal.assignments, selectCalendar(s)));
       s.countHint();
     } finally {
       setBusy(false);

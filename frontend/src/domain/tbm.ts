@@ -1,7 +1,9 @@
 import type { Assignments, Block, Resources } from './types';
 import type { Evaluation } from './evaluate';
 import { laneCount, workplaceOf } from './lanes';
-import { dayToDate } from '../io/dates';
+import { dayToDate, toISO } from '../io/dates';
+import { isWorkDay, NO_OFF, workDaysIn, type Calendar } from './calendar';
+import { HOLIDAYS } from './holidays';
 
 const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -17,8 +19,9 @@ export interface DayWork {
   emergency: boolean;
 }
 
-/** day일에 작업 중인 블록 (작업장 순) */
-export function workOn(day: number, blocks: Block[], assignments: Assignments, ev: Evaluation, r: Resources): DayWork[] {
+/** day일에 작업 중인 블록 (작업장 순). 쉬는 날은 없다 */
+export function workOn(day: number, blocks: Block[], assignments: Assignments, ev: Evaluation, r: Resources, cal: Calendar = NO_OFF): DayWork[] {
+  if (!isWorkDay(cal, day)) return [];
   return blocks
     .filter((b) => {
       const x = ev.blocks[b.id];
@@ -30,7 +33,7 @@ export function workOn(day: number, blocks: Block[], assignments: Assignments, e
       return {
         block: b,
         workplace: a.lane !== undefined && a.lane < laneCount(r) ? workplaceOf(a.lane, r) : null,
-        nth: day - x.start! + 1,
+        nth: workDaysIn(cal, x.start!, day),
         duration: x.duration!,
         general: a.general,
         skilled: a.skilled,
@@ -41,18 +44,25 @@ export function workOn(day: number, blocks: Block[], assignments: Assignments, e
     .sort((p, q) => (p.workplace ?? 99) - (q.workplace ?? 99) || p.block.id.localeCompare(q.block.id));
 }
 
+function offLabel(date: Date): string {
+  const holiday = HOLIDAYS[toISO(date)];
+  if (holiday) return holiday;
+  return date.getDay() === 0 || date.getDay() === 6 ? '주말' : '작업 불가일';
+}
+
 /** TBM(작업 전 안전 회의)에서 그대로 공유할 수 있는 일별 메시지 */
-export function tbmMessage(day: number, blocks: Block[], assignments: Assignments, ev: Evaluation, r: Resources, planStart: string): string {
+export function tbmMessage(day: number, blocks: Block[], assignments: Assignments, ev: Evaluation, r: Resources, planStart: string, cal: Calendar = NO_OFF): string {
   const date = dayToDate(planStart, day);
   const head = `[TBM] ${date.getMonth() + 1}/${date.getDate()}(${WEEK[date.getDay()]}) ${day === 1 ? '오늘' : `${day}일차`} 작업`;
-  const work = workOn(day, blocks, assignments, ev, r);
+  if (!isWorkDay(cal, day)) return `${head}\n- 작업하지 않는 날입니다 (${offLabel(date)}).`;
+  const work = workOn(day, blocks, assignments, ev, r, cal);
   if (work.length === 0) return `${head}\n- 예정된 블록 작업이 없습니다.`;
 
   const lines = [head];
   for (const w of work) {
     const crew = [w.general && `일반 ${w.general}명`, w.skilled && `숙련 ${w.skilled}명`].filter(Boolean).join(' · ') || '작업자 미배정';
     const extra = [w.crane && '크레인 1대', w.emergency && '비상 자재'].filter(Boolean).join(' · ');
-    const due = w.block.dueDay - day;
+    const due = ev.blocks[w.block.id].due - day;
     const dueText = due === 0 ? '오늘 납기' : due < 0 ? `납기 ${-due}일 지남` : `납기 ${due}일 남음`;
     const place = w.workplace === null ? '작업장 미정' : `작업장 ${w.workplace + 1}`;
     lines.push(`- [${place}] ${w.block.id}: ${crew}${extra ? ` · ${extra}` : ''} (${w.nth}/${w.duration}일차, ${dueText})`);

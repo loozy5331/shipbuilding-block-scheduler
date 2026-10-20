@@ -1,6 +1,8 @@
 import type { Evaluation } from '../../domain/evaluate';
 import type { LoadKind } from '../../domain/types';
 import { COL } from './ganttLayout';
+import { isWorkDay } from '../../domain/calendar';
+import { useCalendar } from '../../store/evaluation';
 
 const LABEL: Record<LoadKind, { name: string; unit: string }> = {
   slots: { name: '동시 처리 블록', unit: '블록' },
@@ -11,6 +13,7 @@ const LABEL: Record<LoadKind, { name: string; unit: string }> = {
 
 /** 네모 한 칸 = 용량 1. 채운 칸 = 쓰는 양, 빨간 칸 = 용량을 넘은 양 */
 export function LoadGrid({ ev, days }: { ev: Evaluation; days: number }) {
+  const cal = useCalendar();
   return (
     <div className="load" data-tour="load">
       <div className="load-title">
@@ -33,7 +36,7 @@ export function LoadGrid({ ev, days }: { ev: Evaluation; days: number }) {
             return (
               <div
                 key={d}
-                className={`load-cell ${over ? 'over' : ''}`}
+                className={`load-cell ${over ? 'over' : ''} ${isWorkDay(cal, d + 1) ? '' : 'off'}`}
                 data-testid={`load-${row.kind}-${d + 1}`}
                 title={`${d + 1}일: ${used} / ${row.capacity}`}
               >
