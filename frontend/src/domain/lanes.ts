@@ -87,6 +87,19 @@ export function startOrder(a: Assignments): string[] {
     .map((x) => x.blockId);
 }
 
+/** 고정한 블록의 배치만 */
+export function pinnedOf(a: Assignments): Assignments {
+  return Object.fromEntries(Object.entries(a).filter(([, x]) => x.pinned && x.startDay !== null));
+}
+
+/** 고정 배치가 같은지 알아보는 키 (다시 최적화한 결과를 재사용할지 판단) */
+export function pinKey(pinned: Assignments): string {
+  return Object.values(pinned)
+    .map((x) => [x.blockId, x.startDay, x.general, x.skilled, x.crane, x.emergency, x.lane].join(':'))
+    .sort()
+    .join('|');
+}
+
 /** 배치가 같은지 비교 (자리는 무시) */
 export function samePlan(a: Assignments, b: Assignments): boolean {
   const ka = Object.keys(a).filter((k) => a[k].startDay !== null || a[k].general || a[k].skilled || a[k].crane || a[k].emergency);

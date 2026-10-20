@@ -138,3 +138,24 @@ describe('차선책 최소 요건', () => {
     expect(meetsMinimum(TUTORIAL_BLOCKS, TUTORIAL_RESOURCES, { 'C-115': { ...c115, emergency: true } })).toBe(true);
   });
 });
+
+describe('고정 블록을 두고 다시 최적화', () => {
+  it('고정한 블록은 착수일·인원·자리를 그대로 두고, 나머지는 그 자원을 피해 배치한다', () => {
+    // 첫날부터 숙련공 2명과 크레인을 E-320이 차지하게 고정
+    const e320 = { blockId: 'E-320', startDay: 1, general: 0, skilled: 2, crane: true, emergency: false, lane: 1, pinned: true };
+    const sol = solvePolicy('optimal', TUTORIAL_BLOCKS, TUTORIAL_RESOURCES, { budgetMs: 200, fixed: { 'E-320': e320 } });
+    expect(sol.assignments['E-320']).toEqual(e320);
+    expect(sol.kpi.overloadCells).toBe(0);
+    const day1 = Object.values(sol.assignments).filter((a) => a.blockId !== 'E-320' && a.startDay === 1);
+    expect(day1.every((a) => a.skilled === 0)).toBe(true);
+    for (const alt of sol.alternatives ?? []) expect(alt.assignments['E-320']).toEqual(e320);
+  });
+
+  it('비상 자재를 쓰는 고정 블록이 있으면 다른 블록에 비상 자재를 주지 않는다', () => {
+    const blocks = TUTORIAL_BLOCKS.map((b) => (b.id === 'A-101' ? { ...b, materialReady: false } : b));
+    const a101 = { blockId: 'A-101', startDay: 1, general: 2, skilled: 0, crane: true, emergency: true, pinned: true };
+    const sol = solvePolicy('optimal', blocks, TUTORIAL_RESOURCES, { budgetMs: 100, fixed: { 'A-101': a101 } });
+    expect(sol.assignments['C-115'].emergency).toBe(false);
+    expect(sol.assignments['C-115'].startDay).toBeNull();
+  });
+});

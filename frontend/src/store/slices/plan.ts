@@ -1,8 +1,9 @@
 import type { Assignment, Assignments, Block, ResourceKind, Resources } from '../../domain/types';
 import { DEFAULT_RESOURCES, emptyAssignment } from '../../domain/types';
 import { assignBlockedReason } from '../../domain/assign';
-import { assignLanes, seatIn } from '../../domain/lanes';
+import { assignLanes, pinnedOf, seatIn } from '../../domain/lanes';
 import type { SolveResponse } from '../../solver';
+import type { Solution } from '../../solver/search';
 import { todayISO } from '../../io/dates';
 import { TUTORIAL_BLOCKS, TUTORIAL_RESOURCES } from '../../tutorial/scenario';
 import type { Slice, State } from '../types';
@@ -15,6 +16,8 @@ export interface PlanSlice {
   assignments: Assignments;
   /** 마지막 최적화 결과 (블록/자원 입력이 바뀌면 지운다) */
   solve: SolveResponse | null;
+  /** 고정 블록을 두고 다시 최적화한 결과. 블록·자원·고정 배치가 그대로일 때만 쓴다 (저장하지 않음) */
+  pinSolve: PinSolve | null;
   /** 신입 모드에서 힌트를 받은 횟수 (평가서에 표시) */
   hintCount: number;
 
@@ -35,9 +38,20 @@ export interface PlanSlice {
   moveBlock(blockId: string, startDay: number, lane?: number): void;
   /** 착수일을 정하고 작업장 wp의 빈 자리로 옮긴다 */
   moveToWorkplace(blockId: string, startDay: number, wp: number): void;
+  /** 고정한 블록은 그대로 두고 나머지 배치를 바꾼다 */
   applyAssignments(a: Assignments): void;
   clearAssignments(): void;
   setSolve(s: SolveResponse | null): void;
+  togglePin(blockId: string): void;
+  unpinAll(): void;
+  setPinSolve(p: PinSolve | null): void;
+}
+
+export interface PinSolve {
+  blocks: Block[];
+  resources: Resources;
+  key: string;
+  solution: Solution;
 }
 
 /** 배치를 바꾸면 자리가 없는 블록에 작업 자리를 채워 넣는다 */
@@ -49,6 +63,7 @@ export const createPlan: Slice<PlanSlice> = (set, get) => ({
   resources: { ...DEFAULT_RESOURCES },
   assignments: {},
   solve: null,
+  pinSolve: null,
   hintCount: 0,
 
   setPlanStart: (planStart) => set({ planStart }),
@@ -103,7 +118,7 @@ export const createPlan: Slice<PlanSlice> = (set, get) => ({
     set({ assignments: withLanes(s, { ...s.assignments, [blockId]: a }), selectedToken: null });
     return true;
   },
-  setAssignment: (a) => set((s) => ({ assignments: withLanes(s, { ...s.assignments, [a.blockId]: { ...a, lane: a.lane ?? s.assignments[a.blockId]?.lane } }) })),
+  setAssignment: (a) => set((s) => ({ assignments: withLanes(s, { ...s.assignments, [a.blockId]: { ...a, lane: a.lane ?? s.assignments[a.blockId]?.lane, pinned: a.pinned ?? s.assignments[a.blockId]?.pinned } }) })),
   unassign: (blockId, kind) =>
     set((s) => {
       const prev = s.assignments[blockId];
@@ -131,7 +146,15 @@ export const createPlan: Slice<PlanSlice> = (set, get) => ({
     const start = Math.max(1, startDay);
     s.moveBlock(blockId, start, seatIn(wp, block, start, s.assignments, s.blocks, s.resources));
   },
-  applyAssignments: (assignments) => set((s) => ({ assignments: withLanes(s, assignments) })),
+  applyAssignments: (assignments) => set((s) => ({ assignments: withLanes(s, { ...assignments, ...pinnedOf(s.assignments) }) })),
   clearAssignments: () => set({ assignments: {} }),
   setSolve: (solve) => set({ solve }),
+  togglePin: (blockId) =>
+    set((s) => {
+      const a = s.assignments[blockId];
+      if (!a || a.startDay === null) return s;
+      return { assignments: { ...s.assignments, [blockId]: { ...a, pinned: !a.pinned } } };
+    }),
+  unpinAll: () => set((s) => ({ assignments: Object.fromEntries(Object.entries(s.assignments).map(([k, a]) => [k, { ...a, pinned: false }])) })),
+  setPinSolve: (pinSolve) => set({ pinSolve }),
 });

@@ -7,6 +7,7 @@ import { laneCount, workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { dayToDate, formatMD } from '../../io/dates';
 import { COL } from './ganttLayout';
+import { LineIcon } from '../icons/LineIcons';
 import { AssignedIcons, Bar, blockTitle, GhostBar } from './GanttBars';
 import { useRowFlip } from './useRowFlip';
 
@@ -44,6 +45,8 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
   const resources = useStore((s) => s.resources);
   const selected = useStore((s) => s.selectedToken);
   const assign = useStore((s) => s.assign);
+  const togglePin = useStore((s) => s.togglePin);
+  const expert = useStore((s) => s.mode !== 'novice');
   const waiting = res.start === null;
 
   const dragKind = active?.data.current?.kind as ResourceKind | undefined;
@@ -78,16 +81,33 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
             남은 {block.dueDay}일 · {block.requiredMH} MH
           </span>
           {!block.materialReady && <span className="tag warn">자재 미준비</span>}
-          <button
-            type="button"
-            className="bar-edit"
-            title="숫자 편집"
-            aria-label={`${block.id} 숫자 편집`}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => onEdit(block.id)}
-          >
-            ✎
-          </button>
+          <span className="b-tools">
+            {expert && !waiting && a && (
+              <button
+                type="button"
+                className={`bar-pin ${a.pinned ? 'on' : ''}`}
+                title={a.pinned ? '고정 풀기' : '고정: 다시 최적화해도 이 배치를 그대로 둡니다'}
+                aria-label={`${block.id} ${a.pinned ? '고정 풀기' : '고정'}`}
+                aria-pressed={!!a.pinned}
+                data-testid={`pin-${block.id}`}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => togglePin(block.id)}
+              >
+                <LineIcon name="lock" size={14} />
+                {a.pinned ? '고정됨' : '고정'}
+              </button>
+            )}
+            <button
+              type="button"
+              className="bar-edit"
+              title="숫자 편집"
+              aria-label={`${block.id} 숫자 편집`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => onEdit(block.id)}
+            >
+              ✎
+            </button>
+          </span>
         </div>
         <AssignedIcons block={block} a={a} size={18} />
         {reason && <span className="drop-reason">{reason}</span>}

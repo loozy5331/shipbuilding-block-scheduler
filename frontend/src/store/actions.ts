@@ -1,6 +1,8 @@
 import type { Policy } from '../domain/types';
-import { solveInWorker } from '../solver/client';
+import { pinKey, pinnedOf } from '../domain/lanes';
+import { solveInWorker, solvePinnedInWorker } from '../solver/client';
 import type { SolveResponse } from '../solver';
+import type { Solution } from '../solver/search';
 import { useStore } from './schedulerStore';
 
 /** 같은 입력으로 동시에 여러 번 계산하지 않도록 진행 중인 계산을 공유한다 */
@@ -27,4 +29,16 @@ export async function runSolve(apply: Policy | null = 'optimal'): Promise<SolveR
   useStore.getState().setSolve(result);
   if (apply) useStore.getState().applyAssignments(result.solutions[apply].assignments);
   return result;
+}
+
+/** 고정한 블록은 그대로 두고 나머지만 다시 최적화한다 (같은 고정 배치면 지난 결과를 쓴다). 적용은 부르는 쪽에서 */
+export async function runPinnedSolve(): Promise<Solution> {
+  const { blocks, resources, assignments, pinSolve } = useStore.getState();
+  const fixed = pinnedOf(assignments);
+  const key = pinKey(fixed);
+  if (pinSolve && pinSolve.blocks === blocks && pinSolve.resources === resources && pinSolve.key === key) return pinSolve.solution;
+  const solution = await solvePinnedInWorker({ blocks, resources, fixed });
+  const now = useStore.getState();
+  if (now.blocks === blocks && now.resources === resources && pinKey(pinnedOf(now.assignments)) === key) now.setPinSolve({ blocks, resources, key, solution });
+  return solution;
 }
