@@ -51,7 +51,7 @@ function offLabel(date: Date): string {
 }
 
 /** TBM(작업 전 안전 회의)에서 그대로 공유할 수 있는 일별 메시지 */
-export function tbmMessage(day: number, blocks: Block[], assignments: Assignments, ev: Evaluation, r: Resources, planStart: string, cal: Calendar = NO_OFF): string {
+export function tbmMessage(day: number, blocks: Block[], assignments: Assignments, ev: Evaluation, r: Resources, planStart: string, cal: Calendar = NO_OFF, weather?: string): string {
   const date = dayToDate(planStart, day);
   const head = `[TBM] ${date.getMonth() + 1}/${date.getDate()}(${WEEK[date.getDay()]}) ${day === 1 ? '오늘' : `${day}일차`} 작업`;
   if (!isWorkDay(cal, day)) return `${head}\n- 작업하지 않는 날입니다 (${offLabel(date)}).`;
@@ -59,6 +59,7 @@ export function tbmMessage(day: number, blocks: Block[], assignments: Assignment
   if (work.length === 0) return `${head}\n- 예정된 블록 작업이 없습니다.`;
 
   const lines = [head];
+  if (weather) lines.push(`■ 날씨: ${weather}`);
   for (const w of work) {
     const crew = [w.general && `일반 ${w.general}명`, w.skilled && `숙련 ${w.skilled}명`].filter(Boolean).join(' · ') || '작업자 미배정';
     const extra = [w.crane && '크레인 1대', w.emergency && '비상 자재'].filter(Boolean).join(' · ');

@@ -1,4 +1,5 @@
 import type { UserMode } from '../../domain/types';
+import type { WeatherSite } from '../../io/weather';
 import type { Slice } from '../types';
 import { guideSeen } from './tutorial';
 
@@ -16,6 +17,8 @@ export const PAGES: { page: Page; label: string }[] = [
 export interface Settings {
   /** 결과로 넘어갈 때 블록 조립 애니메이션 */
   animation: boolean;
+  /** 날씨 예보를 볼 조선소 위치 (예전 저장값에는 없을 수 있다) */
+  weatherSite?: WeatherSite;
 }
 
 /** 로그인한 사용자. guest면 체험하기로 들어온 것 */
@@ -46,7 +49,7 @@ export const createSession: Slice<SessionSlice> = (set, get) => ({
   page: 'login',
   user: null,
   mode: 'expert',
-  settings: { animation: true },
+  settings: { animation: true, weatherSite: 'geoje' },
 
   setPage: (page) => set({ page }),
   setMode: (mode) => set({ mode }),

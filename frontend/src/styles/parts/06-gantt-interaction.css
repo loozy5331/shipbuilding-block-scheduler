@@ -146,3 +146,17 @@ button.g-day:hover {
 .due-shift {
   white-space: nowrap;
 }
+
+/* ---------- 날씨 예보 ---------- */
+.g-day .wx {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.g-day .wx small {
+  color: var(--blue);
+  font-weight: 700;
+}
