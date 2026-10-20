@@ -288,3 +288,150 @@
     font-size: 15px;
   }
 }
+
+/* ---------- 결과: 상태 칸의 최적 대비 평가는 지표마다 한 줄 ---------- */
+.side .panel.report {
+  padding: 12px;
+}
+
+.side .report-head {
+  margin-bottom: 8px;
+}
+
+.side .report-head h3 {
+  font-size: 15px;
+}
+
+.side .report-head p {
+  font-size: 13px;
+}
+
+.side .metric-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.side .metric {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0 8px;
+  padding: 8px 10px;
+}
+
+.side .metric:first-child {
+  grid-column: auto;
+}
+
+.side .metric-value {
+  font-size: 20px;
+}
+
+.side .metric-value small {
+  font-size: 12px;
+}
+
+.side .metric-cmp {
+  grid-column: 1 / -1;
+}
+
+.side .report-notes {
+  font-size: 12px;
+}
+
+.side-verdict small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tbm-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 8px;
+}
+
+.tbm-head h4 {
+  flex: 1;
+  margin: 0;
+}
+
+/* 좁은 화면: 배치표를 가로 스크롤 표 대신 블록마다 카드 한 장으로 (칸 이름은 data-label) */
+@media (max-width: 860px) {
+  .plan-table thead {
+    display: none;
+  }
+
+  .plan-table,
+  .plan-table tbody {
+    display: block;
+  }
+
+  .plan-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 6px 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .plan-table th[scope='row'],
+  .plan-table td {
+    position: static;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+  }
+
+  .plan-table th[scope='row'] {
+    font-size: 16px;
+  }
+
+  .plan-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* 판정 칩은 블록 이름 옆, 지연 원인은 한 줄 전체 */
+  .plan-table td[data-label='판정']::before {
+    display: none;
+  }
+
+  .plan-table td[data-label='판정'] {
+    justify-self: end;
+  }
+
+  .plan-table td.causes {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+}
+
+/* 결과의 판정은 "납기 준수 5/5" 한 줄 */
+.result .side-verdict em {
+  display: inline;
+}
+
+/* 좁은 화면: 상태가 TBM을 너무 밀어내지 않게 지표를 두 줄씩 (납기 만족은 한 줄 전체) */
+@media (max-width: 860px) {
+  .side .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .side .metric:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .side .metric {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side .metric-value {
+    font-size: 18px;
+  }
+}

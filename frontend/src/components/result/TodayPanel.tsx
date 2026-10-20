@@ -76,20 +76,21 @@ export function TodayPanel({ ev, day, onDay, maxDay }: { ev: Evaluation; day: nu
           )}
         </div>
         <div>
-          <h4>TBM 공유 메시지</h4>
-          <pre className="tbm" data-testid="tbm">
-            {message}
-          </pre>
-          <div className="dialog-actions">
+          {/* 가장 자주 누르는 복사 버튼은 메시지 제목 옆에 */}
+          <div className="tbm-head">
+            <h4>TBM 공유 메시지</h4>
             {'share' in navigator && (
               <button type="button" className="btn small ghost" onClick={share}>
                 공유
               </button>
             )}
-            <button type="button" className="btn small" onClick={copy}>
+            <button type="button" className="btn small primary" onClick={copy}>
               복사
             </button>
           </div>
+          <pre className="tbm" data-testid="tbm">
+            {message}
+          </pre>
         </div>
       </div>
     </section>
