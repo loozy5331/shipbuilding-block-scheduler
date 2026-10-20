@@ -40,7 +40,9 @@ export function ReportCard({ ev, solve, hintCount }: { ev: Evaluation; solve: So
               </span>
               {j && (
                 <span className="metric-cmp">
+                  {/* 분모 없이 "최적 5개"만 쓰면 블록 5개짜리와 비교하는 것처럼 읽힌다 */}
                   최적 {r.optimal}
+                  {r.of !== undefined && ` / ${r.of}`}
                   {r.unit} · <b>{MARK[j]}</b>
                 </span>
               )}

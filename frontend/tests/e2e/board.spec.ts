@@ -67,6 +67,8 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
 
   await page.getByRole('button', { name: '다음: 결과 →' }).click();
   await expect(page.getByTestId('report')).toContainText('현재 배치가 최적 배치와 같은 수준');
+  // 최적 값도 전체 블록 수와 함께 보여 준다
+  await expect(page.getByTestId('report')).toContainText('최적 5 / 5개');
   await expect(page.getByTestId('plan-table')).toContainText('작업장 1');
   await shot(page, '12-result');
 
