@@ -17,6 +17,7 @@ import { Legend, LoadGrid } from './LoadGrid';
 import { KpiCards, WhatIfCard } from './Insights';
 import { BlockEditor } from './BlockEditor';
 import { prefersReducedMotion } from '../assembly/AssemblyShow';
+import { SideLayout } from '../common/SideLayout';
 
 const PLAN_NAME = ['최적 배치', '차선', '차차선'];
 
@@ -103,47 +104,8 @@ export function BoardPage() {
   const verdict = solve ? (solve.solutions.optimal.feasible ? 'good' : 'bad') : null;
   const expert = mode !== 'novice';
 
-  return (
-    <div className="board">
-      <div className="board-head">
-        <div>
-          <span className="eyebrow-label">— 블록 스케줄링 · {expert ? '숙련자' : '신입'} 모드</span>
-          <h1 data-testid="verdict" data-tour="verdict">
-            {verdict === 'good' && (
-              <>
-                현재 가용 자원으로 <em>전 블록 납기 준수 가능</em>
-              </>
-            )}
-            {verdict === 'bad' && (
-              <>
-                현재 가용 자원으로는 <em className="bad">납기 준수 불가</em>
-              </>
-            )}
-            {verdict === null && <>가용 자원으로 가능한지 판정 중…</>}
-          </h1>
-        </div>
-        <div className="board-actions">
-          <button type="button" className="btn ghost" onClick={() => setPage('setup')}>
-            ← 공통 설정 입력
-          </button>
-          <button type="button" className="btn ghost" onClick={clear} disabled={Object.keys(assignments).length === 0}>
-            초기화
-          </button>
-          {expert ? (
-            <button type="button" className="btn primary" onClick={optimize} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="optimize-btn">
-              {busy ? '계산 중…' : optimizeLabel}
-            </button>
-          ) : (
-            <button type="button" className="btn primary" onClick={askHint} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="hint-btn">
-              <LineIcon name="bulb" size={16} /> {busy ? '계산 중…' : '힌트'}
-            </button>
-          )}
-          <button type="button" className="btn primary" onClick={() => goToResult(!prefersReducedMotion())} disabled={blocks.length === 0}>
-            다음: 결과 →
-          </button>
-        </div>
-      </div>
-
+  const notices = (
+    <>
       {expert && applied >= 0 && options.length > 0 && (
         <div className="notice alt" role="status" data-testid="plan-option">
           <p>
@@ -186,42 +148,100 @@ export function BoardPage() {
           </button>
         </div>
       )}
+    </>
+  );
 
-      <KpiCards ev={ev} />
-      {!showFull && needed > MAX_DAYS && (
-        <div className="notice warn">
-          표시는 1~{days}일로 제한했습니다. 자원 충돌·KPI는 {ev.horizon}일까지 전체 배치를 분석합니다.{' '}
-          <button type="button" className="btn small ghost" onClick={() => setShowFull(true)}>
-            전체 기간 표시
-          </button>
-        </div>
-      )}
-
-      <DndContext {...dndProps}>
-        <ResourcePalette />
-        <div className="gantt-scroll">
-          <GanttChart
-            blocks={blocks}
-            assignments={assignments}
-            ev={ev}
-            cols={cols}
-            hintBlock={hint?.blockId ?? null}
-            onEdit={setEditing}
-          />
-          <LoadGrid ev={ev} cols={cols} />
-        </div>
-        <DragOverlay dropAnimation={null}>
-          {dragKind && (
-            <div className="drag-ghost">
-              <ResourceIcon kind={dragKind} size={36} />
-            </div>
+  const side = (
+    <>
+      <div className={`side-verdict ${verdict ?? 'pending'}`} role="status" data-testid="verdict" data-tour="verdict">
+        <LineIcon name={verdict === 'good' ? 'check' : verdict === 'bad' ? 'alert' : 'clock'} size={22} />
+        <p>
+          {verdict === 'good' && (
+            <>
+              현재 가용 자원으로 <em>전 블록 납기 준수 가능</em>
+            </>
           )}
-        </DragOverlay>
-      </DndContext>
-      <Legend />
-
-      {/* 가능 여부는 위 제목에 있으므로, 불가능할 때만 추가 자원 제안을 보여 준다 */}
+          {verdict === 'bad' && (
+            <>
+              현재 가용 자원으로는 <em>납기 준수 불가</em>
+            </>
+          )}
+          {verdict === null && <>가용 자원으로 가능한지 판정 중…</>}
+        </p>
+      </div>
+      <KpiCards ev={ev} />
+      {notices}
+      {/* 불가능할 때만 추가 자원 제안을 보여 준다 */}
       {solve && !solve.solutions.optimal.feasible && <WhatIfCard solve={solve} />}
+    </>
+  );
+
+  return (
+    <div className="board">
+      <div className="board-head">
+        <div>
+          <span className="eyebrow-label">— 블록 스케줄링 · {expert ? '숙련자' : '신입'} 모드</span>
+          <h1>자원을 블록에 배치하세요</h1>
+        </div>
+        <div className="board-actions">
+          <button type="button" className="btn ghost" onClick={() => setPage('setup')}>
+            ← 공통 설정 입력
+          </button>
+          <button type="button" className="btn ghost" onClick={clear} disabled={Object.keys(assignments).length === 0}>
+            초기화
+          </button>
+          {expert ? (
+            <button type="button" className="btn primary" onClick={optimize} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="optimize-btn">
+              {busy ? '계산 중…' : optimizeLabel}
+            </button>
+          ) : (
+            <button type="button" className="btn primary" onClick={askHint} disabled={busy || blocks.length === 0} data-tour="optimize" data-testid="hint-btn">
+              <LineIcon name="bulb" size={16} /> {busy ? '계산 중…' : '힌트'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <SideLayout
+        side={side}
+        foot={
+          <button type="button" className="btn primary" onClick={() => goToResult(!prefersReducedMotion())} disabled={blocks.length === 0}>
+            다음: 결과 →
+          </button>
+        }
+      >
+        {!showFull && needed > MAX_DAYS && (
+          <div className="notice warn">
+            표시는 1~{days}일로 제한했습니다. 자원 충돌·KPI는 {ev.horizon}일까지 전체 배치를 분석합니다.{' '}
+            <button type="button" className="btn small ghost" onClick={() => setShowFull(true)}>
+              전체 기간 표시
+            </button>
+          </div>
+        )}
+
+        <DndContext {...dndProps}>
+          <ResourcePalette />
+          <div className="gantt-scroll">
+            <GanttChart
+              blocks={blocks}
+              assignments={assignments}
+              ev={ev}
+              cols={cols}
+              hintBlock={hint?.blockId ?? null}
+              onEdit={setEditing}
+            />
+            <LoadGrid ev={ev} cols={cols} />
+          </div>
+          <DragOverlay dropAnimation={null}>
+            {dragKind && (
+              <div className="drag-ghost">
+                <ResourceIcon kind={dragKind} size={36} />
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
+        <Legend />
+      </SideLayout>
 
       {editing && <BlockEditor blockId={editing} onClose={() => setEditing(null)} />}
     </div>

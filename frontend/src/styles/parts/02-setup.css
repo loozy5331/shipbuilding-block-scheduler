@@ -1,8 +1,4 @@
 /* ---------- 입력 화면 (종이) ---------- */
-.capacity {
-  margin-bottom: 8px;
-}
-
 .verdict {
   display: flex;
   gap: 12px;
