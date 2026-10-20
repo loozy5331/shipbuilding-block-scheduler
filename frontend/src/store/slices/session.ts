@@ -36,7 +36,7 @@ export interface SessionSlice {
 
   setPage(p: Page): void;
   setMode(m: UserMode): void;
-  /** 로그인(또는 체험하기) 후 가이드를 처음 보면 튜토리얼, 아니면 메뉴로 */
+  /** 가입 계정이 가이드를 처음 보면 튜토리얼, 아니면(체험하기 포함) 메뉴로 */
   login(user: User): void;
   logout(): void;
   setSettings(patch: Partial<Settings>): void;
@@ -52,7 +52,8 @@ export const createSession: Slice<SessionSlice> = (set, get) => ({
   setMode: (mode) => set({ mode }),
   login: (user) => {
     set({ user });
-    if (guideSeen(get())) set({ page: 'menu' });
+    // 체험하기는 둘러보러 온 것이라 가이드를 강제하지 않는다 (튜토리얼 타일을 처음 누르면 가이드)
+    if (user.guest || guideSeen(get())) set({ page: 'menu' });
     else get().startTutorial();
   },
   logout: () => set({ user: null, page: 'login', tutorialActive: false, tutorialPage: null, tutorialStep: null, tutorialGuided: [] }),

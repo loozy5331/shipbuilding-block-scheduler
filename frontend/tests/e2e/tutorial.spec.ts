@@ -41,6 +41,9 @@ test('튜토리얼 가이드는 계정마다 처음 한 번만 (DB 저장), 튜�
 test('가이드를 건너뛰면 튜토리얼이 끝나고 지금 페이지에 머문다', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('try-btn').click();
+  // 체험하기는 메뉴로, 튜토리얼 타일을 처음 누르면 가이드
+  await expect(page.locator('.tour-card')).toHaveCount(0);
+  await page.getByTestId('tile-tutorial').click();
   await page.getByTestId('tour-next').click();
   await page.getByRole('button', { name: '건너뛰기' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -69,6 +72,7 @@ test('가이드를 건너뛰면 튜토리얼이 끝나고 지금 페이지에 �
 test('튜토리얼: 가이드는 페이지 안에서만, 페이지는 직접 다음 버튼으로', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('try-btn').click();
+  await page.getByTestId('tile-tutorial').click();
   const card = page.locator('.tour-card');
   const next = page.getByTestId('tour-next');
   /** 지금 페이지 가이드를 끝까지 넘기고 (마지막은 확인/마치기), 그동안 페이지가 바뀌지 않는지 본다 */
