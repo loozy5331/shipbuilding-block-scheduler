@@ -7,7 +7,7 @@ import { workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { CraneIcon, MaterialIcon, SkilledIcon, WorkerIcon } from '../icons/ResourceIcons';
 import { LineIcon } from '../icons/LineIcons';
-import { COL } from './ganttLayout';
+import type { Columns } from './ganttLayout';
 import { isWorkDay, workEnd, type Calendar } from '../../domain/calendar';
 import { useCalendar } from '../../store/evaluation';
 
@@ -71,13 +71,14 @@ interface BarProps {
   block: Block;
   res: BlockResult;
   a: Assignment;
-  days: number;
+  cols: Columns;
   workplaces: number;
   onEdit(id: string): void;
 }
 
 /** 작업 기간 막대. 좌우로 끌면 착수일, 위아래로 다른 작업장 테두리 안에 놓으면 작업장이 바뀐다. */
-export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
+export function Bar({ block, res, a, cols, workplaces, onEdit }: BarProps) {
+  const days = cols.days;
   const moveToWorkplace = useStore((s) => s.moveToWorkplace);
   const moveBlock = useStore((s) => s.moveBlock);
   const resources = useStore((s) => s.resources);
@@ -87,7 +88,6 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
   // 막대는 사이의 쉬는 날까지 이어서 그린다
   const span = res.end !== null ? res.end - start + 1 : 1;
   const length = Math.max(1, Math.min(span, days - start + 1));
-  const shift = drag.transform ? Math.round(drag.transform.x / COL) : 0;
   const status = statusText(res);
   const cls = ['g-bar', res.status, res.lateDays > 0 && 'is-late', res.overloaded && 'overloaded', drag.isDragging && 'dragging', length === 1 && 'short', a.pinned && 'pinned']
     .filter(Boolean)
@@ -95,7 +95,7 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
 
   if (start > days) {
     return (
-      <div className="g-bar out-of-range" style={{ left: (days - 1) * COL + 3, width: COL - 6 }}>
+      <div className="g-bar out-of-range" style={{ left: cols.left(days) + 3, width: cols.width(days) - 6 }}>
         {start}일 착수 →
       </div>
     );
@@ -106,11 +106,11 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
       ref={drag.setNodeRef}
       className={cls}
       data-testid={`bar-${block.id}`}
-      data-day={drag.isDragging ? `${Math.max(1, start + shift)}일 착수` : undefined}
+      data-day={drag.isDragging ? `${cols.moved(start, drag.transform?.x ?? 0)}일 착수` : undefined}
       title={`${blockTitle(block, res)}. ${a.pinned ? '합의됨: 다시 최적화해도 그대로 둡니다' : '좌우로 끌면 착수일, 다른 작업장으로 끌면 작업장이 바뀝니다'}`}
       style={{
-        left: (start - 1) * COL + 3,
-        width: length * COL - 6,
+        left: cols.left(start) + 3,
+        width: cols.span(start, start + length - 1) - 6,
         transform: drag.transform ? `translate(${drag.transform.x}px, ${drag.transform.y}px)` : undefined,
       }}
       {...drag.listeners}
@@ -133,7 +133,7 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
         }
       }}
     >
-      <OffDays cal={cal} start={start} length={length} />
+      <OffDays cal={cal} cols={cols} start={start} length={length} />
       {a.pinned && <LineIcon name="lock" size={14} />}
       {status ?? (length === 1 ? `${res.duration}일 · ${res.dailyMH}MH` : `${res.duration}일 · 하루 ${res.dailyMH} MH`)}
     </div>
@@ -148,28 +148,27 @@ function stepWorkDay(cal: Calendar, day: number, dir: 1 | -1): number | null {
 }
 
 /** 막대 안 쉬는 날 구간 (빗금) */
-function OffDays({ cal, start, length }: { cal: Calendar; start: number; length: number }) {
+function OffDays({ cal, cols, start, length }: { cal: Calendar; cols: Columns; start: number; length: number }) {
   if (cal.off.length === 0) return null;
   const off = Array.from({ length }, (_, i) => start + i).filter((d) => !isWorkDay(cal, d));
-  return off.map((d) => <i key={d} className="bar-off" style={{ left: (d - start) * COL - 3, width: COL }} aria-hidden="true" />);
+  return off.map((d) => <i key={d} className="bar-off" style={{ left: cols.left(d) - cols.left(start) - 3, width: cols.width(d) }} aria-hidden="true" />);
 }
 
 /** 아직 배치하지 않은 블록의 점선 막대: 1일 착수, 필요 작업시간 ÷ 8시간 길이. 작업장 테두리로 끌어 놓으면 배치된다. */
-export function GhostBar({ block, days }: { block: Block; days: number }) {
+export function GhostBar({ block, cols }: { block: Block; cols: Columns }) {
   const r = useStore((s) => s.resources);
   const cal = useCalendar();
   const drag = useDraggable({ id: `wait:${block.id}`, data: { blockId: block.id, start: 1 } });
   const nominal = nominalDuration(block.requiredMH, r);
-  const length = Math.min(workEnd(cal, 1, nominal), days);
-  const shift = drag.transform ? Math.round(drag.transform.x / COL) : 0;
+  const length = Math.min(workEnd(cal, 1, nominal), cols.days);
   return (
     <div
       ref={drag.setNodeRef}
       className={`g-bar ghost ${length === 1 ? 'short' : ''} ${drag.isDragging ? 'dragging' : ''}`}
       data-testid={`ghost-${block.id}`}
-      data-day={drag.isDragging ? `${1 + shift}일 착수` : undefined}
+      data-day={drag.isDragging ? `${cols.moved(1, drag.transform?.x ?? 0)}일 착수` : undefined}
       title={`${block.id}: 필요 ${block.requiredMH} MH = 작업자 1명(하루 ${r.generalMHPerDay}MH) 기준 ${nominal}일. 작업장 테두리 안으로 끌어 놓으면 배치되고, 작업자를 놓을수록 짧아집니다`}
-      style={{ left: 3, width: length * COL - 6, transform: drag.transform ? `translate(${drag.transform.x}px, ${drag.transform.y}px)` : undefined }}
+      style={{ left: 3, width: cols.span(1, length) - 6, transform: drag.transform ? `translate(${drag.transform.x}px, ${drag.transform.y}px)` : undefined }}
       {...drag.listeners}
       {...drag.attributes}
       aria-label={`${block.id} 대기 블록. 작업장으로 끌어 놓아 배치`}

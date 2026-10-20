@@ -5,7 +5,7 @@ import { TUTORIAL_BLOCKS } from '../src/tutorial/scenario';
 import { DEFAULT_RESOURCES } from '../src/domain/types';
 import type { Assignments } from '../src/domain/types';
 import { buildCalendar, NO_OFF } from '../src/domain/calendar';
-import { ganttDays } from '../src/components/board/ganttLayout';
+import { buildColumns, COL, FOLDED, ganttDays } from '../src/components/board/ganttLayout';
 
 // 자원 규칙 검증용: 일반 작업자 4명 · 숙련공 1명 기본값
 const R = DEFAULT_RESOURCES;
@@ -56,5 +56,20 @@ describe('간트 날짜 범위', () => {
     // 주말이 끼면 그만큼 늘어난다 (10/19 월 시작, 작업일 11일 → 11/2 = 15일차)
     const cal = buildCalendar('2026-10-19', { weekends: true, holidays: true, extraOff: [], extraOn: [] });
     expect(ganttDays(TUTORIAL_BLOCKS, R, evaluate(TUTORIAL_BLOCKS, R, {}, cal), cal)).toBe(15 + 2);
+  });
+});
+
+describe('접힌 날짜 칸', () => {
+  it('접힌 칸은 좁고, 막대 폭·끌어 놓은 날을 칸 폭대로 계산한다', () => {
+    // 6·7일 접힘
+    const cols = buildColumns(10, (d) => d === 6 || d === 7);
+    expect(cols.left(6)).toBe(5 * COL);
+    expect(cols.left(8)).toBe(5 * COL + 2 * FOLDED);
+    expect(cols.span(5, 8)).toBe(2 * COL + 2 * FOLDED);
+    expect(cols.template.split(' ')[5]).toBe(`${FOLDED}px`);
+    // 5일 막대를 한 칸 반 오른쪽으로 끌면 접힌 주말을 넘어 8일
+    expect(cols.moved(5, COL)).toBe(8);
+    expect(cols.moved(5, -COL)).toBe(4);
+    expect(cols.moved(1, -500)).toBe(1);
   });
 });

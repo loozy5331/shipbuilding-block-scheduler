@@ -160,3 +160,52 @@ button.g-day:hover {
   color: var(--blue);
   font-weight: 700;
 }
+
+/* ---------- 접힌 날짜 칸 (엑셀 숨긴 열처럼 좁게) ---------- */
+.g-header .g-left {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fold-toggles {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.fold-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.fold-chip.on {
+  border-color: var(--navy);
+  color: var(--navy);
+}
+
+.g-day.folded {
+  padding: 0;
+  border: 0;
+  border-left: 2px solid #c9d0d8;
+  border-right: 2px solid #c9d0d8;
+  background: repeating-linear-gradient(135deg, #eef0f3 0 4px, #dfe4ea 4px 8px);
+  cursor: pointer;
+}
+
+.g-day.folded.holiday {
+  border-color: #e7b9ba;
+}
+
+.g-day.folded:hover {
+  background: var(--green-100);
+}
+
+.g-cell.folded,
+.load-cell.folded {
+  background: repeating-linear-gradient(135deg, rgba(110, 120, 135, 0.16) 0 4px, transparent 4px 8px);
+}

@@ -87,9 +87,18 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
 test('작업하지 않는 날: 주말 음영, 날짜 칸을 눌러 작업 불가 지정·해제, 최적화는 그날을 비운다', async ({ page }) => {
   await start(page, 'expert');
   await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
-  // 시작일 10/19(월) → 6·7일이 주말
+  // 시작일 10/19(월) → 6·7일이 주말. 주말 칸은 처음에 좁게 접혀 있다
+  await expect(page.getByTestId('day-6')).toHaveClass(/folded weekend/);
+  expect((await page.getByTestId('day-6').boundingBox())!.width).toBeLessThan(30);
+  // 접힌 칸을 누르면 주말 칸이 모두 펼쳐진다
+  await page.getByTestId('day-6').click();
   await expect(page.getByTestId('day-6')).toHaveClass(/off weekend/);
-  await expect(page.getByTestId('day-6')).toContainText('주말');
+  await expect(page.getByTestId('day-7')).toContainText('주말');
+  await expect(page.getByTestId('fold-weekend')).toHaveAttribute('aria-pressed', 'false');
+  await page.getByTestId('fold-weekend').click();
+  await expect(page.getByTestId('day-7')).toHaveClass(/folded/);
+  // 공휴일은 처음에 펼쳐 두고 같은 방식으로 접는다
+  await expect(page.getByTestId('fold-holiday')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByTestId('day-5')).not.toHaveClass(/off/);
 
   // 2일을 작업 불가로: 그날에 걸친 막대는 빗금이 생기고 그만큼 늘어난다
