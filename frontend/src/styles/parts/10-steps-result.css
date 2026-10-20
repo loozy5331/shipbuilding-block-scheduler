@@ -222,3 +222,10 @@
     display: none;
   }
 }
+
+.today-wx {
+  margin-left: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}

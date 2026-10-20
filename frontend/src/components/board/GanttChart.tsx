@@ -9,6 +9,8 @@ import { useStore } from '../../store/schedulerStore';
 import { dayToDate, formatMD } from '../../io/dates';
 import { dayInfo, isWorkDay, type DayInfo } from '../../domain/calendar';
 import { useCalendar } from '../../store/evaluation';
+import { weatherLabel, weatherText } from '../../io/weather';
+import { useWeather } from '../common/useWeather';
 import { COL } from './ganttLayout';
 import { LineIcon } from '../icons/LineIcons';
 import { AssignedIcons, Bar, blockTitle, GhostBar } from './GanttBars';
@@ -31,6 +33,7 @@ export function DayHeader({ days, planStart, label }: { days: number; planStart:
   const touring = useStore((s) => s.tutorialActive);
   const toggle = useStore((s) => s.toggleOffDay);
   const showToast = useStore((s) => s.showToast);
+  const weather = useWeather();
   return (
     <div className="g-row g-header" style={{ gridTemplateColumns: `var(--left) repeat(${days}, ${COL}px)` }}>
       <div className="g-left">{label}</div>
@@ -39,21 +42,29 @@ export function DayHeader({ days, planStart, label }: { days: number; planStart:
         const md = formatMD(dayToDate(planStart, day));
         const info: DayInfo = touring ? { off: null, preset: false } : dayInfo(planStart, day, options);
         const cls = ['g-day', i === 0 && 'today', info.off && `off ${info.off}`, !info.off && info.preset && 'restored'].filter(Boolean).join(' ');
+        const w = weather(day);
         const body = (
           <>
             <b>{i === 0 ? '오늘' : `${day}일`}</b>
             <small>{md}</small>
             {info.off && <em className="off-tag">{info.off === 'holiday' ? info.holiday : OFF_TEXT[info.off]}</em>}
+            {w && (
+              <span className="wx" data-testid={`wx-${day}`}>
+                {weatherLabel(w.code).icon}
+                {w.rain !== null && <small>{w.rain}%</small>}
+              </span>
+            )}
           </>
         );
-        if (touring) return <div key={i} className={cls}>{body}</div>;
+        const wx = w ? `\n날씨: ${weatherText(w)}` : '';
+        if (touring) return <div key={i} className={cls} title={w ? weatherText(w) : undefined}>{body}</div>;
         return (
           <button
             key={i}
             type="button"
             className={cls}
             data-testid={`day-${day}`}
-            title={dayTitle(md, info)}
+            title={dayTitle(md, info) + wx}
             aria-pressed={!!info.off}
             onClick={() => {
               toggle(day);

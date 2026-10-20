@@ -2,6 +2,8 @@ import type { Evaluation } from '../../domain/evaluate';
 import { tbmMessage, workOn } from '../../domain/tbm';
 import { useStore } from '../../store/schedulerStore';
 import { useCalendar } from '../../store/evaluation';
+import { weatherLabel, weatherText } from '../../io/weather';
+import { useWeather } from '../common/useWeather';
 import { dayToDate, formatMD } from '../../io/dates';
 import { LineIcon } from '../icons/LineIcons';
 
@@ -14,7 +16,8 @@ export function TodayPanel({ ev, day, onDay, maxDay }: { ev: Evaluation; day: nu
   const showToast = useStore((s) => s.showToast);
   const cal = useCalendar();
   const work = workOn(day, blocks, assignments, ev, r, cal);
-  const message = tbmMessage(day, blocks, assignments, ev, r, planStart, cal);
+  const w = useWeather()(day);
+  const message = tbmMessage(day, blocks, assignments, ev, r, planStart, cal, w && weatherText(w));
 
   const copy = async () => {
     try {
@@ -31,6 +34,11 @@ export function TodayPanel({ ev, day, onDay, maxDay }: { ev: Evaluation; day: nu
       <div className="today-head">
         <h3>
           <LineIcon name="clock" /> {day === 1 ? '오늘' : `${day}일차`} 작업 · {formatMD(dayToDate(planStart, day))}
+          {w && (
+            <small className="today-wx" data-testid="today-weather">
+              {weatherLabel(w.code).icon} {weatherText(w)}
+            </small>
+          )}
         </h3>
         <div className="today-nav">
           <button type="button" className="btn small ghost" disabled={day <= 1} onClick={() => onDay(day - 1)} aria-label="전날">
