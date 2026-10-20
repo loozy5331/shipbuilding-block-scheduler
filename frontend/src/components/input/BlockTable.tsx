@@ -1,5 +1,10 @@
 import { useStore } from '../../store/schedulerStore';
-import { dayToDate, formatMD } from '../../io/dates';
+import { dateToDay, dayToDate, formatMD, toISO } from '../../io/dates';
+import { withMaterialDay } from '../../domain/material';
+import { materialText } from '../../domain/labels';
+import { effectiveDue } from '../../domain/calendar';
+import { useCalendar } from '../../store/evaluation';
+import { DueShift } from '../common/DueShift';
 
 /** 블록 작업 표. 튜토리얼에서는 readOnly로 같은 표를 글자만 보여 준다. */
 export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
@@ -8,8 +13,22 @@ export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
   const updateBlock = useStore((s) => s.updateBlock);
   const removeBlock = useStore((s) => s.removeBlock);
   const addBlock = useStore((s) => s.addBlock);
+  const assignments = useStore((s) => s.assignments);
+  const togglePin = useStore((s) => s.togglePin);
+  // 합의는 숙련자만: 현장과 합의된 블록은 다시 최적화해도 그대로 둔다
+  const agree = useStore((s) => s.mode !== 'novice') && !readOnly;
   const ids = blocks.map((b) => b.id);
-  const date = (day: number) => <span className="muted">({formatMD(dayToDate(planStart, day))})</span>;
+  const cal = useCalendar();
+  // 납기 날짜는 주말·공휴일만큼 미룬 실제 납기로 보여 준다
+  const due = (b: (typeof blocks)[number]) => {
+    const d = effectiveDue(cal, b.dueDay);
+    return (
+      <>
+        <span className="muted">({formatMD(dayToDate(planStart, d))})</span>
+        <DueShift block={b} due={d} />
+      </>
+    );
+  };
 
   return (
     <div className="table-scroll">
@@ -20,13 +39,15 @@ export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
             <th>납기(남은 일, 오늘 = 1)</th>
             <th className="num">필요 작업 시간</th>
             <th>자재</th>
+            <th title="자재가 들어오는 날. 그날부터 비상 자재 없이 착수합니다 (선택)">자재 납기일</th>
+            {agree && <th title="현장과 합의된 블록은 다시 최적화해도 착수일·인원·작업장을 그대로 둡니다">합의</th>}
             {!readOnly && <th />}
           </tr>
         </thead>
         <tbody>
           {blocks.length === 0 && (
             <tr>
-              <td colSpan={5} className="muted">
+              <td colSpan={7} className="muted">
                 아직 블록이 없습니다. 엑셀을 올리거나 샘플을 불러오세요.
               </td>
             </tr>
@@ -38,10 +59,11 @@ export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
                   <b>{b.id}</b>
                 </td>
                 <td>
-                  {b.dueDay} {date(b.dueDay)}
+                  {b.dueDay} {due(b)}
                 </td>
                 <td className="num">{b.requiredMH} MH</td>
                 <td>{b.materialReady ? '준비' : <span className="tag warn">미준비</span>}</td>
+                <td>{b.materialDay !== undefined ? materialText(b, (d) => formatMD(dayToDate(planStart, d))) : '-'}</td>
               </tr>
             ) : (
               <tr key={i}>
@@ -62,7 +84,7 @@ export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
                     value={b.dueDay}
                     onChange={(e) => updateBlock(i, { dueDay: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                   />{' '}
-                  {date(b.dueDay)}
+                  {due(b)}
                 </td>
                 <td className="num">
                   <input
@@ -80,12 +102,39 @@ export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
                     aria-label="자재"
                     className={`cell-input ${b.materialReady ? '' : 'not-ready'}`}
                     value={b.materialReady ? 'y' : 'n'}
-                    onChange={(e) => updateBlock(i, { materialReady: e.target.value === 'y' })}
+                    onChange={(e) => updateBlock(i, { materialReady: e.target.value === 'y', materialDay: undefined })}
                   >
                     <option value="y">준비</option>
                     <option value="n">미준비</option>
                   </select>
                 </td>
+                <td>
+                  <input
+                    aria-label={`${b.id} 자재 납기일`}
+                    className="cell-input date"
+                    type="date"
+                    data-testid={`material-day-${b.id}`}
+                    value={b.materialDay !== undefined ? toISO(dayToDate(planStart, b.materialDay)) : ''}
+                    onChange={(e) => {
+                      const [y, m, d] = e.target.value.split('-').map(Number);
+                      const day = e.target.value ? dateToDay(planStart, new Date(y, m - 1, d)) : undefined;
+                      updateBlock(i, { ...withMaterialDay(b, day), materialDay: day !== undefined && day > 1 ? day : undefined });
+                    }}
+                  />
+                </td>
+                {agree && (
+                  <td>
+                    <input
+                      type="checkbox"
+                      aria-label={`${b.id} 합의`}
+                      data-testid={`agree-${b.id}`}
+                      checked={!!assignments[b.id]?.pinned}
+                      disabled={assignments[b.id]?.startDay == null}
+                      title={assignments[b.id]?.startDay == null ? '블록 스케줄링에서 배치한 뒤 합의할 수 있습니다' : '합의: 다시 최적화해도 이 배치를 그대로 둡니다'}
+                      onChange={() => togglePin(b.id)}
+                    />
+                  </td>
+                )}
                 <td>
                   <button type="button" className="icon-btn" aria-label={`${b.id} 삭제`} onClick={() => removeBlock(i)}>
                     ×

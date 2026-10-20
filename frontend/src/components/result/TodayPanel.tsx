@@ -1,6 +1,9 @@
 import type { Evaluation } from '../../domain/evaluate';
 import { tbmMessage, workOn } from '../../domain/tbm';
 import { useStore } from '../../store/schedulerStore';
+import { useCalendar } from '../../store/evaluation';
+import { weatherLabel, weatherText } from '../../io/weather';
+import { useWeather } from '../common/useWeather';
 import { dayToDate, formatMD } from '../../io/dates';
 import { LineIcon } from '../icons/LineIcons';
 
@@ -11,8 +14,10 @@ export function TodayPanel({ ev, day, onDay, maxDay }: { ev: Evaluation; day: nu
   const r = useStore((s) => s.resources);
   const planStart = useStore((s) => s.planStart);
   const showToast = useStore((s) => s.showToast);
-  const work = workOn(day, blocks, assignments, ev, r);
-  const message = tbmMessage(day, blocks, assignments, ev, r, planStart);
+  const cal = useCalendar();
+  const work = workOn(day, blocks, assignments, ev, r, cal);
+  const w = useWeather()(day);
+  const message = tbmMessage(day, blocks, assignments, ev, r, planStart, cal, w && weatherText(w));
 
   const copy = async () => {
     try {
@@ -29,6 +34,11 @@ export function TodayPanel({ ev, day, onDay, maxDay }: { ev: Evaluation; day: nu
       <div className="today-head">
         <h3>
           <LineIcon name="clock" /> {day === 1 ? '오늘' : `${day}일차`} 작업 · {formatMD(dayToDate(planStart, day))}
+          {w && (
+            <small className="today-wx" data-testid="today-weather">
+              {weatherLabel(w.code).icon} {weatherText(w)}
+            </small>
+          )}
         </h3>
         <div className="today-nav">
           <button type="button" className="btn small ghost" disabled={day <= 1} onClick={() => onDay(day - 1)} aria-label="전날">
@@ -42,38 +52,45 @@ export function TodayPanel({ ev, day, onDay, maxDay }: { ev: Evaluation; day: nu
           </button>
         </div>
       </div>
-      {work.length === 0 ? (
-        <p className="muted">이날 작업 중인 블록이 없습니다.</p>
-      ) : (
-        <ul className="today-list">
-          {work.map((w) => (
-            <li key={w.block.id}>
-              <b>{w.block.id}</b>
-              <span className="muted">{w.workplace === null ? '작업장 미정' : `작업장 ${w.workplace + 1}`}</span>
-              <span>
-                일반 {w.general} · 숙련 {w.skilled}
-                {w.crane ? ' · 크레인' : ''}
-              </span>
-              <span className="muted">
-                {w.nth}/{w.duration}일차
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <h4>TBM 공유 메시지</h4>
-      <pre className="tbm" data-testid="tbm">
-        {message}
-      </pre>
-      <div className="dialog-actions">
-        {'share' in navigator && (
-          <button type="button" className="btn small ghost" onClick={share}>
-            공유
-          </button>
-        )}
-        <button type="button" className="btn small" onClick={copy}>
-          복사
-        </button>
+      <div className="today-body">
+        <div>
+          <h4>작업 블록 {work.length}개</h4>
+          {work.length === 0 ? (
+            <p className="muted">이날 작업 중인 블록이 없습니다.</p>
+          ) : (
+            <ul className="today-list">
+              {work.map((w) => (
+                <li key={w.block.id}>
+                  <b>{w.block.id}</b>
+                  <span className="muted">{w.workplace === null ? '작업장 미정' : `작업장 ${w.workplace + 1}`}</span>
+                  <span>
+                    일반 {w.general} · 숙련 {w.skilled}
+                    {w.crane ? ' · 크레인' : ''}
+                  </span>
+                  <span className="muted">
+                    {w.nth}/{w.duration}일차
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <h4>TBM 공유 메시지</h4>
+          <pre className="tbm" data-testid="tbm">
+            {message}
+          </pre>
+          <div className="dialog-actions">
+            {'share' in navigator && (
+              <button type="button" className="btn small ghost" onClick={share}>
+                공유
+              </button>
+            )}
+            <button type="button" className="btn small" onClick={copy}>
+              복사
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );

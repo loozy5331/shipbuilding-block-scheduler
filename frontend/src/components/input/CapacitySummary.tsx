@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useStore } from '../../store/schedulerStore';
+import { useCalendar } from '../../store/evaluation';
 import { checkCapacity } from '../../solver/feasibility';
 import { StatCard } from '../common/StatCard';
 import { LineIcon } from '../icons/LineIcons';
@@ -8,7 +9,8 @@ import { LineIcon } from '../icons/LineIcons';
 export function CapacitySummary() {
   const blocks = useStore((s) => s.blocks);
   const resources = useStore((s) => s.resources);
-  const c = useMemo(() => checkCapacity(blocks, resources), [blocks, resources]);
+  const cal = useCalendar();
+  const c = useMemo(() => checkCapacity(blocks, resources, cal), [blocks, resources, cal]);
   const ratio = c.dailyCapacityMH > 0 ? c.totalMH / c.dailyCapacityMH : Infinity;
 
   return (

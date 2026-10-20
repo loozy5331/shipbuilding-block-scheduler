@@ -2,10 +2,10 @@
 import * as XLSX from 'xlsx';
 import { writeFileSync } from 'node:fs';
 
-const header = ['블록 ID', '납기일', '필요 작업 시간', '자재준비 여부'];
+const header = ['블록 ID', '납기일', '필요 작업 시간', '자재준비 여부', '자재 납기일'];
 const write = (name, rows) => {
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-  ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
+  ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '블록');
   writeFileSync(`frontend/public/${name}`, XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
@@ -26,7 +26,10 @@ const rand = () => ((t = (t * 1103515245 + 12345) % 2147483648) / 2147483648);
 const rows = [];
 for (let s = 0; s < 5; s++) {
   for (let k = 0; k < 6; k++) {
-    rows.push([`S${s + 1}-${String.fromCharCode(65 + k)}${100 + k * 7 + s}`, 1 + Math.floor(rand() * 12), 8 + 4 * Math.floor(rand() * 9), rand() < 0.2 ? '미준비' : '준비']);
+    const row = [`S${s + 1}-${String.fromCharCode(65 + k)}${100 + k * 7 + s}`, 1 + Math.floor(rand() * 12), 8 + 4 * Math.floor(rand() * 9), rand() < 0.2 ? '미준비' : '준비'];
+    // 미준비 블록 중 절반은 자재 입고 예정일(남은 일수)이 있다 (의사난수 순서는 그대로 둔다)
+    row.push(row[3] === '미준비' && (s + k) % 2 === 0 ? 2 + ((s + k) % 4) : '');
+    rows.push(row);
   }
 }
 write('sample-30-blocks.xlsx', rows);

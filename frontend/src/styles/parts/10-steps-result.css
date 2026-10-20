@@ -40,9 +40,173 @@
   white-space: nowrap;
 }
 
-.plan-table tr.worse td:last-child {
+/* 지연 원인: 여러 줄이 될 수 있어 줄바꿈을 허용한다 */
+.plan-table td.causes {
+  min-width: 220px;
+  white-space: normal;
+  font-size: 13px;
+}
+
+.plan-table td.causes ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.plan-table th[scope='row'] {
+  position: sticky;
+  left: 0;
+  background: #fff;
+  color: var(--navy);
+  font-weight: 800;
+}
+
+/* 결과: 한 줄 요약 · 최적 대비 평가 · 배치표 판정 칩 · 날짜별 작업 */
+.result-sub {
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+
+.panel h3 small {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.report-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 12px;
+}
+
+.report-head h3 {
+  margin: 0;
+}
+
+.report-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.panel.good .report-head p {
+  color: var(--green);
+}
+
+.report-head p.bad {
   color: var(--red);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.metric-value {
+  color: var(--navy);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.metric-value small {
+  margin-left: 2px;
+  font-size: 14px;
+}
+
+.metric-cmp {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metric.better .metric-cmp b {
+  color: var(--green);
+}
+
+.metric.worse {
+  border-color: #f0c4c4;
+  background: #fdf5f5;
+}
+
+.metric.worse .metric-value,
+.metric.worse .metric-cmp b {
+  color: var(--red);
+}
+
+.report-notes {
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+
+.status-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--green-50);
+  color: var(--green);
+  font-size: 12px;
   font-weight: 700;
+}
+
+.status-chip.late,
+.status-chip.conflict {
+  background: #fdecec;
+  color: var(--red);
+}
+
+.status-chip.blocked,
+.status-chip.unscheduled {
+  background: #f1f3f5;
+  color: var(--muted);
+}
+
+.today-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 8px 24px;
+  align-items: start;
+}
+
+.today-body .today-list {
+  margin-top: 0;
+}
+
+@media (max-width: 860px) {
+  .today-body {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* 다섯 지표가 2열로 남지 않게 납기 준수를 한 줄 전체로 */
+  .metric:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .metric-value {
+    font-size: 22px;
+  }
 }
 
 @media (max-width: 860px) {
@@ -57,4 +221,11 @@
   .steps button:not(.on) .step-label {
     display: none;
   }
+}
+
+.today-wx {
+  margin-left: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
 }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { fromFrontend, shot, step } from './helpers';
+import { fromFrontend, shot } from './helpers';
 
 test('진입 화면: 로그인 · 체험하기 → 田자 메뉴 → 엑셀 업로드', async ({ page }) => {
   await page.goto('/');
@@ -9,10 +9,10 @@ test('진입 화면: 로그인 · 체험하기 → 田자 메뉴 → 엑셀 업�
   await expect(page.getByTestId('login-password')).toBeVisible();
   await shot(page, '00-login');
   await page.getByTestId('mode-novice').click();
+  // 체험하기는 처음이어도 가이드 없이 메뉴로
   await page.getByTestId('try-btn').click();
-  await page.getByRole('button', { name: '건너뛰기' }).click();
-  await step(page, '메뉴').click();
   await expect(page.locator('.tile')).toHaveCount(4);
+  await expect(page.locator('.tour-card')).toHaveCount(0);
   // 로그인 후에는 모드를 표시만 한다
   await expect(page.locator('.mode-chip')).toHaveText('신입');
   await expect(page.locator('.mode-toggle')).toHaveCount(0);

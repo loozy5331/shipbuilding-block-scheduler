@@ -4,6 +4,8 @@ export interface Block {
   dueDay: number;
   requiredMH: number;
   materialReady: boolean;
+  /** 자재 납기일(일차). 그날부터 비상 자재 없이 착수할 수 있다. 없으면 materialReady만 본다 */
+  materialDay?: number;
 }
 
 export interface Resources {
@@ -28,6 +30,8 @@ export interface Assignment {
   emergency: boolean;
   /** 작업 자리(레인). 작업장 = ⌊lane / blocksPerWorkplace⌋. 없으면 아직 자리를 정하지 않은 상태 */
   lane?: number;
+  /** 고정: 다시 최적화해도 이 배치(착수일·인원·자리)는 그대로 둔다 */
+  pinned?: boolean;
 }
 
 export type Assignments = Record<string, Assignment>;

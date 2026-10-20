@@ -1,5 +1,6 @@
 import type { Assignment, Assignments, Block, Resources } from './types';
 import { dailyMHOf, durationOf, nominalDuration } from './evaluate';
+import { NO_OFF, workEnd, type Calendar } from './calendar';
 
 /** 작업 자리 수 = 작업장 × 작업장당 동시 처리 블록 */
 export function laneCount(r: Resources): number {
@@ -10,11 +11,11 @@ export function workplaceOf(lane: number, r: Resources): number {
   return Math.floor(lane / Math.max(1, r.blocksPerWorkplace));
 }
 
-/** 간트에 차지하는 기간 [start, end]. 작업자가 없으면 필요 작업시간 기준 길이로 본다. */
-export function spanOf(block: Block, a: Assignment, r: Resources): [number, number] | null {
+/** 간트에 차지하는 기간 [start, end]. 사이의 쉬는 날도 자리를 차지한다. 작업자가 없으면 필요 작업시간 기준 길이로 본다. */
+export function spanOf(block: Block, a: Assignment, r: Resources, cal: Calendar = NO_OFF): [number, number] | null {
   if (a.startDay === null) return null;
   const d = durationOf(block.requiredMH, dailyMHOf(a, r)) ?? nominalDuration(block.requiredMH, r);
-  return [a.startDay, a.startDay + d - 1];
+  return [a.startDay, workEnd(cal, a.startDay, d)];
 }
 
 const overlaps = (x: [number, number], y: [number, number]) => x[0] <= y[1] && y[0] <= x[1];
@@ -23,7 +24,7 @@ const overlaps = (x: [number, number], y: [number, number]) => x[0] <= y[1] && y
  * 자리가 없거나 범위를 벗어난 블록에 빈 자리를 준다. 이미 자리가 있는 블록은 그대로 둔다.
  * 착수일 순으로 비어 있는 첫 자리를, 없으면 가장 덜 겹치는 자리를 고른다.
  */
-export function assignLanes(blocks: Block[], assignments: Assignments, r: Resources): Assignments {
+export function assignLanes(blocks: Block[], assignments: Assignments, r: Resources, cal: Calendar = NO_OFF): Assignments {
   const n = laneCount(r);
   if (n <= 0) return assignments;
   const byId = new Map(blocks.map((b) => [b.id, b]));
@@ -33,7 +34,7 @@ export function assignLanes(blocks: Block[], assignments: Assignments, r: Resour
 
   for (const a of Object.values(assignments)) {
     const b = byId.get(a.blockId);
-    const span = b && spanOf(b, a, r);
+    const span = b && spanOf(b, a, r, cal);
     if (!span) continue;
     if (a.lane !== undefined && a.lane >= 0 && a.lane < n) taken[a.lane].push(span);
     else todo.push({ a, span });
@@ -58,12 +59,12 @@ export function assignLanes(blocks: Block[], assignments: Assignments, r: Resour
 }
 
 /** 블록마다 같은 자리의 다른 블록과 겹치는 날 */
-export function laneOverlapDays(blocks: Block[], assignments: Assignments, r: Resources): Record<string, number[]> {
+export function laneOverlapDays(blocks: Block[], assignments: Assignments, r: Resources, cal: Calendar = NO_OFF): Record<string, number[]> {
   const n = laneCount(r);
   const spans = blocks
     .map((b) => {
       const a = assignments[b.id];
-      const span = a && a.lane !== undefined && a.lane < n ? spanOf(b, a, r) : null;
+      const span = a && a.lane !== undefined && a.lane < n ? spanOf(b, a, r, cal) : null;
       return span ? { id: b.id, lane: a.lane!, span } : null;
     })
     .filter((x) => x !== null);
@@ -87,6 +88,19 @@ export function startOrder(a: Assignments): string[] {
     .map((x) => x.blockId);
 }
 
+/** 고정한 블록의 배치만 */
+export function pinnedOf(a: Assignments): Assignments {
+  return Object.fromEntries(Object.entries(a).filter(([, x]) => x.pinned && x.startDay !== null));
+}
+
+/** 고정 배치가 같은지 알아보는 키 (다시 최적화한 결과를 재사용할지 판단) */
+export function pinKey(pinned: Assignments): string {
+  return Object.values(pinned)
+    .map((x) => [x.blockId, x.startDay, x.general, x.skilled, x.crane, x.emergency, x.lane].join(':'))
+    .sort()
+    .join('|');
+}
+
 /** 배치가 같은지 비교 (자리는 무시) */
 export function samePlan(a: Assignments, b: Assignments): boolean {
   const ka = Object.keys(a).filter((k) => a[k].startDay !== null || a[k].general || a[k].skilled || a[k].crane || a[k].emergency);
@@ -100,15 +114,15 @@ export function samePlan(a: Assignments, b: Assignments): boolean {
 }
 
 /** 작업장 wp로 옮길 때 쓸 자리: 그 작업장에서 [start, …] 기간에 비어 있는 첫 자리, 없으면 첫 자리 */
-export function seatIn(wp: number, block: Block, start: number, assignments: Assignments, blocks: Block[], r: Resources): number {
+export function seatIn(wp: number, block: Block, start: number, assignments: Assignments, blocks: Block[], r: Resources, cal: Calendar = NO_OFF): number {
   const first = wp * r.blocksPerWorkplace;
   const a = { ...(assignments[block.id] ?? { blockId: block.id, startDay: null, general: 0, skilled: 0, crane: false, emergency: false }), startDay: start };
-  const span = spanOf(block, a, r)!;
+  const span = spanOf(block, a, r, cal)!;
   for (let lane = first; lane < first + r.blocksPerWorkplace; lane++) {
     const busy = blocks.some((b) => {
       const o = assignments[b.id];
       if (b.id === block.id || o?.lane !== lane) return false;
-      const s = spanOf(b, o, r);
+      const s = spanOf(b, o, r, cal);
       return !!s && overlaps(s, span);
     });
     if (!busy) return lane;

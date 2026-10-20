@@ -1,5 +1,6 @@
 import type { Block, Resources } from '../domain/types';
 import { maxBlockDailyMH } from './modes';
+import { effectiveDue, NO_OFF, workDaysIn, type Calendar } from '../domain/calendar';
 
 export type IssueCode = 'noCrane' | 'noWorkplace' | 'noWorker' | 'material' | 'blockTooBig' | 'cumulative';
 
@@ -24,7 +25,7 @@ export interface CapacityCheck {
  * 배치 전에 명백히 불가능한 경우를 걸러내는 용량 검사.
  * possible=true는 "불가능하다는 증거가 없음"을 뜻하며, 최종 판정은 솔버 결과로 한다.
  */
-export function checkCapacity(blocks: Block[], r: Resources): CapacityCheck {
+export function checkCapacity(blocks: Block[], r: Resources, cal: Calendar = NO_OFF): CapacityCheck {
   const totalMH = blocks.reduce((s, b) => s + b.requiredMH, 0);
   const workforceMH = r.generalWorkers * r.generalMHPerDay + r.skilledWorkers * r.skilledMHPerDay;
   const parallel = Math.min(r.workplaces * r.blocksPerWorkplace, r.cranes);
@@ -32,6 +33,9 @@ export function checkCapacity(blocks: Block[], r: Resources): CapacityCheck {
   const dailyCapacityMH = Math.min(workforceMH, parallel * perBlock);
   const issues: Issue[] = [];
   const all = blocks.map((b) => b.id);
+  const due = (b: Block) => effectiveDue(cal, b.dueDay);
+  // 납기까지 실제로 일할 수 있는 날 수 (쉬는 날 제외)
+  const workDays = (d: number) => workDaysIn(cal, 1, d);
 
   if (blocks.length === 0) return { totalMH, dailyCapacityMH, workforceMH, possible: true, issues };
 
@@ -40,17 +44,20 @@ export function checkCapacity(blocks: Block[], r: Resources): CapacityCheck {
     issues.push({ code: 'noWorkplace', message: '작업장이 없어 어떤 블록도 착수할 수 없습니다.', blockIds: all });
   if (workforceMH <= 0) issues.push({ code: 'noWorker', message: '작업자가 없어 어떤 블록도 진행할 수 없습니다.', blockIds: all });
 
-  const unready = blocks.filter((b) => !b.materialReady);
+  // 비상 자재가 꼭 필요한 블록: 자재가 없거나, 입고일에 착수해서는 납기 안에 못 끝나는 블록
+  const unready = blocks.filter((b) =>
+    b.materialDay === undefined ? !b.materialReady : perBlock > 0 && b.requiredMH > workDaysIn(cal, b.materialDay, due(b)) * perBlock,
+  );
   if (unready.length > r.emergencyMaterials) {
     issues.push({
       code: 'material',
-      message: `자재 미준비 블록 ${unready.length}개 중 비상 자재(${r.emergencyMaterials}개)로 착수 가능한 블록은 ${r.emergencyMaterials}개뿐입니다.`,
+      message: `비상 자재가 필요한 블록(자재 미준비·입고 늦음) ${unready.length}개 중 비상 자재(${r.emergencyMaterials}개)로 착수 가능한 블록은 ${r.emergencyMaterials}개뿐입니다.`,
       blockIds: unready.map((b) => b.id),
     });
   }
 
   if (perBlock > 0) {
-    const tooBig = blocks.filter((b) => b.requiredMH > b.dueDay * perBlock);
+    const tooBig = blocks.filter((b) => b.requiredMH > workDays(due(b)) * perBlock);
     if (tooBig.length > 0) {
       issues.push({
         code: 'blockTooBig',
@@ -62,16 +69,16 @@ export function checkCapacity(blocks: Block[], r: Resources): CapacityCheck {
 
   // 각 납기일까지 누적 필요 MH가 누적 가용 MH를 넘는지
   if (dailyCapacityMH > 0) {
-    const dues = [...new Set(blocks.map((b) => b.dueDay))].sort((a, b) => a - b);
+    const dues = [...new Set(blocks.map(due))].sort((a, b) => a - b);
     for (const d of dues) {
-      const due = blocks.filter((b) => b.dueDay <= d);
-      const need = due.reduce((s, b) => s + b.requiredMH, 0);
-      const cap = d * dailyCapacityMH;
+      const until = blocks.filter((b) => due(b) <= d);
+      const need = until.reduce((s, b) => s + b.requiredMH, 0);
+      const cap = workDays(d) * dailyCapacityMH;
       if (need > cap) {
         issues.push({
           code: 'cumulative',
           message: `${d}일차까지 필요한 ${need}MH가 가용 ${cap}MH를 넘습니다.`,
-          blockIds: due.map((b) => b.id),
+          blockIds: until.map((b) => b.id),
         });
         break;
       }

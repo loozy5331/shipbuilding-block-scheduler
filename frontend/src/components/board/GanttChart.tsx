@@ -3,25 +3,78 @@ import { useDndContext, useDroppable } from '@dnd-kit/core';
 import type { Assignment, Assignments, Block, ResourceKind } from '../../domain/types';
 import type { BlockResult, Evaluation } from '../../domain/evaluate';
 import { assignBlockedReason } from '../../domain/assign';
+import { materialText } from '../../domain/labels';
 import { laneCount, workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { dayToDate, formatMD } from '../../io/dates';
+import { dayInfo, isWorkDay, type DayInfo } from '../../domain/calendar';
+import { useCalendar } from '../../store/evaluation';
+import { weatherLabel, weatherText } from '../../io/weather';
+import { useWeather } from '../common/useWeather';
 import { COL } from './ganttLayout';
+import { LineIcon } from '../icons/LineIcons';
 import { AssignedIcons, Bar, blockTitle, GhostBar } from './GanttBars';
 import { useRowFlip } from './useRowFlip';
 
 export { COL, MAX_DAYS } from './ganttLayout';
 
+const OFF_TEXT = { weekend: '주말', holiday: '공휴일', manual: '작업 불가' } as const;
+
+function dayTitle(md: string, info: DayInfo): string {
+  if (info.off === 'manual') return `${md} 작업 불가 (직접 지정, 납기는 그대로). 누르면 작업일로 되돌립니다`;
+  if (info.off) return `${md} ${info.holiday ?? '주말'} — 작업하지 않고 납기도 그만큼 늦춰집니다. 누르면 이날도 작업합니다`;
+  if (info.preset) return `${md} ${info.holiday ?? '주말'}이지만 작업하는 날로 바꿨습니다. 누르면 다시 쉽니다`;
+  return `${md} 누르면 작업 불가 날짜로 지정합니다 (천재지변 등, 납기는 그대로)`;
+}
+
+/** 날짜 머리. 쉬는 날은 음영으로 보이고, 누르면 작업 불가 ↔ 작업일을 바꾼다 (튜토리얼 중에는 매일 작업) */
 export function DayHeader({ days, planStart, label }: { days: number; planStart: string; label: string }) {
+  const options = useStore((s) => s.calendar);
+  const touring = useStore((s) => s.tutorialActive);
+  const toggle = useStore((s) => s.toggleOffDay);
+  const showToast = useStore((s) => s.showToast);
+  const weather = useWeather();
   return (
     <div className="g-row g-header" style={{ gridTemplateColumns: `var(--left) repeat(${days}, ${COL}px)` }}>
       <div className="g-left">{label}</div>
-      {Array.from({ length: days }, (_, i) => (
-        <div key={i} className={`g-day ${i === 0 ? 'today' : ''}`}>
-          <b>{i === 0 ? '오늘' : `${i + 1}일`}</b>
-          <small>{formatMD(dayToDate(planStart, i + 1))}</small>
-        </div>
-      ))}
+      {Array.from({ length: days }, (_, i) => {
+        const day = i + 1;
+        const md = formatMD(dayToDate(planStart, day));
+        const info: DayInfo = touring ? { off: null, preset: false } : dayInfo(planStart, day, options);
+        const cls = ['g-day', i === 0 && 'today', info.off && `off ${info.off}`, !info.off && info.preset && 'restored'].filter(Boolean).join(' ');
+        const w = weather(day);
+        const body = (
+          <>
+            <b>{i === 0 ? '오늘' : `${day}일`}</b>
+            <small>{md}</small>
+            {info.off && <em className="off-tag">{info.off === 'holiday' ? info.holiday : OFF_TEXT[info.off]}</em>}
+            {w && (
+              <span className="wx" data-testid={`wx-${day}`}>
+                {weatherLabel(w.code).icon}
+                {w.rain !== null && <small>{w.rain}%</small>}
+              </span>
+            )}
+          </>
+        );
+        const wx = w ? `\n날씨: ${weatherText(w)}` : '';
+        if (touring) return <div key={i} className={cls} title={w ? weatherText(w) : undefined}>{body}</div>;
+        return (
+          <button
+            key={i}
+            type="button"
+            className={cls}
+            data-testid={`day-${day}`}
+            title={dayTitle(md, info) + wx}
+            aria-pressed={!!info.off}
+            onClick={() => {
+              toggle(day);
+              showToast(info.off ? `${md}: 작업하는 날로 바꿨습니다` : `${md}: 작업 불가 날짜로 지정했습니다 (납기는 그대로)`);
+            }}
+          >
+            {body}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -42,8 +95,12 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
   const { setNodeRef, isOver } = useDroppable({ id: `blk:${block.id}`, data: { blockId: block.id } });
   const { active } = useDndContext();
   const resources = useStore((s) => s.resources);
+  const cal = useCalendar();
+  const planStart = useStore((s) => s.planStart);
   const selected = useStore((s) => s.selectedToken);
   const assign = useStore((s) => s.assign);
+  const togglePin = useStore((s) => s.togglePin);
+  const expert = useStore((s) => s.mode !== 'novice');
   const waiting = res.start === null;
 
   const dragKind = active?.data.current?.kind as ResourceKind | undefined;
@@ -77,31 +134,48 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
           <span className="muted">
             남은 {block.dueDay}일 · {block.requiredMH} MH
           </span>
-          {!block.materialReady && <span className="tag warn">자재 미준비</span>}
-          <button
-            type="button"
-            className="bar-edit"
-            title="숫자 편집"
-            aria-label={`${block.id} 숫자 편집`}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => onEdit(block.id)}
-          >
-            ✎
-          </button>
+          {!block.materialReady && <span className="tag warn">{materialText(block, (d) => formatMD(dayToDate(planStart, d)))}</span>}
+          <span className="b-tools">
+            {expert && !waiting && a && (
+              <button
+                type="button"
+                className={`bar-pin ${a.pinned ? 'on' : ''}`}
+                title={a.pinned ? '합의 풀기' : '합의: 다시 최적화해도 이 배치를 그대로 둡니다'}
+                aria-label={`${block.id} ${a.pinned ? '합의 풀기' : '합의'}`}
+                aria-pressed={!!a.pinned}
+                data-testid={`pin-${block.id}`}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => togglePin(block.id)}
+              >
+                <LineIcon name="lock" size={14} />
+                {a.pinned ? '합의됨' : '합의'}
+              </button>
+            )}
+            <button
+              type="button"
+              className="bar-edit"
+              title="숫자 편집"
+              aria-label={`${block.id} 숫자 편집`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => onEdit(block.id)}
+            >
+              ✎
+            </button>
+          </span>
         </div>
         <AssignedIcons block={block} a={a} size={18} />
         {reason && <span className="drop-reason">{reason}</span>}
       </div>
       <div className="g-track" style={{ gridColumn: `2 / span ${days}` }}>
         {Array.from({ length: days }, (_, i) => (
-          <div key={i} className="g-cell" style={{ left: i * COL, width: COL }} />
+          <div key={i} className={`g-cell ${isWorkDay(cal, i + 1) ? '' : 'off'}`} style={{ left: i * COL, width: COL }} />
         ))}
         {res.overDays
           .filter((d) => d <= days)
           .map((d) => (
             <span key={d} className="over-day" style={{ left: (d - 1) * COL, width: COL }} title={`${d}일 자원 용량 초과·겹침`} />
           ))}
-        {block.dueDay <= days && <div className="due-line" style={{ left: block.dueDay * COL }} title={`납기: ${block.dueDay}일 끝`} />}
+        {res.due <= days && <div className="due-line" style={{ left: res.due * COL }} title={`납기: ${res.due}일 끝`} />}
         {res.start !== null && a && <Bar block={block} res={res} a={a} days={days} workplaces={workplaces} onEdit={onEdit} />}
         {waiting && <GhostBar block={block} days={days} />}
       </div>

@@ -37,7 +37,9 @@ export function buildScene(blocks: Block[], resources: Resources, assignments: A
     const res = ev.blocks[b.id];
     const lane = assignments[b.id]?.lane;
     if (res.start === null || lane === undefined || lane >= lanes || res.start > days) continue;
-    bars.push({ id: b.id, lane, start: res.start, length: Math.max(1, Math.min(res.duration ?? 1, days - res.start + 1)) });
+    // 막대 길이는 사이의 쉬는 날을 포함한 기간
+    const span = res.end !== null ? res.end - res.start + 1 : 1;
+    bars.push({ id: b.id, lane, start: res.start, length: Math.max(1, Math.min(span, days - res.start + 1)) });
   }
   if (bars.length === 0) return null;
   bars.sort((x, y) => x.start - y.start || x.id.localeCompare(y.id));

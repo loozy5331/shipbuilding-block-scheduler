@@ -54,6 +54,9 @@ export const createTutorial: Slice<TutorialSlice> = (set, get) => ({
     if (user && !user.guest && !user.tutorialSeen) reportTutorialSeen(user.id);
     set({
       tutorialActive: false,
+      // 튜토리얼은 매일 작업하는 달력이었으니 지난 최적화 결과는 버린다
+      solve: null,
+      pinSolve: null,
       tutorialPage: null,
       tutorialStep: null,
       tutorialGuided: [],

@@ -1,11 +1,15 @@
 import { useDraggable } from '@dnd-kit/core';
 import type { Assignment, Block, ResourceKind } from '../../domain/types';
 import { nominalDuration, type BlockResult } from '../../domain/evaluate';
-import { REASON_LABEL } from '../../domain/labels';
+import { materialText, REASON_LABEL } from '../../domain/labels';
+import { materialOk } from '../../domain/material';
 import { workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { CraneIcon, MaterialIcon, SkilledIcon, WorkerIcon } from '../icons/ResourceIcons';
+import { LineIcon } from '../icons/LineIcons';
 import { COL } from './ganttLayout';
+import { isWorkDay, workEnd, type Calendar } from '../../domain/calendar';
+import { useCalendar } from '../../store/evaluation';
 
 function statusText(res: BlockResult): string | null {
   if (res.status === 'blocked') return `착수 불가 · ${res.blockedReasons.map((r) => REASON_LABEL[r]).join(', ')}`;
@@ -16,10 +20,10 @@ function statusText(res: BlockResult): string | null {
 
 export function blockTitle(block: Block, res: BlockResult) {
   const when = res.start !== null ? `${res.start}일 착수${res.end ? ` → ${res.end}일 끝` : ''}` : '미배치';
-  return `${block.id}: ${when}. 남은 ${block.dueDay}일 · ${block.requiredMH} MH · ${block.materialReady ? '자재 준비' : '자재 미준비'} · 납기까지 ${res.mhByDue}/${block.requiredMH} MH`;
+  return `${block.id}: ${when}. 납기 ${res.due}일 · ${block.requiredMH} MH · ${materialText(block)} · 납기까지 ${res.mhByDue}/${block.requiredMH} MH`;
 }
 
-/** 배정된 자원 아이콘. 누르면 뺀다. 필요한데 없는 크레인·비상 자재는 흐린 자리로 보여 준다. */
+/** 배정된 자원 아이콘. 누르면 뺀다(고정한 블록은 못 뺀다). 필요한데 없는 크레인·비상 자재는 흐린 자리로 보여 준다. */
 export function AssignedIcons({ block, a, size = 16 }: { block: Block; a: Assignment | undefined; size?: number }) {
   const unassign = useStore((s) => s.unassign);
   const icon = (key: string, kind: ResourceKind, title: string, node: React.ReactNode) => (
@@ -27,7 +31,8 @@ export function AssignedIcons({ block, a, size = 16 }: { block: Block; a: Assign
       key={key}
       type="button"
       className="placed"
-      title={`${title} 빼기`}
+      disabled={a?.pinned}
+      title={a?.pinned ? `${title} (합의됨)` : `${title} 빼기`}
       aria-label={`${block.id}에서 ${title} 빼기`}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
@@ -47,7 +52,8 @@ export function AssignedIcons({ block, a, size = 16 }: { block: Block; a: Assign
           <CraneIcon size={size} />
         </span>
       )}
-      {!block.materialReady &&
+      {/* 지금 착수일에 자재가 없거나 이미 비상 자재를 놓았으면 자리를 보여 준다 */}
+      {(!materialOk(block, a?.startDay ?? null) || a?.emergency) &&
         (a?.emergency ? (
           icon('em', 'emergency', '비상 자재', <MaterialIcon size={size} />)
         ) : (
@@ -75,12 +81,15 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
   const moveToWorkplace = useStore((s) => s.moveToWorkplace);
   const moveBlock = useStore((s) => s.moveBlock);
   const resources = useStore((s) => s.resources);
+  const cal = useCalendar();
   const start = res.start ?? 1;
-  const drag = useDraggable({ id: `bar:${block.id}`, data: { blockId: block.id, start } });
-  const length = Math.max(1, Math.min(res.duration ?? 1, days - start + 1));
+  const drag = useDraggable({ id: `bar:${block.id}`, data: { blockId: block.id, start }, disabled: a.pinned });
+  // 막대는 사이의 쉬는 날까지 이어서 그린다
+  const span = res.end !== null ? res.end - start + 1 : 1;
+  const length = Math.max(1, Math.min(span, days - start + 1));
   const shift = drag.transform ? Math.round(drag.transform.x / COL) : 0;
   const status = statusText(res);
-  const cls = ['g-bar', res.status, res.lateDays > 0 && 'is-late', res.overloaded && 'overloaded', drag.isDragging && 'dragging', length === 1 && 'short']
+  const cls = ['g-bar', res.status, res.lateDays > 0 && 'is-late', res.overloaded && 'overloaded', drag.isDragging && 'dragging', length === 1 && 'short', a.pinned && 'pinned']
     .filter(Boolean)
     .join(' ');
 
@@ -98,7 +107,7 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
       className={cls}
       data-testid={`bar-${block.id}`}
       data-day={drag.isDragging ? `${Math.max(1, start + shift)}일 착수` : undefined}
-      title={`${blockTitle(block, res)}. 좌우로 끌면 착수일, 다른 작업장으로 끌면 작업장이 바뀝니다`}
+      title={`${blockTitle(block, res)}. ${a.pinned ? '합의됨: 다시 최적화해도 그대로 둡니다' : '좌우로 끌면 착수일, 다른 작업장으로 끌면 작업장이 바뀝니다'}`}
       style={{
         left: (start - 1) * COL + 3,
         width: length * COL - 6,
@@ -109,9 +118,11 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
       aria-label={`${block.id} ${start}일 착수. 좌우 방향키로 착수일, 위아래로 작업장 이동, Enter로 편집`}
       tabIndex={0}
       onKeyDown={(e) => {
+        if (a.pinned && e.key.startsWith('Arrow')) return;
         if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
           e.preventDefault();
-          moveBlock(block.id, start + (e.key === 'ArrowRight' ? 1 : -1));
+          const to = stepWorkDay(cal, start, e.key === 'ArrowRight' ? 1 : -1);
+          if (to !== null) moveBlock(block.id, to);
         } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && a.lane !== undefined) {
           e.preventDefault();
           const wp = workplaceOf(a.lane, resources) + (e.key === 'ArrowDown' ? 1 : -1);
@@ -122,17 +133,34 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
         }
       }}
     >
+      <OffDays cal={cal} start={start} length={length} />
+      {a.pinned && <LineIcon name="lock" size={14} />}
       {status ?? (length === 1 ? `${res.duration}일 · ${res.dailyMH}MH` : `${res.duration}일 · 하루 ${res.dailyMH} MH`)}
     </div>
   );
 }
 
+/** 바로 옆 작업일 (앞으로 갈 작업일이 없으면 null) */
+function stepWorkDay(cal: Calendar, day: number, dir: 1 | -1): number | null {
+  let d = day + dir;
+  while (d >= 1 && !isWorkDay(cal, d)) d += dir;
+  return d >= 1 ? d : null;
+}
+
+/** 막대 안 쉬는 날 구간 (빗금) */
+function OffDays({ cal, start, length }: { cal: Calendar; start: number; length: number }) {
+  if (cal.off.length === 0) return null;
+  const off = Array.from({ length }, (_, i) => start + i).filter((d) => !isWorkDay(cal, d));
+  return off.map((d) => <i key={d} className="bar-off" style={{ left: (d - start) * COL - 3, width: COL }} aria-hidden="true" />);
+}
+
 /** 아직 배치하지 않은 블록의 점선 막대: 1일 착수, 필요 작업시간 ÷ 8시간 길이. 작업장 테두리로 끌어 놓으면 배치된다. */
 export function GhostBar({ block, days }: { block: Block; days: number }) {
   const r = useStore((s) => s.resources);
+  const cal = useCalendar();
   const drag = useDraggable({ id: `wait:${block.id}`, data: { blockId: block.id, start: 1 } });
   const nominal = nominalDuration(block.requiredMH, r);
-  const length = Math.min(nominal, days);
+  const length = Math.min(workEnd(cal, 1, nominal), days);
   const shift = drag.transform ? Math.round(drag.transform.x / COL) : 0;
   return (
     <div

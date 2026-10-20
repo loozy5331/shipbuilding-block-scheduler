@@ -33,18 +33,37 @@ export async function drag(page: Page, from: string, to: string | { dx?: number;
 
 export const step = (page: Page, label: string) => page.locator('.steps button', { hasText: label });
 
-/** 체험하기로 들어가 모드를 고르고(첫 방문이면 튜토리얼 가이드가 열리므로 건너뛴다) 샘플로 블록 스케줄링까지. sample이 아니면 메뉴에서 멈춘다 */
+const mocked = new WeakSet<Page>();
+
+/** 날씨 예보 API를 가짜 응답으로 (테스트가 네트워크를 쓰지 않도록). days: 날짜 → [WMO 코드, 강수 확률] */
+export async function mockWeather(page: Page, days: Record<string, [number, number]> = {}) {
+  mocked.add(page);
+  const time = Object.keys(days);
+  const daily = {
+    time,
+    weather_code: time.map((t) => days[t][0]),
+    precipitation_probability_max: time.map((t) => days[t][1]),
+    temperature_2m_max: time.map(() => 18),
+    temperature_2m_min: time.map(() => 9),
+    wind_speed_10m_max: time.map(() => 4),
+  };
+  await page.route('**/api.open-meteo.com/**', (route) => route.fulfill({ json: { daily } }));
+}
+
+/** 계획 시작일. 오늘 요일에 따라 주말이 끼는 위치가 달라지지 않도록 월요일로 고정한다 (10월 하순은 공휴일 없음) */
+export const PLAN_START = '2026-10-19';
+
+/** 체험하기로 들어가 모드를 고르고(가이드 없이 메뉴로) 샘플로 블록 스케줄링까지. sample이 아니면 메뉴에서 멈춘다 */
 export async function start(page: Page, mode: 'expert' | 'novice', sample = true) {
+  if (!mocked.has(page)) await mockWeather(page);
   await page.goto('/');
   await page.getByTestId(`mode-${mode}`).click();
   await page.getByTestId('try-btn').click();
-  await page.getByRole('button', { name: '건너뛰기' }).click();
+  await expect(page.locator('.tile')).toHaveCount(4);
+  if (!sample) return;
+  await page.getByRole('button', { name: /직접 입력하기|이어서 하기/ }).click();
   await expect(page.getByTestId('setup-title')).toBeVisible();
-  if (!sample) {
-    await step(page, '메뉴').click();
-    await expect(page.locator('.tile')).toHaveCount(4);
-    return;
-  }
+  await page.locator('.plan-start input').fill(PLAN_START);
   await page.getByRole('button', { name: '샘플 불러오기' }).click();
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
 }

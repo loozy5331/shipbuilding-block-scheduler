@@ -99,3 +99,50 @@ describe('맥 Numbers 파일', () => {
     ]);
   });
 });
+
+describe('자재 납기일 (선택 열)', () => {
+  it('자재 납기일이 있으면 그날 입고, 오늘 이전이면 준비, 빈 칸은 자재준비 여부를 따른다', () => {
+    const r = parseTable(
+      [
+        ['블록 ID', '납기일', '필요 작업 시간', '자재준비 여부', '자재 납기일'],
+        ['A', 5, 16, '미준비', '2026-10-22'],
+        ['B', 5, 16, '미준비', '2026-10-19'],
+        ['C', 5, 16, '준비', ''],
+      ],
+      START,
+    );
+    expect(r.errors).toEqual([]);
+    expect(r.blocks).toEqual([
+      { id: 'A', dueDay: 5, requiredMH: 16, materialReady: false, materialDay: 4 },
+      { id: 'B', dueDay: 5, requiredMH: 16, materialReady: true },
+      { id: 'C', dueDay: 5, requiredMH: 16, materialReady: true },
+    ]);
+  });
+
+  it('"자재 납기일(예정)"은 자재준비 여부가 아니라 자재 납기일로 읽고, 그 열만 있어도 된다', () => {
+    const r = parseTable(
+      [
+        ['블록', '납기', '공수', '자재 납기일(예정)'],
+        ['A', 5, 16, '10/23'],
+        ['B', 5, 16, ''],
+      ],
+      START,
+    );
+    expect(r.errors).toEqual([]);
+    expect(r.blocks.map((b) => [b.id, b.materialReady, b.materialDay])).toEqual([
+      ['A', false, 5],
+      ['B', true, undefined],
+    ]);
+  });
+
+  it('해석할 수 없는 자재 납기일은 행 오류', () => {
+    const r = parseTable(
+      [
+        ['블록 ID', '납기일', '필요 작업 시간', '자재준비 여부', '자재 입고일'],
+        ['A', 5, 16, '준비', '언젠가'],
+      ],
+      START,
+    );
+    expect(r.errors[0].message).toContain('자재 납기일');
+  });
+});

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import * as XLSX from 'xlsx';
-import { drag, fromFrontend, shot, start } from './helpers';
+import { drag, fromFrontend, shot, start, step } from './helpers';
 
 test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작업장 변경 → 최적 배치 → 내보내기', async ({ page }) => {
   await start(page, 'expert');
@@ -67,6 +67,8 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
 
   await page.getByRole('button', { name: '다음: 결과 →' }).click();
   await expect(page.getByTestId('report')).toContainText('현재 배치가 최적 배치와 같은 수준');
+  // 최적 값도 전체 블록 수와 함께 보여 준다
+  await expect(page.getByTestId('report')).toContainText('최적 5 / 5개');
   await expect(page.getByTestId('plan-table')).toContainText('작업장 1');
   await shot(page, '12-result');
 
@@ -80,6 +82,39 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
   expect(plan[0]).toHaveProperty('작업장');
   expect(plan[0]).toHaveProperty('작업자 수');
   expect(String(XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets.TBM)[0]['TBM 메시지'])).toContain('[TBM]');
+});
+
+test('작업하지 않는 날: 주말 음영, 날짜 칸을 눌러 작업 불가 지정·해제, 최적화는 그날을 비운다', async ({ page }) => {
+  await start(page, 'expert');
+  await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
+  // 시작일 10/19(월) → 6·7일이 주말
+  await expect(page.getByTestId('day-6')).toHaveClass(/off weekend/);
+  await expect(page.getByTestId('day-6')).toContainText('주말');
+  await expect(page.getByTestId('day-5')).not.toHaveClass(/off/);
+
+  // 2일을 작업 불가로: 그날에 걸친 막대는 빗금이 생기고 그만큼 늘어난다
+  await page.getByTestId('day-2').click();
+  await expect(page.getByTestId('day-2')).toHaveClass(/off manual/);
+  await expect(page.locator('.toast')).toContainText('작업 불가 날짜로 지정');
+  await expect(page.locator('.g-bar .bar-off').first()).toBeVisible();
+  await expect(page.getByTestId('load-general-2')).toHaveAttribute('title', /^2일: 0 \//);
+
+  // 다시 최적화해도 그날에는 착수하지 않는다 (막대 left = (2 - 1) × 96 + 3)
+  await page.getByTestId('optimize-btn').click();
+  await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
+  await expect(page.locator('.g-bar[style*="left: 99px"]')).toHaveCount(0);
+  await expect(page.getByTestId('load-general-2')).toHaveAttribute('title', /^2일: 0 \//);
+  await shot(page, '14-off-days');
+
+  // 공통 설정에 지정한 날이 보이고, 모두 풀 수 있다
+  await step(page, '공통 설정 입력').click();
+  await expect(page.getByTestId('workdays')).toContainText('작업 불가로 지정: 10/20');
+  await page.getByTestId('workdays').getByRole('button', { name: '모두 풀기' }).click();
+  await expect(page.getByTestId('workdays')).not.toContainText('작업 불가로 지정');
+  // 주말을 끄면 6일도 작업일
+  await page.getByTestId('skip-weekends').uncheck();
+  await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
+  await expect(page.getByTestId('day-6')).not.toHaveClass(/off/);
 });
 
 test('숙련자는 최적 배치로 시작하고, 다시 누르면 차선·차차선을 차례로 본다', async ({ page }) => {
@@ -101,6 +136,45 @@ test('숙련자는 최적 배치로 시작하고, 다시 누르면 차선·차�
   for (let i = 2; i < total; i++) await btn.click();
   await btn.click();
   await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
+});
+
+test('블록을 합의하고 다시 최적화하면 합의 블록은 그대로, 나머지만 다시 배치한다', async ({ page }) => {
+  await start(page, 'expert');
+  await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
+  // E-320을 최적과 다른 날로 옮기고 고정한다
+  const bar = page.getByTestId('bar-E-320');
+  await bar.focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+  const label = (await bar.getAttribute('aria-label'))!;
+  const day = label.match(/(\d+)일 착수/)![1];
+  const at = new RegExp(`^E-320 ${day}일 착수`);
+  await page.getByTestId('pin-E-320').click();
+  await expect(page.getByTestId('pin-E-320')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('pin-notice')).toContainText('합의 1개');
+  await expect(bar).toHaveClass(/pinned/);
+  // 합의한 막대는 방향키로 옮겨지지 않는다
+  await bar.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(bar).toHaveAttribute('aria-label', at);
+
+  const btn = page.getByTestId('optimize-btn');
+  await expect(btn).toHaveText('합의 외 다시 최적화');
+  await btn.click();
+  await expect(page.getByTestId('plan-option')).toContainText('합의 1개 유지');
+  await expect(bar).toHaveAttribute('aria-label', at);
+  await expect(page.getByTestId('waiting')).toHaveCount(0);
+  await shot(page, '13b-pinned');
+
+  await page.getByRole('button', { name: '합의 모두 풀기' }).click();
+  await expect(page.getByTestId('pin-notice')).toHaveCount(0);
+  await expect(page.getByTestId('pin-E-320')).toHaveAttribute('aria-pressed', 'false');
+
+  // 공통 설정 입력의 블록 표에서도 합의를 체크한다
+  await step(page, '공통 설정 입력').click();
+  await page.getByTestId('agree-D-208').check();
+  await step(page, '블록 스케줄링').click();
+  await expect(page.getByTestId('pin-D-208')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('pin-notice')).toContainText('D-208');
 });
 
 test('최적 배치로 줄이 재정렬되면 줄이 새 자리로 미끄러진다', async ({ page }) => {
@@ -186,6 +260,8 @@ test('신입 모드: 최적 배치 대신 단계적 힌트', async ({ page }) =>
   await expect(page.getByRole('button', { name: '최적 배치' })).toHaveCount(0);
   // 신입은 빈 간트에서 직접 배치하며 시작한다
   await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
+  // 다섯 블록을 작업자 1명 기준으로 한 줄로 이어도(작업일 11일 → 주말 포함 15일) 들어가게, 끌 여유 2칸까지
+  await expect(page.locator('.g-header .g-day')).toHaveCount(17);
 
   await page.getByTestId('hint-btn').click();
   await expect(page.getByTestId('hint')).toContainText('힌트 1');
