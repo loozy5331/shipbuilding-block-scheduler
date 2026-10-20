@@ -4,6 +4,7 @@ import { verdictText } from '../domain/labels';
 import { laneCount, workplaceOf } from '../domain/lanes';
 import { compareReport, judge } from '../domain/report';
 import { tbmMessage } from '../domain/tbm';
+import { isWorkDay, NO_OFF, type Calendar } from '../domain/calendar';
 import { dayToDate, toISO } from './dates';
 import { parseTable, type ParseResult } from './parse';
 
@@ -44,14 +45,15 @@ const LOAD_LABEL = { slots: '동시 처리 블록', general: '일반 작업자',
 function planRows(blocks: Block[], r: Resources, assignments: Assignments, ev: Evaluation, date: (d: number | null) => string) {
   const lanes = laneCount(r);
   return [
-    ['블록 ID', '납기(남은 일)', '납기일', '필요 MH', '자재', '작업장', '착수일', '종료일', '기간(일)', '작업자 수', '일반 작업자', '숙련공', '하루 MH', '납기 여유(일)', '크레인', '비상 자재', '판정', '지연(일)', '납기 내 인정 MH', '전체 인정 MH'],
+    ['블록 ID', '납기(남은 일)', '납기일', '필요 MH', '자재', '작업장', '착수일', '종료일', '기간(작업일)', '작업자 수', '일반 작업자', '숙련공', '하루 MH', '납기 여유(일)', '크레인', '비상 자재', '판정', '지연(일)', '납기 내 인정 MH', '전체 인정 MH'],
     ...blocks.map((b) => {
       const a = assignments[b.id];
       const x = ev.blocks[b.id];
       return [
         b.id,
         b.dueDay,
-        date(b.dueDay),
+        // 주말·공휴일만큼 미뤄진 실제 납기
+        date(x.due),
         b.requiredMH,
         b.materialReady ? '준비' : '미준비',
         x.start !== null && a?.lane !== undefined && a.lane < lanes ? workplaceOf(a.lane, r) + 1 : '',
@@ -74,9 +76,12 @@ function planRows(blocks: Block[], r: Resources, assignments: Assignments, ev: E
   ];
 }
 
-function loadRows(ev: Evaluation, date: (d: number | null) => string) {
+function loadRows(ev: Evaluation, date: (d: number | null) => string, cal: Calendar) {
   const days = Array.from({ length: ev.horizon }, (_, i) => i + 1);
-  return [['자원', '용량', ...days.map((d) => `${d}일 (${date(d)})`)], ...ev.load.map((row) => [LOAD_LABEL[row.kind], row.capacity, ...row.usage])];
+  return [
+    ['자원', '용량', ...days.map((d) => `${d}일 (${date(d)})${isWorkDay(cal, d) ? '' : ' 휴무'}`)],
+    ...ev.load.map((row) => [LOAD_LABEL[row.kind], row.capacity, ...row.usage]),
+  ];
 }
 
 export interface ExportExtras {
@@ -84,11 +89,14 @@ export interface ExportExtras {
   optimal?: Assignments;
   /** 신입 모드의 힌트 사용 횟수 */
   hintCount?: number;
+  /** 작업하지 않는 날 */
+  cal?: Calendar;
 }
 
 export async function exportSchedule(blocks: Block[], r: Resources, assignments: Assignments, planStart: string, extras: ExportExtras = {}) {
   const XLSX = await loadXLSX();
-  const ev = evaluate(blocks, r, assignments);
+  const cal = extras.cal ?? NO_OFF;
+  const ev = evaluate(blocks, r, assignments, cal);
   const date = (day: number | null) => (day === null ? '' : toISO(dayToDate(planStart, day)));
   const k = ev.kpi;
   const summary = [
@@ -102,17 +110,17 @@ export async function exportSchedule(blocks: Block[], r: Resources, assignments:
     ['자원 초과 칸', k.overloadCells],
     ['잔여 납기 여유일', k.totalSlackDays],
   ];
-  const tbm = [['일차', '날짜', 'TBM 메시지'], ...Array.from({ length: ev.horizon }, (_, i) => [i + 1, date(i + 1), tbmMessage(i + 1, blocks, assignments, ev, r, planStart)])];
+  const tbm = [['일차', '날짜', 'TBM 메시지'], ...Array.from({ length: ev.horizon }, (_, i) => [i + 1, date(i + 1), tbmMessage(i + 1, blocks, assignments, ev, r, planStart, cal)])];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(planRows(blocks, r, assignments, ev, date)), '배치표');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(loadRows(ev, date)), '일별 자원 부하');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(loadRows(ev, date, cal)), '일별 자원 부하');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), '요약');
   const tbmSheet = XLSX.utils.aoa_to_sheet(tbm);
   tbmSheet['!cols'] = [{ wch: 6 }, { wch: 12 }, { wch: 80 }];
   XLSX.utils.book_append_sheet(wb, tbmSheet, 'TBM');
   if (extras.optimal) {
-    const rows = compareReport(k, evaluate(blocks, r, extras.optimal).kpi);
+    const rows = compareReport(k, evaluate(blocks, r, extras.optimal, cal).kpi);
     const report: (string | number)[][] = [
       ['항목', '현재', '최적', '차이', '판정'],
       ...rows.map((x) => [x.label, x.current, x.optimal, x.current - x.optimal, { better: '최적보다 좋음', same: '같음', worse: '최적보다 나쁨' }[judge(x)]]),

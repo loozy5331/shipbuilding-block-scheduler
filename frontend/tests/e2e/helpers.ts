@@ -33,6 +33,9 @@ export async function drag(page: Page, from: string, to: string | { dx?: number;
 
 export const step = (page: Page, label: string) => page.locator('.steps button', { hasText: label });
 
+/** 계획 시작일. 오늘 요일에 따라 주말이 끼는 위치가 달라지지 않도록 월요일로 고정한다 (10월 하순은 공휴일 없음) */
+export const PLAN_START = '2026-10-19';
+
 /** 체험하기로 들어가 모드를 고르고(가이드 없이 메뉴로) 샘플로 블록 스케줄링까지. sample이 아니면 메뉴에서 멈춘다 */
 export async function start(page: Page, mode: 'expert' | 'novice', sample = true) {
   await page.goto('/');
@@ -42,6 +45,7 @@ export async function start(page: Page, mode: 'expert' | 'novice', sample = true
   if (!sample) return;
   await page.getByRole('button', { name: /직접 입력하기|이어서 하기/ }).click();
   await expect(page.getByTestId('setup-title')).toBeVisible();
+  await page.locator('.plan-start input').fill(PLAN_START);
   await page.getByRole('button', { name: '샘플 불러오기' }).click();
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
 }

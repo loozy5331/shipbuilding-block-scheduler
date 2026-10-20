@@ -1,6 +1,7 @@
 import type { Assignments, Block, Policy, Resources } from '../domain/types';
 import { compareObjective, evaluate, meetsMinimum, objective, type Kpi } from '../domain/evaluate';
 import { startOrder } from '../domain/lanes';
+import { effectiveDue, NO_OFF, type Calendar } from '../domain/calendar';
 import { buildModeTable, serialSchedule, type Fixed, type ModeTable, type PickRule } from './sgs';
 
 export interface Plan {
@@ -30,9 +31,9 @@ export function rng(seed: number) {
 }
 
 /** 납기 빠른 순, 같으면 여유(납기 - 최단 기간)가 작은 순, 같으면 MH 큰 순 */
-function eddOrder(blocks: Block[], modes: ModeTable): Block[] {
+function eddOrder(blocks: Block[], modes: ModeTable, due: (b: Block) => number): Block[] {
   const minDur = (b: Block) => modes[b.id][0]?.duration ?? Infinity;
-  return [...blocks].sort((a, b) => a.dueDay - b.dueDay || a.dueDay - minDur(a) - (b.dueDay - minDur(b)) || b.requiredMH - a.requiredMH);
+  return [...blocks].sort((a, b) => due(a) - due(b) || due(a) - minDur(a) - (due(b) - minDur(b)) || b.requiredMH - a.requiredMH);
 }
 
 interface Candidate {
@@ -45,10 +46,10 @@ interface Candidate {
 /** 착수 순서·배치 규칙 → 배치와 목적함수 점수. 고정 블록은 순서에 넣지 않고 제자리에 둔다 */
 type Run = (order: Block[], rule: PickRule) => Candidate;
 
-function runner(blocks: Block[], r: Resources, modes: ModeTable, fixed: Fixed[]): Run {
+function runner(blocks: Block[], r: Resources, modes: ModeTable, fixed: Fixed[], cal: Calendar): Run {
   return (order, rule) => {
-    const assignments = serialSchedule(order, r, modes, rule, fixed);
-    return { order, rule, assignments, score: objective(evaluate(blocks, r, assignments).kpi) };
+    const assignments = serialSchedule(order, r, modes, rule, fixed, cal);
+    return { order, rule, assignments, score: objective(evaluate(blocks, r, assignments, cal).kpi) };
   };
 }
 
@@ -57,21 +58,24 @@ export interface SolveOptions {
   seed?: number;
   /** 고정한 블록의 배치 (이 블록들은 그대로 두고 나머지만 배치한다) */
   fixed?: Assignments;
+  /** 작업하지 않는 날 */
+  cal?: Calendar;
 }
 
 export function solvePolicy(policy: Policy, blocks: Block[], r: Resources, opts: SolveOptions = {}): Solution {
   const modes = buildModeTable(blocks, r);
   const fixed: Fixed[] = blocks.filter((b) => opts.fixed?.[b.id]).map((b) => ({ block: b, a: opts.fixed![b.id] }));
   const free = blocks.filter((b) => !opts.fixed?.[b.id]);
-  const run = runner(blocks, r, modes, fixed);
+  const cal = opts.cal ?? NO_OFF;
+  const run = runner(blocks, r, modes, fixed, cal);
   const plan = (c: Candidate): Plan => {
-    const ev = evaluate(blocks, r, c.assignments);
+    const ev = evaluate(blocks, r, c.assignments, cal);
     return { assignments: c.assignments, kpi: ev.kpi, feasible: ev.feasible };
   };
   if (policy === 'input') return { policy, ...plan(run(free, 'fast')) };
   const archive = new Archive();
-  const best = localSearch(free, modes, run, opts, archive);
-  return { policy, ...plan(best), alternatives: archive.top(MAX_ALTERNATIVES, best, blocks, r).map(plan) };
+  const best = localSearch(free, modes, run, opts, archive, (b) => effectiveDue(cal, b.dueDay));
+  return { policy, ...plan(best), alternatives: archive.top(MAX_ALTERNATIVES, best, blocks, r, cal).map(plan) };
 }
 
 /** 탐색 중 만난 해를 착수 순서별로 가장 좋은 것만 모아 둔다 (차선책 후보) */
@@ -96,13 +100,13 @@ class Archive {
    * best와 착수 순서가 다른 해 중 좋은 순으로 n개.
    * 최소 요건(자재·크레인·작업자, 자원 초과 없음)을 만족하고, 착수 못 하는 블록이 최적해보다 많지 않은 것만.
    */
-  top(n: number, best: Candidate, blocks: Block[], r: Resources): Candidate[] {
+  top(n: number, best: Candidate, blocks: Block[], r: Resources, cal: Calendar): Candidate[] {
     const skip = startOrder(best.assignments).join('>');
     const out: Candidate[] = [];
     const sorted = [...this.byOrder.entries()].filter(([k]) => k !== skip).sort((x, y) => compareObjective(x[1].score, y[1].score));
     for (const [, c] of sorted) {
       if (out.length >= n) break;
-      if (c.score[0] > best.score[0] || !meetsMinimum(blocks, r, c.assignments)) continue;
+      if (c.score[0] > best.score[0] || !meetsMinimum(blocks, r, c.assignments, evaluate(blocks, r, c.assignments, cal))) continue;
       out.push(c);
     }
     return out;
@@ -110,11 +114,11 @@ class Archive {
 }
 
 /** EDD/여유시간/입력순서 초기해에서 시작해 교환·삽입 이웃을 탐색하고, 정체되면 섞어서 재시작한다. blocks는 순서를 정할 (고정 안 된) 블록 */
-function localSearch(blocks: Block[], modes: ModeTable, run: Run, { budgetMs = 800, seed = 7 }: SolveOptions, archive: Archive): Candidate {
+function localSearch(blocks: Block[], modes: ModeTable, run: Run, { budgetMs = 800, seed = 7 }: SolveOptions, archive: Archive, due: (b: Block) => number): Candidate {
   const rand = rng(seed);
   const deadline = Date.now() + budgetMs;
-  const edd = eddOrder(blocks, modes);
-  const slack = [...blocks].sort((a, b) => a.dueDay - (modes[a.id][0]?.duration ?? 0) - (b.dueDay - (modes[b.id][0]?.duration ?? 0)));
+  const edd = eddOrder(blocks, modes, due);
+  const slack = [...blocks].sort((a, b) => due(a) - (modes[a.id][0]?.duration ?? 0) - (due(b) - (modes[b.id][0]?.duration ?? 0)));
   const starts: Candidate[] = [];
   for (const order of [edd, slack, blocks]) for (const rule of ['fast', 'lean'] as PickRule[]) starts.push(run(order, rule));
   starts.forEach((c) => archive.add(c));

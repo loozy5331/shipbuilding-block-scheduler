@@ -3,6 +3,7 @@ import { BlockSource } from './BlockSource';
 import { BlockTable } from './BlockTable';
 import { CapacitySummary } from './CapacitySummary';
 import { ResourceForm } from './ResourceForm';
+import { WorkDaysForm } from './WorkDaysForm';
 
 /**
  * ③ 공통 설정 입력: 블록·자원·계획 시작일.
@@ -51,6 +52,8 @@ export function InputPage() {
         <section className="panel" data-tour="resources">
           <h3>가용 자원</h3>
           <ResourceForm readOnly={touring} />
+          {/* 튜토리얼은 발표 자료대로 매일 작업한다 */}
+          {!touring && <WorkDaysForm />}
         </section>
       </div>
     </div>

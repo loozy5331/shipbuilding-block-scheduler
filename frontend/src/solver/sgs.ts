@@ -1,6 +1,7 @@
 import type { Assignment, Assignments, Block, Resources } from '../domain/types';
 import { emptyAssignment } from '../domain/types';
 import { spanOf } from '../domain/lanes';
+import { effectiveDue, isWorkDay, NO_OFF, workEnd, type Calendar } from '../domain/calendar';
 import { buildModes, type Mode } from './modes';
 
 /** fast: 가장 빨리 끝나는 배치 / lean: 납기 안이면 낭비 MH가 적은 배치 우선 */
@@ -19,7 +20,10 @@ class FreeTable {
   private general: number[] = [];
   private skilled: number[] = [];
   private crane: number[] = [];
-  constructor(private r: Resources) {}
+  constructor(
+    private r: Resources,
+    private cal: Calendar,
+  ) {}
 
   private ensure(day: number) {
     while (this.slots.length < day) {
@@ -30,21 +34,25 @@ class FreeTable {
     }
   }
 
-  fits(start: number, m: Mode): boolean {
-    this.ensure(start + m.duration - 1);
-    for (let d = start - 1; d < start - 1 + m.duration; d++) {
-      if (this.slots[d] < 1 || this.crane[d] < 1 || this.general[d] < m.general || this.skilled[d] < m.skilled) return false;
+  /** 작업 자리는 쉬는 날에도 차지하고, 사람·크레인은 작업일에만 쓴다 */
+  fits(start: number, end: number, m: Mode): boolean {
+    this.ensure(end);
+    for (let d = start; d <= end; d++) {
+      if (this.slots[d - 1] < 1) return false;
+      if (!isWorkDay(this.cal, d)) continue;
+      if (this.crane[d - 1] < 1 || this.general[d - 1] < m.general || this.skilled[d - 1] < m.skilled) return false;
     }
     return true;
   }
 
-  take(start: number, m: Pick<Mode, 'general' | 'skilled' | 'duration'>, crane = true) {
-    this.ensure(start + m.duration - 1);
-    for (let d = start - 1; d < start - 1 + m.duration; d++) {
-      this.slots[d] -= 1;
-      if (crane) this.crane[d] -= 1;
-      this.general[d] -= m.general;
-      this.skilled[d] -= m.skilled;
+  take(start: number, end: number, m: Pick<Mode, 'general' | 'skilled'>, crane = true) {
+    this.ensure(end);
+    for (let d = start; d <= end; d++) {
+      this.slots[d - 1] -= 1;
+      if (!isWorkDay(this.cal, d)) continue;
+      if (crane) this.crane[d - 1] -= 1;
+      this.general[d - 1] -= m.general;
+      this.skilled[d - 1] -= m.skilled;
     }
   }
 }
@@ -75,21 +83,22 @@ export interface Fixed {
 }
 
 /** 주어진 순서대로 블록을 하나씩 가장 좋은 위치에 배치하는 직렬 스케줄 생성 (fixed는 먼저 제자리에 둔다) */
-export function serialSchedule(order: Block[], r: Resources, modes: ModeTable, rule: PickRule = 'fast', fixed: Fixed[] = []): Assignments {
-  const free = new FreeTable(r);
+export function serialSchedule(order: Block[], r: Resources, modes: ModeTable, rule: PickRule = 'fast', fixed: Fixed[] = [], cal: Calendar = NO_OFF): Assignments {
+  const free = new FreeTable(r, cal);
   const out: Assignments = {};
   let emergencyLeft = r.emergencyMaterials;
   let fixedEnd = 0;
   for (const { block, a } of fixed) {
     out[block.id] = a;
     if (a.emergency) emergencyLeft--;
-    const span = spanOf(block, a, r);
+    const span = spanOf(block, a, r, cal);
     if (!span) continue;
-    free.take(span[0], { general: a.general, skilled: a.skilled, duration: span[1] - span[0] + 1 }, a.crane);
+    free.take(span[0], span[1], a, a.crane);
     fixedEnd = Math.max(fixedEnd, span[1]);
   }
   const canRun = r.cranes > 0 && r.workplaces * r.blocksPerWorkplace > 0;
-  const limit = fixedEnd + order.reduce((s, b) => s + (modes[b.id].at(-1)?.duration ?? 0), 0) + Math.max(0, ...order.map((b) => b.dueDay)) + 1;
+  const dues = new Map(order.map((b) => [b.id, effectiveDue(cal, b.dueDay)]));
+  const limit = workEnd(cal, fixedEnd + 1, order.reduce((s, b) => s + (modes[b.id].at(-1)?.duration ?? 0), 0) + Math.max(0, ...dues.values()) + 1);
 
   for (const b of order) {
     out[b.id] = emptyAssignment(b.id);
@@ -97,20 +106,24 @@ export function serialSchedule(order: Block[], r: Resources, modes: ModeTable, r
     if (!canRun || ms.length === 0) continue;
     if (!b.materialReady && emergencyLeft <= 0) continue;
 
+    const due = dues.get(b.id)!;
     let best = null as Option | null;
     for (let s = 1; s <= limit; s++) {
       if (best && rule === 'fast' && s > best.end) break;
-      if (best && rule === 'lean' && best.end <= b.dueDay && s > b.dueDay) break;
+      if (best && rule === 'lean' && best.end <= due && s > due) break;
+      // 쉬는 날에는 착수하지 않는다
+      if (!isWorkDay(cal, s)) continue;
       for (const m of ms) {
-        if (!free.fits(s, m)) continue;
-        const opt = { start: s, mode: m, end: s + m.duration - 1 };
-        if (!best || better(opt, best, rule, b.dueDay)) best = opt;
+        const end = workEnd(cal, s, m.duration);
+        if (!free.fits(s, end, m)) continue;
+        const opt = { start: s, mode: m, end };
+        if (!best || better(opt, best, rule, due)) best = opt;
       }
-      if (best && rule === 'lean' && best.end > b.dueDay && s > best.end) break;
+      if (best && rule === 'lean' && best.end > due && s > best.end) break;
     }
     if (!best) continue;
 
-    free.take(best.start, best.mode);
+    free.take(best.start, best.end, best.mode);
     const emergency = !b.materialReady;
     if (emergency) emergencyLeft--;
     out[b.id] = {

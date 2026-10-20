@@ -2,6 +2,7 @@ import type { Assignment, Assignments, Block, Resources } from './types';
 import { emptyAssignment } from './types';
 import { compareObjective, evaluate, objective } from './evaluate';
 import { assignLanes } from './lanes';
+import { effectiveDue, NO_OFF, type Calendar } from './calendar';
 
 export interface Hint {
   blockId: string | null;
@@ -24,13 +25,13 @@ function changes(cur: Assignment, opt: Assignment): string[] {
  * 현재 배치와 최적 배치의 차이 중, 하나만 고쳤을 때 가장 크게 좋아지는 블록 하나를 알려 준다.
  * 하나만 고쳐서는 좋아지지 않으면 납기가 가장 급한 차이부터 알려 준다.
  */
-export function nextHint(blocks: Block[], r: Resources, current: Assignments, optimal: Assignments): Hint {
-  const base = evaluate(blocks, r, current);
+export function nextHint(blocks: Block[], r: Resources, current: Assignments, optimal: Assignments, cal: Calendar = NO_OFF): Hint {
+  const base = evaluate(blocks, r, current, cal);
   const baseScore = objective(base.kpi);
-  const optKpi = evaluate(blocks, r, optimal).kpi;
+  const optKpi = evaluate(blocks, r, optimal, cal).kpi;
 
   const candidates = [...blocks]
-    .sort((a, b) => a.dueDay - b.dueDay)
+    .sort((a, b) => effectiveDue(cal, a.dueDay) - effectiveDue(cal, b.dueDay))
     .map((b) => {
       const cur = current[b.id] ?? emptyAssignment(b.id);
       const opt = optimal[b.id] ?? emptyAssignment(b.id);
@@ -38,8 +39,8 @@ export function nextHint(blocks: Block[], r: Resources, current: Assignments, op
       if (diff.length === 0) return null;
       // 자리는 현재 것을 유지하되, 겹치면 빈 자리로 다시 잡는다
       let next = { ...current, [b.id]: { ...opt, lane: cur.lane } };
-      if (evaluate(blocks, r, next).blocks[b.id].laneClash) next = assignLanes(blocks, { ...next, [b.id]: { ...opt, lane: undefined } }, r);
-      const kpi = evaluate(blocks, r, next).kpi;
+      if (evaluate(blocks, r, next, cal).blocks[b.id].laneClash) next = assignLanes(blocks, { ...next, [b.id]: { ...opt, lane: undefined } }, r, cal);
+      const kpi = evaluate(blocks, r, next, cal).kpi;
       return { block: b, diff, next, kpi, score: objective(kpi) };
     })
     .filter((x) => x !== null);

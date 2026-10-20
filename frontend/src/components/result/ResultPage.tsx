@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useEvaluation } from '../../store/evaluation';
+import { useCalendar, useEvaluation } from '../../store/evaluation';
 import { verdictText } from '../../domain/labels';
 import { laneCount, workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
@@ -9,6 +9,7 @@ import { dayToDate, formatMD } from '../../io/dates';
 import { LineIcon } from '../icons/LineIcons';
 import { TodayPanel } from './TodayPanel';
 import { ReportCard } from './ReportCard';
+import { DueShift } from '../common/DueShift';
 
 /** ⑤ 블록 스케줄 결과: 최적 대비 평가 → 배치표 → 날짜별 작업·TBM, 엑셀 저장 */
 export function ResultPage() {
@@ -22,6 +23,7 @@ export function ResultPage() {
   const setPage = useStore((s) => s.setPage);
   const [day, setDay] = useState(1);
   const ev = useEvaluation();
+  const cal = useCalendar();
   const expert = mode !== 'novice';
   const lanes = laneCount(resources);
   const date = (d: number | null) => (d === null ? '-' : formatMD(dayToDate(planStart, d)));
@@ -66,7 +68,7 @@ export function ResultPage() {
           <button
             type="button"
             className="btn primary"
-            onClick={() => exportSchedule(blocks, resources, assignments, planStart, { optimal: solve?.solutions.optimal.assignments, hintCount: expert ? undefined : hintCount })}
+            onClick={() => exportSchedule(blocks, resources, assignments, planStart, { optimal: solve?.solutions.optimal.assignments, hintCount: expert ? undefined : hintCount, cal })}
           >
             <LineIcon name="download" size={16} /> 엑셀 저장
           </button>
@@ -110,7 +112,8 @@ export function ResultPage() {
                       {x.duration ? <small className="muted"> ({x.duration}일)</small> : null}
                     </td>
                     <td>
-                      {date(b.dueDay)}
+                      {date(x.due)}
+                      <DueShift block={b} due={x.due} />
                       {x.status === 'ok' && <small className="muted"> ({x.slackDays > 0 ? `여유 ${x.slackDays}일` : '당일 완료'})</small>}
                     </td>
                     <td>{crew || '-'}</td>
