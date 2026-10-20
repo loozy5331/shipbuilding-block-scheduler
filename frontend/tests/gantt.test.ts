@@ -4,6 +4,8 @@ import { assignBlockedReason } from '../src/domain/assign';
 import { TUTORIAL_BLOCKS } from '../src/tutorial/scenario';
 import { DEFAULT_RESOURCES } from '../src/domain/types';
 import type { Assignments } from '../src/domain/types';
+import { buildCalendar, NO_OFF } from '../src/domain/calendar';
+import { ganttDays } from '../src/components/board/ganttLayout';
 
 // 자원 규칙 검증용: 일반 작업자 4명 · 숙련공 1명 기본값
 const R = DEFAULT_RESOURCES;
@@ -43,5 +45,16 @@ describe('배정 규칙', () => {
     const used = { X: { ...a('X', 1, 1), emergency: true } };
     expect(assignBlockedReason(C115, undefined, 'emergency', R, used)).toBe('비상 자재가 남지 않았습니다');
     expect(assignBlockedReason(C115, undefined, 'emergency', R, {})).toBeNull();
+  });
+});
+
+describe('간트 날짜 범위', () => {
+  it('모든 블록을 한 줄로 이어도 들어가도록 날짜를 잡는다', () => {
+    // 튜토리얼 5블록: 16+24+12+8+20 = 80MH → 작업자 1명(8MH) 기준 2+3+2+1+3 = 11일
+    const ev = evaluate(TUTORIAL_BLOCKS, R, {});
+    expect(ganttDays(TUTORIAL_BLOCKS, R, ev, NO_OFF)).toBe(11 + 2);
+    // 주말이 끼면 그만큼 늘어난다 (10/19 월 시작, 작업일 11일 → 11/2 = 15일차)
+    const cal = buildCalendar('2026-10-19', { weekends: true, holidays: true, extraOff: [], extraOn: [] });
+    expect(ganttDays(TUTORIAL_BLOCKS, R, evaluate(TUTORIAL_BLOCKS, R, {}, cal), cal)).toBe(15 + 2);
   });
 });

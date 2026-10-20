@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
-import { useEvaluation } from '../../store/evaluation';
+import { useCalendar, useEvaluation } from '../../store/evaluation';
 import { selectCalendar } from '../../store/calendar';
 import { nextHint, type Hint } from '../../domain/hint';
 import { pinKey, pinnedOf, samePlan, startOrder } from '../../domain/lanes';
@@ -10,6 +10,7 @@ import { ResourceIcon } from '../icons/ResourceIcons';
 import { LineIcon } from '../icons/LineIcons';
 import { ResourcePalette } from './ResourcePalette';
 import { GanttChart, MAX_DAYS } from './GanttChart';
+import { ganttDays } from './ganttLayout';
 import { useBoardDnd } from './useBoardDnd';
 import { Legend, LoadGrid } from './LoadGrid';
 import { KpiCards, WhatIfCard } from './Insights';
@@ -37,8 +38,9 @@ export function BoardPage() {
   const [hint, setHint] = useState<Hint | null>(null);
 
   const ev = useEvaluation();
-  // 막대를 오른쪽으로 더 끌 수 있도록 여유 열을 두고, 너무 길면 90일까지만 그린다
-  const needed = ev.horizon + 2;
+  // 모든 블록을 한 줄로 이어도 들어갈 만큼 그리고, 너무 길면 90일까지만 그린다
+  const cal = useCalendar();
+  const needed = ganttDays(blocks, resources, ev, cal);
   const days = showFull ? needed : Math.min(MAX_DAYS, needed);
 
   // 이전 버전에서 저장된 배치는 작업 자리가 없으므로 채운다

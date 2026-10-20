@@ -253,6 +253,8 @@ test('신입 모드: 최적 배치 대신 단계적 힌트', async ({ page }) =>
   await expect(page.getByRole('button', { name: '최적 배치' })).toHaveCount(0);
   // 신입은 빈 간트에서 직접 배치하며 시작한다
   await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
+  // 다섯 블록을 작업자 1명 기준으로 한 줄로 이어도(작업일 11일 → 주말 포함 15일) 들어가게, 끌 여유 2칸까지
+  await expect(page.locator('.g-header .g-day')).toHaveCount(17);
 
   await page.getByTestId('hint-btn').click();
   await expect(page.getByTestId('hint')).toContainText('힌트 1');
