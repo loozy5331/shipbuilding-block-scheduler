@@ -3,6 +3,7 @@ import { emptyAssignment } from '../domain/types';
 import { spanOf } from '../domain/lanes';
 import { effectiveDue, isWorkDay, NO_OFF, workEnd, type Calendar } from '../domain/calendar';
 import { buildModes, type Mode } from './modes';
+import { materialOk } from '../domain/material';
 
 /** fast: 가장 빨리 끝나는 배치 / lean: 납기 안이면 낭비 MH가 적은 배치 우선 */
 export type PickRule = 'fast' | 'lean';
@@ -61,6 +62,8 @@ interface Option {
   start: number;
   mode: Mode;
   end: number;
+  /** 자재가 들어오기 전에 착수해 비상 자재를 쓴다 */
+  emergency: boolean;
 }
 
 function better(a: Option, b: Option, rule: PickRule, due: number): boolean {
@@ -72,8 +75,9 @@ function better(a: Option, b: Option, rule: PickRule, due: number): boolean {
 
 function key(o: Option, rule: PickRule, due: number): number[] {
   const crew = o.mode.general + o.mode.skilled;
-  if (rule === 'lean' && o.end <= due) return [0, o.mode.wasteMH, o.end, crew, o.mode.skilled];
-  return [rule === 'lean' ? 1 : 0, o.end, o.mode.wasteMH, crew, o.mode.skilled];
+  const em = o.emergency ? 1 : 0;
+  if (rule === 'lean' && o.end <= due) return [0, em, o.mode.wasteMH, o.end, crew, o.mode.skilled];
+  return [rule === 'lean' ? 1 : 0, o.end, em, o.mode.wasteMH, crew, o.mode.skilled];
 }
 
 /** 사용자가 고정한 블록: 배치를 그대로 두고 자원만 먼저 차지한다 */
@@ -98,13 +102,16 @@ export function serialSchedule(order: Block[], r: Resources, modes: ModeTable, r
   }
   const canRun = r.cranes > 0 && r.workplaces * r.blocksPerWorkplace > 0;
   const dues = new Map(order.map((b) => [b.id, effectiveDue(cal, b.dueDay)]));
-  const limit = workEnd(cal, fixedEnd + 1, order.reduce((s, b) => s + (modes[b.id].at(-1)?.duration ?? 0), 0) + Math.max(0, ...dues.values()) + 1);
+  // 자재가 늦게 들어오는 블록도 입고일 뒤까지 둘러보도록
+  const lastMaterial = Math.max(0, ...order.map((b) => b.materialDay ?? 0));
+  const limit = workEnd(cal, Math.max(fixedEnd, lastMaterial) + 1, order.reduce((s, b) => s + (modes[b.id].at(-1)?.duration ?? 0), 0) + Math.max(0, ...dues.values()) + 1);
 
   for (const b of order) {
     out[b.id] = emptyAssignment(b.id);
     const ms = modes[b.id];
     if (!canRun || ms.length === 0) continue;
-    if (!b.materialReady && emergencyLeft <= 0) continue;
+    // 자재가 영영 없는 블록은 비상 자재가 남아야 착수한다 (납기일이 있으면 그날부터는 없어도 된다)
+    if (b.materialDay === undefined && !b.materialReady && emergencyLeft <= 0) continue;
 
     const due = dues.get(b.id)!;
     let best = null as Option | null;
@@ -113,10 +120,12 @@ export function serialSchedule(order: Block[], r: Resources, modes: ModeTable, r
       if (best && rule === 'lean' && best.end <= due && s > due) break;
       // 쉬는 날에는 착수하지 않는다
       if (!isWorkDay(cal, s)) continue;
+      const emergency = !materialOk(b, s);
+      if (emergency && emergencyLeft <= 0) continue;
       for (const m of ms) {
         const end = workEnd(cal, s, m.duration);
         if (!free.fits(s, end, m)) continue;
-        const opt = { start: s, mode: m, end };
+        const opt = { start: s, mode: m, end, emergency };
         if (!best || better(opt, best, rule, due)) best = opt;
       }
       if (best && rule === 'lean' && best.end > due && s > best.end) break;
@@ -124,7 +133,7 @@ export function serialSchedule(order: Block[], r: Resources, modes: ModeTable, r
     if (!best) continue;
 
     free.take(best.start, best.end, best.mode);
-    const emergency = !b.materialReady;
+    const emergency = best.emergency;
     if (emergency) emergencyLeft--;
     out[b.id] = {
       blockId: b.id,

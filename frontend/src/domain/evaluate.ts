@@ -1,8 +1,9 @@
 import type { Assignment, Assignments, Block, BlockStatus, LoadKind, Resources } from './types';
 import { laneOverlapDays } from './lanes';
 import { effectiveDue, isWorkDay, NO_OFF, workEnd, type Calendar } from './calendar';
+import { materialOk } from './material';
 
-export type BlockedReason = 'noCrane' | 'noMaterial' | 'noCrew' | 'crewLimit';
+export type BlockedReason = 'noCrane' | 'noMaterial' | 'materialLate' | 'noCrew' | 'crewLimit';
 
 export interface BlockResult {
   blockId: string;
@@ -124,7 +125,7 @@ export function evaluate(blocks: Block[], r: Resources, assignments: Assignments
       if (crewDuration === null) reasons.push('noCrew');
       if (a.general + a.skilled > r.maxCrewPerBlock) reasons.push('crewLimit');
       if (!a.crane) reasons.push('noCrane');
-      if (!b.materialReady && !a.emergency) reasons.push('noMaterial');
+      if (!materialOk(b, a.startDay) && !a.emergency) reasons.push(b.materialDay !== undefined ? 'materialLate' : 'noMaterial');
     }
     const start = a?.startDay ?? null;
     const end = start !== null && duration !== null ? workEnd(cal, start, duration) : null;
@@ -250,7 +251,7 @@ export function meetsMinimum(blocks: Block[], r: Resources, assignments: Assignm
     const a = assignments[b.id];
     if (!a || a.startDay === null) return true;
     const x = ev.blocks[b.id];
-    return x.status !== 'blocked' && x.status !== 'conflict' && a.crane && a.general + a.skilled > 0 && (b.materialReady || a.emergency);
+    return x.status !== 'blocked' && x.status !== 'conflict' && a.crane && a.general + a.skilled > 0 && (materialOk(b, a.startDay) || a.emergency);
   });
 }
 

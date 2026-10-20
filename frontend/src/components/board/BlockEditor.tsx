@@ -3,6 +3,8 @@ import { useStore } from '../../store/schedulerStore';
 import { emptyAssignment } from '../../domain/types';
 import { Modal } from '../common/Modal';
 import { laneCount } from '../../domain/lanes';
+import { materialOk } from '../../domain/material';
+import { materialText } from '../../domain/labels';
 
 /** 블록 하나의 착수일·인원·크레인·비상 자재를 숫자로 직접 편집 */
 export function BlockEditor({ blockId, onClose }: { blockId: string; onClose(): void }) {
@@ -23,7 +25,7 @@ export function BlockEditor({ blockId, onClose }: { blockId: string; onClose(): 
     if (form.crane && r.cranes === 0) return setError('보유 크레인이 없습니다.');
     const otherEmergency = Object.values(assignments).filter((a) => a.emergency && a.blockId !== blockId).length;
     if (form.emergency && otherEmergency >= r.emergencyMaterials) return setError('비상 자재 배정 수가 보유량을 넘습니다.');
-    setAssignment({ blockId, lane: form.lane >= 0 ? form.lane : undefined, startDay: form.start, general: form.general, skilled: form.skilled, crane: form.crane, emergency: !block.materialReady && form.emergency });
+    setAssignment({ blockId, lane: form.lane >= 0 ? form.lane : undefined, startDay: form.start, general: form.general, skilled: form.skilled, crane: form.crane, emergency: !materialOk(block, form.start) && form.emergency });
     onClose();
   };
 
@@ -37,7 +39,7 @@ export function BlockEditor({ blockId, onClose }: { blockId: string; onClose(): 
   return (
     <Modal title={`${blockId} · 직접 배치`} onClose={onClose}>
       <p className="muted">
-        납기 {block.dueDay}일 · 필요 {block.requiredMH} MH · {block.materialReady ? '자재 준비' : '자재 미준비'}
+        납기 {block.dueDay}일 · 필요 {block.requiredMH} MH · {materialText(block)}
       </p>
       <div className="edit-form">
         <label>
@@ -61,7 +63,7 @@ export function BlockEditor({ blockId, onClose }: { blockId: string; onClose(): 
           <input type="checkbox" checked={form.crane} onChange={(e) => setForm({ ...form, crane: e.target.checked })} /> 크레인 1대
         </label>
         <label>
-          <input type="checkbox" checked={form.emergency} disabled={block.materialReady} onChange={(e) => setForm({ ...form, emergency: e.target.checked })} /> 비상 자재 1개
+          <input type="checkbox" checked={form.emergency} disabled={materialOk(block, form.start)} onChange={(e) => setForm({ ...form, emergency: e.target.checked })} /> 비상 자재 1개
         </label>
       </div>
       <p className="error-text" role="alert">

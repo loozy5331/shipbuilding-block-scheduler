@@ -1,6 +1,7 @@
 import type { Assignments, Block, Resources } from '../domain/types';
 import { evaluate, type Evaluation } from '../domain/evaluate';
-import { verdictText } from '../domain/labels';
+import { materialText, verdictText } from '../domain/labels';
+import { delayCauses } from '../domain/causes';
 import { laneCount, workplaceOf } from '../domain/lanes';
 import { compareReport, judge } from '../domain/report';
 import { tbmMessage } from '../domain/tbm';
@@ -23,18 +24,18 @@ export async function readBlocksFromFile(file: File, planStart: string): Promise
   return parseTable(rows, planStart);
 }
 
-export const TEMPLATE_HEADER = ['블록 ID', '납기일', '필요 작업 시간', '자재준비 여부'];
+export const TEMPLATE_HEADER = ['블록 ID', '납기일', '필요 작업 시간', '자재준비 여부', '자재 납기일'];
 
 export async function downloadTemplate(planStart: string) {
   const XLSX = await loadXLSX();
   const rows = [
     TEMPLATE_HEADER,
-    ['A-101', dayToDate(planStart, 1), 16, '준비'],
-    ['B-203', dayToDate(planStart, 2), 24, '준비'],
-    ['C-115', dayToDate(planStart, 3), 12, '미준비'],
+    ['A-101', dayToDate(planStart, 1), 16, '준비', ''],
+    ['B-203', dayToDate(planStart, 2), 24, '준비', ''],
+    ['C-115', dayToDate(planStart, 3), 12, '미준비', dayToDate(planStart, 2)],
   ];
   const ws = XLSX.utils.aoa_to_sheet(rows, { cellDates: true, dateNF: 'yyyy-mm-dd' });
-  ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
+  ws['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '블록');
   XLSX.writeFile(wb, '블록_입력_양식.xlsx');
@@ -42,10 +43,10 @@ export async function downloadTemplate(planStart: string) {
 
 const LOAD_LABEL = { slots: '동시 처리 블록', general: '일반 작업자', skilled: '숙련공', crane: '크레인' } as const;
 
-function planRows(blocks: Block[], r: Resources, assignments: Assignments, ev: Evaluation, date: (d: number | null) => string) {
+function planRows(blocks: Block[], r: Resources, assignments: Assignments, ev: Evaluation, date: (d: number | null) => string, cal: Calendar) {
   const lanes = laneCount(r);
   return [
-    ['블록 ID', '납기(남은 일)', '납기일', '필요 MH', '자재', '작업장', '착수일', '종료일', '기간(작업일)', '작업자 수', '일반 작업자', '숙련공', '하루 MH', '납기 여유(일)', '크레인', '비상 자재', '판정', '지연(일)', '납기 내 인정 MH', '전체 인정 MH'],
+    ['블록 ID', '납기(남은 일)', '납기일', '필요 MH', '자재', '작업장', '착수일', '종료일', '기간(작업일)', '작업자 수', '일반 작업자', '숙련공', '하루 MH', '납기 여유(일)', '크레인', '비상 자재', '판정', '지연(일)', '납기 내 인정 MH', '전체 인정 MH', '지연 원인'],
     ...blocks.map((b) => {
       const a = assignments[b.id];
       const x = ev.blocks[b.id];
@@ -55,7 +56,7 @@ function planRows(blocks: Block[], r: Resources, assignments: Assignments, ev: E
         // 주말·공휴일만큼 미뤄진 실제 납기
         date(x.due),
         b.requiredMH,
-        b.materialReady ? '준비' : '미준비',
+        b.materialDay !== undefined ? materialText(b, (d) => date(d)) : b.materialReady ? '준비' : '미준비',
         x.start !== null && a?.lane !== undefined && a.lane < lanes ? workplaceOf(a.lane, r) + 1 : '',
         date(x.start),
         date(x.end),
@@ -71,6 +72,7 @@ function planRows(blocks: Block[], r: Resources, assignments: Assignments, ev: E
         x.lateDays,
         x.mhByDue,
         x.creditedMH,
+        delayCauses(b, ev, assignments, cal, (d) => date(d)).join(' / '),
       ];
     }),
   ];
@@ -113,7 +115,7 @@ export async function exportSchedule(blocks: Block[], r: Resources, assignments:
   const tbm = [['일차', '날짜', 'TBM 메시지'], ...Array.from({ length: ev.horizon }, (_, i) => [i + 1, date(i + 1), tbmMessage(i + 1, blocks, assignments, ev, r, planStart, cal)])];
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(planRows(blocks, r, assignments, ev, date)), '배치표');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(planRows(blocks, r, assignments, ev, date, cal)), '배치표');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(loadRows(ev, date, cal)), '일별 자원 부하');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), '요약');
   const tbmSheet = XLSX.utils.aoa_to_sheet(tbm);

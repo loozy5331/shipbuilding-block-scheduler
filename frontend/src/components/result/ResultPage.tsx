@@ -10,6 +10,8 @@ import { LineIcon } from '../icons/LineIcons';
 import { TodayPanel } from './TodayPanel';
 import { ReportCard } from './ReportCard';
 import { DueShift } from '../common/DueShift';
+import { delayCauses } from '../../domain/causes';
+import { materialText } from '../../domain/labels';
 
 /** ⑤ 블록 스케줄 결과: 최적 대비 평가 → 배치표 → 날짜별 작업·TBM, 엑셀 저장 */
 export function ResultPage() {
@@ -92,6 +94,7 @@ export function ResultPage() {
                 <th>납기</th>
                 <th>투입 인원</th>
                 <th>크레인·비상 자재</th>
+                <th>지연 원인</th>
               </tr>
             </thead>
             <tbody>
@@ -100,6 +103,7 @@ export function ResultPage() {
                 const x = ev.blocks[b.id];
                 const wp = wpOf(b.id);
                 const crew = [a?.general && `일반 ${a.general}`, a?.skilled && `숙련 ${a.skilled}`].filter(Boolean).join(' · ');
+                const causes = delayCauses(b, ev, assignments, cal, (d) => date(d));
                 return (
                   <tr key={b.id}>
                     <th scope="row">{b.id}</th>
@@ -118,6 +122,17 @@ export function ResultPage() {
                     </td>
                     <td>{crew || '-'}</td>
                     <td>{[a?.crane && '크레인', a?.emergency && '비상 자재'].filter(Boolean).join(' · ') || '-'}</td>
+                    <td className="causes">
+                      {causes.length ? (
+                        <ul>
+                          {causes.map((c) => (
+                            <li key={c}>{c}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="muted">{b.materialDay !== undefined ? materialText(b, (d) => date(d)) : '-'}</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}

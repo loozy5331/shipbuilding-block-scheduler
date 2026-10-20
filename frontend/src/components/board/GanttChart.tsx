@@ -3,6 +3,7 @@ import { useDndContext, useDroppable } from '@dnd-kit/core';
 import type { Assignment, Assignments, Block, ResourceKind } from '../../domain/types';
 import type { BlockResult, Evaluation } from '../../domain/evaluate';
 import { assignBlockedReason } from '../../domain/assign';
+import { materialText } from '../../domain/labels';
 import { laneCount, workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { dayToDate, formatMD } from '../../io/dates';
@@ -84,6 +85,7 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
   const { active } = useDndContext();
   const resources = useStore((s) => s.resources);
   const cal = useCalendar();
+  const planStart = useStore((s) => s.planStart);
   const selected = useStore((s) => s.selectedToken);
   const assign = useStore((s) => s.assign);
   const togglePin = useStore((s) => s.togglePin);
@@ -121,7 +123,7 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
           <span className="muted">
             남은 {block.dueDay}일 · {block.requiredMH} MH
           </span>
-          {!block.materialReady && <span className="tag warn">자재 미준비</span>}
+          {!block.materialReady && <span className="tag warn">{materialText(block, (d) => formatMD(dayToDate(planStart, d)))}</span>}
           <span className="b-tools">
             {expert && !waiting && a && (
               <button

@@ -1,4 +1,4 @@
-import type { BlockStatus, UserMode } from './types';
+import type { Block, BlockStatus, UserMode } from './types';
 import type { BlockedReason, BlockResult } from './evaluate';
 
 export const STATUS_LABEL: Record<BlockStatus, string> = {
@@ -14,7 +14,14 @@ export const REASON_LABEL: Record<BlockedReason, string> = {
   crewLimit: '인원 한도 초과',
   noCrane: '크레인 없음',
   noMaterial: '자재 없음',
+  materialLate: '자재 입고 전 착수',
 };
+
+/** 자재 상태 한 마디. date를 주면 입고일을 날짜로 */
+export function materialText(b: Block, date?: (day: number) => string): string {
+  if (b.materialDay !== undefined) return `자재 ${date ? date(b.materialDay) : `${b.materialDay}일`} 입고`;
+  return b.materialReady ? '자재 준비' : '자재 미준비';
+}
 
 /** 표·툴팁에 쓰는 한 줄 판정 */
 export function verdictText(x: BlockResult): string {
