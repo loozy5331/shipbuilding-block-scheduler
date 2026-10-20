@@ -4,6 +4,8 @@ export interface Block {
   dueDay: number;
   requiredMH: number;
   materialReady: boolean;
+  /** 자재 납기일(일차). 그날부터 비상 자재 없이 착수할 수 있다. 없으면 materialReady만 본다 */
+  materialDay?: number;
 }
 
 export interface Resources {

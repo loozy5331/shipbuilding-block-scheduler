@@ -44,11 +44,14 @@ export function checkCapacity(blocks: Block[], r: Resources, cal: Calendar = NO_
     issues.push({ code: 'noWorkplace', message: '작업장이 없어 어떤 블록도 착수할 수 없습니다.', blockIds: all });
   if (workforceMH <= 0) issues.push({ code: 'noWorker', message: '작업자가 없어 어떤 블록도 진행할 수 없습니다.', blockIds: all });
 
-  const unready = blocks.filter((b) => !b.materialReady);
+  // 비상 자재가 꼭 필요한 블록: 자재가 없거나, 입고일에 착수해서는 납기 안에 못 끝나는 블록
+  const unready = blocks.filter((b) =>
+    b.materialDay === undefined ? !b.materialReady : perBlock > 0 && b.requiredMH > workDaysIn(cal, b.materialDay, due(b)) * perBlock,
+  );
   if (unready.length > r.emergencyMaterials) {
     issues.push({
       code: 'material',
-      message: `자재 미준비 블록 ${unready.length}개 중 비상 자재(${r.emergencyMaterials}개)로 착수 가능한 블록은 ${r.emergencyMaterials}개뿐입니다.`,
+      message: `비상 자재가 필요한 블록(자재 미준비·입고 늦음) ${unready.length}개 중 비상 자재(${r.emergencyMaterials}개)로 착수 가능한 블록은 ${r.emergencyMaterials}개뿐입니다.`,
       blockIds: unready.map((b) => b.id),
     });
   }

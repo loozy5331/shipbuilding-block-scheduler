@@ -1,5 +1,6 @@
 import type { Block } from '../domain/types';
 import { dateToDay } from './dates';
+import { withMaterialDay } from '../domain/material';
 
 export interface ParseError {
   row: number;
@@ -11,14 +12,18 @@ export interface ParseResult {
   errors: ParseError[];
 }
 
-type Field = 'id' | 'due' | 'mh' | 'material';
+type Field = 'id' | 'due' | 'mh' | 'material' | 'materialDue';
 
 const ALIASES: Record<Field, string[]> = {
   id: ['블록id', '블록', 'blockid', 'block', 'id', '작업'],
   due: ['납기일', '납기', '남은기간', '남은기간(일)', '남은기간(일,오늘포함)', 'due', 'duedate', 'deadline'],
   mh: ['필요작업시간', '필요공수', '필요공수(mh)', '작업시간', '필요작업시간(mh)', 'mh', '공수', 'hours'],
   material: ['자재준비여부', '자재준비', '자재', 'material', 'materialready'],
+  materialDue: ['자재납기일', '자재납기', '자재입고일', '자재입고예정일', '자재입고', 'materialdue', 'materialdate'],
 };
+
+/** 선택 열: 없어도 읽는다 */
+const OPTIONAL: Field[] = ['materialDue'];
 
 const norm = (s: unknown) => String(s ?? '').toLowerCase().replace(/[\s_\-·.]/g, '');
 
@@ -26,9 +31,11 @@ function matchField(header: unknown): Field | null {
   const h = norm(header);
   if (!h) return null;
   for (const f of Object.keys(ALIASES) as Field[]) if (ALIASES[f].some((a) => h === a)) return f;
-  // 접두 일치: "필요 작업 시간(시간)" 같은 변형
-  for (const f of Object.keys(ALIASES) as Field[]) if (ALIASES[f].some((a) => a.length >= 2 && h.startsWith(a))) return f;
-  return null;
+  // 접두 일치: "필요 작업 시간(시간)" 같은 변형. "자재 납기일(예정)"이 "자재"로 잡히지 않게 가장 긴 별칭을 고른다
+  let best: { f: Field; len: number } | null = null;
+  for (const f of Object.keys(ALIASES) as Field[])
+    for (const a of ALIASES[f]) if (a.length >= 2 && h.startsWith(a) && (!best || a.length > best.len)) best = { f, len: a.length };
+  return best?.f ?? null;
 }
 
 const READY = new Set(['y', 'yes', 'o', 'true', '1', '준비', '완료', '준비완료', '예', 'ok', '✓', '○']);
@@ -83,7 +90,7 @@ export function parseTable(rows: unknown[][], planStart: string): ParseResult {
   const nonEmpty = rows.map((r, i) => ({ r, i })).filter(({ r }) => r.some((c) => String(c ?? '').trim() !== ''));
   if (nonEmpty.length === 0) return { blocks, errors: [{ row: 0, message: '읽을 데이터가 없습니다.' }] };
 
-  let col: Record<Field, number> = { id: 0, due: 1, mh: 2, material: 3 };
+  let col: Record<Field, number> = { id: 0, due: 1, mh: 2, material: 3, materialDue: -1 };
   let dataStart = 0;
   const headerIdx = nonEmpty.findIndex(({ r }) => r.map(matchField).filter(Boolean).length >= 2);
   if (headerIdx >= 0 && headerIdx < 5) {
@@ -93,13 +100,15 @@ export function parseTable(rows: unknown[][], planStart: string): ParseResult {
       const f = matchField(h);
       if (f && found[f] === undefined) found[f] = i;
     });
-    const missing = (Object.keys(ALIASES) as Field[]).filter((f) => found[f] === undefined);
+    // 자재 납기일 열이 있으면 자재준비 여부 열은 없어도 된다
+    const optional = found.materialDue !== undefined ? [...OPTIONAL, 'material'] : OPTIONAL;
+    const missing = (Object.keys(ALIASES) as Field[]).filter((f) => found[f] === undefined && !optional.includes(f));
     if (missing.length > 0) {
-      const names: Record<Field, string> = { id: '블록 ID', due: '납기일', mh: '필요 작업 시간', material: '자재준비 여부' };
+      const names: Record<Field, string> = { id: '블록 ID', due: '납기일', mh: '필요 작업 시간', material: '자재준비 여부', materialDue: '자재 납기일' };
       errors.push({ row: nonEmpty[headerIdx].i + 1, message: `열을 찾지 못했습니다: ${missing.map((f) => names[f]).join(', ')}` });
       return { blocks, errors };
     }
-    col = found as Record<Field, number>;
+    col = { material: -1, materialDue: -1, ...found } as Record<Field, number>;
     dataStart = headerIdx + 1;
   }
 
@@ -109,20 +118,24 @@ export function parseTable(rows: unknown[][], planStart: string): ParseResult {
     const id = String(r[col.id] ?? '').trim();
     const due = parseDue(r[col.due], planStart);
     const mh = parseNumber(r[col.mh]);
-    const material = parseMaterial(r[col.material]);
+    // 자재 납기일만 있고 칸이 비었으면 이미 들어온 자재로 본다
+    const material = col.material >= 0 ? parseMaterial(r[col.material]) : true;
+    const rawMaterialDue = col.materialDue >= 0 ? r[col.materialDue] : '';
+    const materialDay = String(rawMaterialDue ?? '').trim() === '' ? undefined : parseDue(rawMaterialDue, planStart);
     const problems: string[] = [];
     if (!id) problems.push('블록 ID 없음');
     else if (seen.has(id)) problems.push(`중복 ID ${id}`);
     if (due === null) problems.push('납기 해석 불가');
     else if (due < 1) problems.push(`납기가 계획 시작일 이전 (${due}일차)`);
     if (mh === null || mh <= 0) problems.push('필요 작업 시간 오류');
-    if (material === null) problems.push(`자재 값 "${r[col.material]}" 해석 불가`);
+    if (materialDay === null) problems.push(`자재 납기일 "${rawMaterialDue}" 해석 불가`);
+    else if (material === null && materialDay === undefined) problems.push(`자재 값 "${r[col.material]}" 해석 불가`);
     if (problems.length > 0) {
       errors.push({ row: rowNo, message: problems.join(', ') });
       continue;
     }
     seen.add(id);
-    blocks.push({ id, dueDay: Math.round(due!), requiredMH: mh!, materialReady: material! });
+    blocks.push(withMaterialDay({ id, dueDay: Math.round(due!), requiredMH: mh!, materialReady: material ?? false }, materialDay == null ? undefined : Math.round(materialDay)));
   }
   return { blocks, errors };
 }

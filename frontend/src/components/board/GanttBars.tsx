@@ -1,7 +1,8 @@
 import { useDraggable } from '@dnd-kit/core';
 import type { Assignment, Block, ResourceKind } from '../../domain/types';
 import { nominalDuration, type BlockResult } from '../../domain/evaluate';
-import { REASON_LABEL } from '../../domain/labels';
+import { materialText, REASON_LABEL } from '../../domain/labels';
+import { materialOk } from '../../domain/material';
 import { workplaceOf } from '../../domain/lanes';
 import { useStore } from '../../store/schedulerStore';
 import { CraneIcon, MaterialIcon, SkilledIcon, WorkerIcon } from '../icons/ResourceIcons';
@@ -19,7 +20,7 @@ function statusText(res: BlockResult): string | null {
 
 export function blockTitle(block: Block, res: BlockResult) {
   const when = res.start !== null ? `${res.start}일 착수${res.end ? ` → ${res.end}일 끝` : ''}` : '미배치';
-  return `${block.id}: ${when}. 납기 ${res.due}일 · ${block.requiredMH} MH · ${block.materialReady ? '자재 준비' : '자재 미준비'} · 납기까지 ${res.mhByDue}/${block.requiredMH} MH`;
+  return `${block.id}: ${when}. 납기 ${res.due}일 · ${block.requiredMH} MH · ${materialText(block)} · 납기까지 ${res.mhByDue}/${block.requiredMH} MH`;
 }
 
 /** 배정된 자원 아이콘. 누르면 뺀다(고정한 블록은 못 뺀다). 필요한데 없는 크레인·비상 자재는 흐린 자리로 보여 준다. */
@@ -51,7 +52,8 @@ export function AssignedIcons({ block, a, size = 16 }: { block: Block; a: Assign
           <CraneIcon size={size} />
         </span>
       )}
-      {!block.materialReady &&
+      {/* 지금 착수일에 자재가 없거나 이미 비상 자재를 놓았으면 자리를 보여 준다 */}
+      {(!materialOk(block, a?.startDay ?? null) || a?.emergency) &&
         (a?.emergency ? (
           icon('em', 'emergency', '비상 자재', <MaterialIcon size={size} />)
         ) : (
