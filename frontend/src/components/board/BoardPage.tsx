@@ -18,6 +18,7 @@ import { KpiCards, WhatIfCard } from './Insights';
 import { BlockEditor } from './BlockEditor';
 import { prefersReducedMotion } from '../assembly/AssemblyShow';
 import { SideLayout } from '../common/SideLayout';
+import { OptimalTip } from '../common/InfoTip';
 
 const PLAN_NAME = ['최적 배치', '차선', '차차선'];
 
@@ -199,6 +200,7 @@ export function BoardPage() {
               <LineIcon name="bulb" size={16} /> {busy ? '계산 중…' : '힌트'}
             </button>
           )}
+          <OptimalTip />
         </div>
       </div>
 

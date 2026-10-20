@@ -6,6 +6,7 @@ import { weatherLabel, weatherText } from '../../io/weather';
 import { useWeather } from '../common/useWeather';
 import { dayToDate, formatMD } from '../../io/dates';
 import { LineIcon } from '../icons/LineIcons';
+import { Term } from '../common/InfoTip';
 
 /** 고른 날의 작업 목록과 TBM 공유 메시지 */
 export function TodayPanel({ ev, day, onDay, maxDay }: { ev: Evaluation; day: number; onDay(d: number): void; maxDay: number }) {
@@ -78,7 +79,9 @@ export function TodayPanel({ ev, day, onDay, maxDay }: { ev: Evaluation; day: nu
         <div>
           {/* 가장 자주 누르는 복사 버튼은 메시지 제목 옆에 */}
           <div className="tbm-head">
-            <h4>TBM 공유 메시지</h4>
+            <h4>
+              TBM 공유 메시지 <Term k="tbm" />
+            </h4>
             {'share' in navigator && (
               <button type="button" className="btn small ghost" onClick={share}>
                 공유

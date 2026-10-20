@@ -3,6 +3,7 @@ import { useStore } from '../../store/schedulerStore';
 import { useCalendar } from '../../store/evaluation';
 import { checkCapacity } from '../../solver/feasibility';
 import { LineIcon } from '../icons/LineIcons';
+import { Term } from '../common/InfoTip';
 
 /** 공통 설정 입력의 상태 칸: 판정이 먼저, 그 아래 "해야 할 작업은 많은데, 사용할 수 있는 시간은 부족했다" 비교 */
 export function CapacitySummary() {
@@ -57,7 +58,9 @@ export function CapacitySummary() {
           </dd>
         </div>
         <div className="mh">
-          <dt>전체 필요 작업시간</dt>
+          <dt>
+            전체 필요 작업시간 <Term k="totalMH" />
+          </dt>
           <dd>
             {c.totalMH}
             <small>MH</small>
@@ -65,7 +68,9 @@ export function CapacitySummary() {
           <span className="mh-bar need" style={{ width: `${(c.totalMH / max) * 100}%` }} />
         </div>
         <div className="mh">
-          <dt>하루 가용 작업시간</dt>
+          <dt>
+            하루 가용 작업시간 <Term k="dailyMH" />
+          </dt>
           <dd>
             {c.dailyCapacityMH}
             <small>MH</small>

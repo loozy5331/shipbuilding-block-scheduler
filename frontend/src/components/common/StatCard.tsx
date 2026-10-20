@@ -3,7 +3,7 @@ import { IconBadge } from '../icons/LineIcons';
 
 type IconName = Parameters<typeof IconBadge>[0]['name'];
 
-export function StatCard({ icon, label, value, unit, sub, tone }: { icon: IconName; label: string; value: ReactNode; unit?: string; sub?: ReactNode; tone?: 'good' | 'bad' }) {
+export function StatCard({ icon, label, value, unit, sub, tone }: { icon: IconName; label: ReactNode; value: ReactNode; unit?: string; sub?: ReactNode; tone?: 'good' | 'bad' }) {
   return (
     <div className={`stat-card ${tone ?? ''}`}>
       <IconBadge name={icon} />
