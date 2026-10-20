@@ -182,7 +182,7 @@ export function BoardPage() {
         </div>
       )}
 
-      <KpiCards ev={ev} onlyOnTime />
+      <KpiCards ev={ev} />
       {!showFull && needed > MAX_DAYS && (
         <div className="notice warn">
           표시는 1~{days}일로 제한했습니다. 자원 충돌·KPI는 {ev.horizon}일까지 전체 배치를 분석합니다.{' '}

@@ -7,12 +7,14 @@ export interface ReportRow {
   /** 클수록 좋은 지표인가 */
   higherIsBetter: boolean;
   unit: string;
+  /** "현재 / 전체"로 보여 줄 때의 전체 수 */
+  of?: number;
 }
 
 /** 최적 배치 대비 평가서 */
 export function compareReport(current: Kpi, optimal: Kpi): ReportRow[] {
   return [
-    { label: '납기 만족 블록 수', current: current.onTime, optimal: optimal.onTime, higherIsBetter: true, unit: '개' },
+    { label: '납기 만족 블록 수', current: current.onTime, optimal: optimal.onTime, higherIsBetter: true, unit: '개', of: current.total },
     { label: '잔여 납기 여유일', current: current.totalSlackDays, optimal: optimal.totalSlackDays, higherIsBetter: true, unit: '일' },
     { label: '총 지연일', current: current.totalLateDays, optimal: optimal.totalLateDays, higherIsBetter: false, unit: '일' },
     { label: '비상 자재 사용', current: current.emergencyUsed, optimal: optimal.emergencyUsed, higherIsBetter: false, unit: '개' },
