@@ -101,7 +101,7 @@ export function DayHeader({ cols, planStart, label }: { cols: Columns; planStart
         );
         const wx = w ? `\n날씨: ${weatherText(w)}` : '';
         if (touring) return <div key={i} className={cls} title={w ? weatherText(w) : undefined}>{body}</div>;
-        return (
+        const button = (
           <button
             key={i}
             type="button"
@@ -116,6 +116,24 @@ export function DayHeader({ cols, planStart, label }: { cols: Columns; planStart
           >
             {body}
           </button>
+        );
+        // 펼친 주말·공휴일 칸은 머리를 누르면 작업일로 바뀌므로, 다시 접는 손잡이를 따로 단다
+        if (info.off !== 'weekend' && info.off !== 'holiday') return button;
+        const kind = info.off;
+        return (
+          <div key={i} className="g-day-wrap">
+            {button}
+            <button
+              type="button"
+              className="fold-handle"
+              data-testid={`fold-handle-${day}`}
+              title={`${FOLD_TEXT[kind]} 칸 접기`}
+              aria-label={`${FOLD_TEXT[kind]} 칸 접기`}
+              onClick={() => setFold(kind, true)}
+            >
+              ›‹
+            </button>
+          </div>
         );
       })}
     </div>

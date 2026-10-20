@@ -197,6 +197,33 @@ button.g-day:hover {
   cursor: pointer;
 }
 
+/* 펼친 주말·공휴일 머리: 칸은 그대로 두고 위쪽에 접기 손잡이 */
+.g-day-wrap {
+  position: relative;
+  display: grid;
+}
+
+.fold-handle {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: -1px;
+  cursor: pointer;
+}
+
+.fold-handle:hover {
+  border-color: var(--navy);
+  color: var(--navy);
+}
+
 .g-day.folded.holiday {
   border-color: #e7b9ba;
 }
