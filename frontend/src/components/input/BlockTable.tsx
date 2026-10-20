@@ -5,6 +5,7 @@ import { materialText } from '../../domain/labels';
 import { effectiveDue } from '../../domain/calendar';
 import { useCalendar } from '../../store/evaluation';
 import { DueShift } from '../common/DueShift';
+import { Term } from '../common/InfoTip';
 
 /** 블록 작업 표. 튜토리얼에서는 readOnly로 같은 표를 글자만 보여 준다. */
 export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
@@ -36,11 +37,23 @@ export function BlockTable({ readOnly = false }: { readOnly?: boolean }) {
         <thead>
           <tr>
             <th>블록 ID</th>
-            <th>납기(남은 일, 오늘 = 1)</th>
-            <th className="num">필요 작업 시간</th>
-            <th>자재</th>
-            <th title="자재가 들어오는 날. 그날부터 비상 자재 없이 착수합니다 (선택)">자재 납기일</th>
-            {agree && <th title="현장과 합의된 블록은 다시 최적화해도 착수일·인원·작업장을 그대로 둡니다">합의</th>}
+            <th>
+              납기(남은 일, 오늘 = 1) <Term k="due" />
+            </th>
+            <th className="num">
+              필요 작업 시간 <Term k="mh" />
+            </th>
+            <th>
+              자재 <Term k="material" />
+            </th>
+            <th>
+              자재 납기일 <Term k="materialDay" />
+            </th>
+            {agree && (
+              <th>
+                합의 <Term k="agree" />
+              </th>
+            )}
             {!readOnly && <th />}
           </tr>
         </thead>

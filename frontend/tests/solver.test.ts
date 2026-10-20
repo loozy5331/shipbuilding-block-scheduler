@@ -6,6 +6,8 @@ import { buildModes } from '../src/solver/modes';
 import { rng, solvePolicy } from '../src/solver/search';
 import { TUTORIAL_BLOCKS, TUTORIAL_RESOURCES } from '../src/tutorial/scenario';
 import type { Block } from '../src/domain/types';
+import type { Kpi } from '../src/domain/evaluate';
+import { OPTIMAL_CRITERIA } from '../src/domain/glossary';
 import { delayCauses } from '../src/domain/causes';
 import { buildCalendar, NO_OFF } from '../src/domain/calendar';
 
@@ -207,5 +209,11 @@ describe('지연 원인', () => {
     expect(delayCauses(blocks[0], ev, a, cal, date)).toContain('작업 기간에 작업 불가일 1일');
     const ok = evaluate(blocks, R, a);
     expect(delayCauses(blocks[0], ok, a, NO_OFF, date)).toEqual([]);
+  });
+});
+
+describe('최적 배치 기준 설명', () => {
+  it('화면에 보여 주는 기준 수가 목적함수 항목 수와 같다', () => {
+    expect(OPTIMAL_CRITERIA).toHaveLength(objective({} as Kpi).length);
   });
 });

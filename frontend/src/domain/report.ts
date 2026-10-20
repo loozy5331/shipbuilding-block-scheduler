@@ -1,4 +1,5 @@
 import type { Kpi } from './evaluate';
+import type { TermKey } from './glossary';
 
 export interface ReportRow {
   label: string;
@@ -9,16 +10,18 @@ export interface ReportRow {
   unit: string;
   /** "현재 / 전체"로 보여 줄 때의 전체 수 */
   of?: number;
+  /** 옆에 붙일 용어 설명 */
+  term?: TermKey;
 }
 
 /** 최적 배치 대비 평가서 */
 export function compareReport(current: Kpi, optimal: Kpi): ReportRow[] {
   return [
-    { label: '납기 만족 블록 수', current: current.onTime, optimal: optimal.onTime, higherIsBetter: true, unit: '개', of: current.total },
-    { label: '잔여 납기 여유일', current: current.totalSlackDays, optimal: optimal.totalSlackDays, higherIsBetter: true, unit: '일' },
-    { label: '총 지연일', current: current.totalLateDays, optimal: optimal.totalLateDays, higherIsBetter: false, unit: '일' },
-    { label: '비상 자재 사용', current: current.emergencyUsed, optimal: optimal.emergencyUsed, higherIsBetter: false, unit: '개' },
-    { label: '자원 초과', current: current.overloadCells, optimal: optimal.overloadCells, higherIsBetter: false, unit: '칸' },
+    { label: '납기 만족 블록 수', current: current.onTime, optimal: optimal.onTime, higherIsBetter: true, unit: '개', of: current.total, term: 'onTime' },
+    { label: '잔여 납기 여유일', current: current.totalSlackDays, optimal: optimal.totalSlackDays, higherIsBetter: true, unit: '일', term: 'slack' },
+    { label: '총 지연일', current: current.totalLateDays, optimal: optimal.totalLateDays, higherIsBetter: false, unit: '일', term: 'lateDays' },
+    { label: '비상 자재 사용', current: current.emergencyUsed, optimal: optimal.emergencyUsed, higherIsBetter: false, unit: '개', term: 'emergencyUsed' },
+    { label: '자원 초과', current: current.overloadCells, optimal: optimal.overloadCells, higherIsBetter: false, unit: '칸', term: 'overload' },
   ];
 }
 

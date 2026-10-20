@@ -1,6 +1,18 @@
 import { useStore } from '../../store/schedulerStore';
 import { Stepper } from '../common/Stepper';
 import type { Resources } from '../../domain/types';
+import type { TermKey } from '../../domain/glossary';
+import { Term } from '../common/InfoTip';
+
+const TERM: Partial<Record<keyof Resources, TermKey>> = {
+  workplaces: 'workplace',
+  blocksPerWorkplace: 'slots',
+  generalWorkers: 'general',
+  skilledWorkers: 'skilled',
+  cranes: 'crane',
+  emergencyMaterials: 'emergency',
+  maxCrewPerBlock: 'maxCrew',
+};
 
 /** 가용 자원 목록. 튜토리얼에서는 readOnly로 같은 목록을 값만 보여 준다. */
 export function ResourceForm({ readOnly = false }: { readOnly?: boolean }) {
@@ -9,7 +21,9 @@ export function ResourceForm({ readOnly = false }: { readOnly?: boolean }) {
   const row = (key: keyof Resources, label: string, unit: string, hint?: string, min = 0) => (
     <div key={key}>
       <dt>
-        {label}
+        <span>
+          {label} {TERM[key] && <Term k={TERM[key]} />}
+        </span>
         {hint && <small>{hint}</small>}
       </dt>
       <dd>

@@ -3,6 +3,7 @@ import type { LoadKind } from '../../domain/types';
 import type { Columns } from './ganttLayout';
 import { isWorkDay } from '../../domain/calendar';
 import { useCalendar } from '../../store/evaluation';
+import { Term } from '../common/InfoTip';
 
 const LABEL: Record<LoadKind, { name: string; unit: string }> = {
   slots: { name: '동시 처리 블록', unit: '블록' },
@@ -17,7 +18,9 @@ export function LoadGrid({ ev, cols }: { ev: Evaluation; cols: Columns }) {
   return (
     <div className="load" data-tour="load">
       <div className="load-title">
-        <strong>자원 부하</strong>
+        <strong>
+          자원 부하 <Term k="load" />
+        </strong>
         <span className="muted">네모 한 칸 = 용량 1. 채운 칸 = 쓰는 양, 빨간 칸 = 용량을 넘은 양</span>
       </div>
       {ev.load.map((row) => (
