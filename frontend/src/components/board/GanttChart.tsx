@@ -127,15 +127,15 @@ function BlockRow({ block, res, a, assignments, days, workplaces, hinted, onEdit
               <button
                 type="button"
                 className={`bar-pin ${a.pinned ? 'on' : ''}`}
-                title={a.pinned ? '고정 풀기' : '고정: 다시 최적화해도 이 배치를 그대로 둡니다'}
-                aria-label={`${block.id} ${a.pinned ? '고정 풀기' : '고정'}`}
+                title={a.pinned ? '합의 풀기' : '합의: 다시 최적화해도 이 배치를 그대로 둡니다'}
+                aria-label={`${block.id} ${a.pinned ? '합의 풀기' : '합의'}`}
                 aria-pressed={!!a.pinned}
                 data-testid={`pin-${block.id}`}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={() => togglePin(block.id)}
               >
                 <LineIcon name="lock" size={14} />
-                {a.pinned ? '고정됨' : '고정'}
+                {a.pinned ? '합의됨' : '합의'}
               </button>
             )}
             <button

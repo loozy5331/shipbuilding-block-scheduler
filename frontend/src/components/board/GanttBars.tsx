@@ -31,7 +31,7 @@ export function AssignedIcons({ block, a, size = 16 }: { block: Block; a: Assign
       type="button"
       className="placed"
       disabled={a?.pinned}
-      title={a?.pinned ? `${title} (고정됨)` : `${title} 빼기`}
+      title={a?.pinned ? `${title} (합의됨)` : `${title} 빼기`}
       aria-label={`${block.id}에서 ${title} 빼기`}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
@@ -105,7 +105,7 @@ export function Bar({ block, res, a, days, workplaces, onEdit }: BarProps) {
       className={cls}
       data-testid={`bar-${block.id}`}
       data-day={drag.isDragging ? `${Math.max(1, start + shift)}일 착수` : undefined}
-      title={`${blockTitle(block, res)}. ${a.pinned ? '고정됨: 다시 최적화해도 그대로 둡니다' : '좌우로 끌면 착수일, 다른 작업장으로 끌면 작업장이 바뀝니다'}`}
+      title={`${blockTitle(block, res)}. ${a.pinned ? '합의됨: 다시 최적화해도 그대로 둡니다' : '좌우로 끌면 착수일, 다른 작업장으로 끌면 작업장이 바뀝니다'}`}
       style={{
         left: (start - 1) * COL + 3,
         width: length * COL - 6,
