@@ -29,7 +29,7 @@ API 문서(개발 서버): `http://localhost:5173/api/docs`
 
 루트의 `Dockerfile`로 이미지 하나를 만들면 화면과 로그인 API가 함께 실행됩니다. 회원 DB는 `/data/users.db`에 저장되므로 `/data`에 영구 볼륨을 붙여야 재배포해도 회원 정보가 남습니다.
 
-- Railway: GitHub 저장소를 연결하면 `Dockerfile`로 자동 배포 → Volume을 `/data`에 연결 → Settings > Networking에서 도메인 생성(직접 가진 도메인은 CNAME 연결). `PORT`는 Railway가 넣어 줍니다.
+- Fly.io: `fly.toml`(도쿄 `nrt`, 8787 포트, 접속 없으면 자동 정지)대로 `fly deploy`. 처음 한 번은 볼륨 `fly volumes create data --region nrt --size 1`과 IP `fly ips allocate-v6`·`fly ips allocate-v4 --shared`가 필요합니다. 주소는 `https://shipbuilding-block-scheduler.fly.dev`, 직접 가진 도메인은 `fly certs add <도메인>`.
 - 직접 실행: `docker build -t block-scheduler . && docker run -p 8787:8787 -v block-data:/data block-scheduler`
 
 ## 사용법
