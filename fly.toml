@@ -4,9 +4,17 @@
 #
 
 app = 'shipbuilding-block-scheduler'
-primary_region = 'ams'
+primary_region = 'nrt'
 
 [build]
+
+[env]
+  AUTH_DB = '/data/users.db'
+
+# 회원 DB(SQLite)가 재배포에도 남도록 영구 볼륨을 붙인다
+[[mounts]]
+  source = 'data'
+  destination = '/data'
 
 [http_service]
   internal_port = 8787
@@ -17,7 +25,6 @@ primary_region = 'ams'
   processes = ['app']
 
 [[vm]]
-  memory = '1gb'
+  memory = '256mb'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 256
