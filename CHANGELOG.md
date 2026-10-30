@@ -8,6 +8,8 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-30
+
 ### 기능
 - 간트: 주말·공휴일 칸을 엑셀 숨긴 열처럼 접기(주말은 기본으로 접힘, 접힌 칸을 누르면 펼치고 펼친 칸의 손잡이로 다시 접음)
 - 공통 설정 입력·블록 스케줄링 화면을 좌 입력 / 우 상태 칸으로(상태 칸은 스크롤해도 따라오고 다음 버튼 포함, 모바일에서는 상태가 위)
@@ -68,6 +70,8 @@
 - 리팩토링 R1~R7: 스토어 slice 분리, `useEvaluation` 단일 평가, 컴포넌트·CSS·e2e 분리, 백엔드를 Python FastAPI로 전환
 - 블록 작업 촬영(OCR) 계획 문서 `docs/ocr-plan.md`
 
-[Unreleased]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.1.0...develop
+[Unreleased]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.3.0...develop
+[1.3.0]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/loozy5331/shipbuilding-block-scheduler/releases/tag/v1.0.0
