@@ -1,0 +1,56 @@
+# 정해진 날(한국 시간 2026-12-01 00:00)에 Fly 앱을 통째로 지운다. 회원 DB 볼륨도 함께 지워진다.
+name: Fly 앱 자동 삭제
+
+on:
+  schedule:
+    # UTC 11-30 15:00 = KST 12-01 00:00. cron에는 연도가 없어 아래에서 날짜를 한 번 더 확인한다
+    - cron: '0 15 30 11 *'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: '토큰만 확인하려면 check, 지금 바로 지우려면 destroy 입력'
+        required: true
+
+env:
+  APP: shipbuilding-block-scheduler
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 실행 조건 확인
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            case "${{ inputs.confirm }}" in
+              destroy) echo "go=1" >> "$GITHUB_OUTPUT" ;;
+              check) echo "check=1" >> "$GITHUB_OUTPUT" ;;
+              *) echo "확인 문구가 달라 건너뜀" ;;
+            esac
+          elif [ "$(date -u +%Y-%m-%d)" = "2026-11-30" ]; then
+            echo "go=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "예정일(2026-11-30 UTC)이 아니라 건너뜀"
+          fi
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+        if: steps.gate.outputs.go == '1' || steps.gate.outputs.check == '1'
+
+      - name: 토큰 확인(지우지 않음)
+        if: steps.gate.outputs.check == '1'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl status -a "$APP" && flyctl volumes list -a "$APP"
+
+      - name: 앱 삭제
+        if: steps.gate.outputs.go == '1'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if flyctl apps destroy "$APP" --yes; then exit 0; fi
+          # 앱 삭제 권한이 없는 토큰이면 요금이 나오는 머신·볼륨·IP라도 지운다
+          echo "앱 삭제 실패: 머신·볼륨·IP를 지웁니다"
+          for m in $(flyctl machines list -a "$APP" -q); do flyctl machine destroy "$m" -a "$APP" --force; done
+          for v in $(flyctl volumes list -a "$APP" --json | jq -r '.[].id'); do flyctl volumes destroy "$v" -a "$APP" --yes; done
+          for ip in $(flyctl ips list -a "$APP" --json | jq -r '.[].Address'); do flyctl ips release "$ip" -a "$APP"; done
+          [ -z "$(flyctl machines list -a "$APP" -q)" ]
