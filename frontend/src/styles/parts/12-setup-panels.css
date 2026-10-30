@@ -1,14 +1,4 @@
 /* ---------- 공통 설정 입력: 블록·자원 패널, 읽기 전용/편집 표 ---------- */
-.setup-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 16px;
-}
-
-.setup-grid .panel {
-  margin: 0;
-}
-
 .plain-table {
   width: 100%;
   border-collapse: collapse;
@@ -64,12 +54,6 @@
 .resource-list dd {
   margin: 0;
   font-weight: 600;
-}
-
-@media (max-width: 860px) {
-  .setup-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* ---------- 작업하지 않는 날 ---------- */

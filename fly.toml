@@ -1,0 +1,30 @@
+# fly.toml app configuration file generated for shipbuilding-block-scheduler on 2026-10-30T04:21:40Z
+#
+# See https://docs.fly.io/reference/configuration for information about how to use this file.
+#
+
+app = 'shipbuilding-block-scheduler'
+primary_region = 'nrt'
+
+[build]
+
+[env]
+  AUTH_DB = '/data/users.db'
+
+# 회원 DB(SQLite)가 재배포에도 남도록 영구 볼륨을 붙인다
+[[mounts]]
+  source = 'data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1

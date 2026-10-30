@@ -100,7 +100,11 @@ export function Tour() {
   const vh = window.innerHeight;
   const cardW = Math.min(380, vw - 32);
   let cardStyle: React.CSSProperties;
-  if (rect) {
+  // 오른쪽 상태 칸처럼 화면 오른쪽에 있는 대상은 아래가 아니라 왼쪽 옆에 둔다 (아래에 두면 대상을 가린다)
+  const besideLeft = rect ? rect.left - PAD - 16 - cardW : -1;
+  if (rect && rect.left > vw / 2 && besideLeft >= 16) {
+    cardStyle = { top: Math.min(Math.max(16, rect.top), vh - 260), left: besideLeft, width: cardW };
+  } else if (rect) {
     const below = rect.top + rect.height + PAD + 16;
     const fitsBelow = below + 220 < vh;
     const top = fitsBelow ? below : Math.max(16, rect.top - PAD - 16 - 220);

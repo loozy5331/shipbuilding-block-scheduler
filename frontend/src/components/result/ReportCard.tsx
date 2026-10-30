@@ -2,6 +2,7 @@ import type { Evaluation } from '../../domain/evaluate';
 import { compareReport, judge } from '../../domain/report';
 import type { SolveResponse } from '../../solver';
 import { LineIcon } from '../icons/LineIcons';
+import { OptimalTip, Term } from '../common/InfoTip';
 
 const MARK = { better: '▲ 더 좋음', same: '= 같음', worse: '▼ 부족' } as const;
 
@@ -21,7 +22,7 @@ export function ReportCard({ ev, solve, hintCount }: { ev: Evaluation; solve: So
     <section className={`panel report ${solve && worse === 0 ? 'good' : ''}`} data-tour="report" data-testid="report">
       <div className="report-head">
         <h3>
-          <LineIcon name="chart" /> 최적 배치 대비 평가
+          <LineIcon name="chart" /> 최적 배치 대비 평가 <OptimalTip />
         </h3>
         <p className={worse ? 'bad' : ''}>
           {!solve ? '최적 배치를 계산하고 있습니다.' : worse === 0 ? '현재 배치가 최적 배치와 같은 수준입니다.' : `최적 배치보다 부족한 항목이 ${worse}개 있습니다.`}
@@ -32,7 +33,9 @@ export function ReportCard({ ev, solve, hintCount }: { ev: Evaluation; solve: So
           const j = solve ? judge(r) : null;
           return (
             <div key={r.label} className={`metric ${j ?? ''}`}>
-              <span className="metric-label">{r.label}</span>
+              <span className="metric-label">
+                {r.label} {r.term && <Term k={r.term} />}
+              </span>
               <span className="metric-value">
                 {r.current}
                 {r.of !== undefined && ` / ${r.of}`}

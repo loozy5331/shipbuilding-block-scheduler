@@ -4,6 +4,7 @@ import { BlockTable } from './BlockTable';
 import { CapacitySummary } from './CapacitySummary';
 import { ResourceForm } from './ResourceForm';
 import { WorkDaysForm } from './WorkDaysForm';
+import { SideLayout } from '../common/SideLayout';
 
 /**
  * ③ 공통 설정 입력: 블록·자원·계획 시작일.
@@ -32,30 +33,40 @@ export function InputPage() {
           <button type="button" className="btn ghost" onClick={() => setPage('menu')}>
             ← 메뉴
           </button>
-          <button type="button" className="btn primary" data-tour="next" disabled={blocks.length === 0 || hasDup} onClick={() => setPage('schedule')}>
-            다음: 블록 스케줄링 →
-          </button>
         </div>
       </div>
-      {hasDup && <p className="error-text">블록 ID가 비었거나 중복되었습니다.</p>}
 
-      <CapacitySummary />
-
-      <div className="setup-grid">
+      <SideLayout
+        side={<CapacitySummary />}
+        foot={
+          <>
+            <button type="button" className="btn primary" data-tour="next" disabled={blocks.length === 0 || hasDup} onClick={() => setPage('schedule')}>
+              다음: 블록 스케줄링 →
+            </button>
+            {hasDup && <p className="error-text">블록 ID가 비었거나 중복되었습니다.</p>}
+          </>
+        }
+      >
         <section className="panel" data-tour="blocks">
           <h3>
-            블록 작업 <small className="muted">{blocks.length}개</small>
+            <span className="step-no">1</span> 블록 작업 <small className="muted">{blocks.length}개</small>
           </h3>
           {!touring && <BlockSource />}
           <BlockTable readOnly={touring} />
         </section>
         <section className="panel" data-tour="resources">
-          <h3>가용 자원</h3>
-          <ResourceForm readOnly={touring} />
-          {/* 튜토리얼은 발표 자료대로 매일 작업한다 */}
-          {!touring && <WorkDaysForm />}
+          <h3>
+            <span className="step-no">2</span> 가용 자원{!touring && ' · 작업하지 않는 날'}
+          </h3>
+          <div className="resource-cols">
+            <div>
+              <ResourceForm readOnly={touring} />
+            </div>
+            {/* 튜토리얼은 발표 자료대로 매일 작업한다 */}
+            {!touring && <WorkDaysForm />}
+          </div>
         </section>
-      </div>
+      </SideLayout>
     </div>
   );
 }

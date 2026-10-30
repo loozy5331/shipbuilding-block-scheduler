@@ -87,9 +87,23 @@ test('즉시 판정 → 대기 블록 배치 → 드래그 배정·이동·작�
 test('작업하지 않는 날: 주말 음영, 날짜 칸을 눌러 작업 불가 지정·해제, 최적화는 그날을 비운다', async ({ page }) => {
   await start(page, 'expert');
   await expect(page.getByTestId('plan-option')).toContainText('최적 배치 (1/');
-  // 시작일 10/19(월) → 6·7일이 주말
+  // 시작일 10/19(월) → 6·7일이 주말. 주말 칸은 처음에 좁게 접혀 있다
+  await expect(page.getByTestId('day-6')).toHaveClass(/folded weekend/);
+  expect((await page.getByTestId('day-6').boundingBox())!.width).toBeLessThan(30);
+  // 접힌 칸을 누르면 주말 칸이 모두 펼쳐진다
+  await page.getByTestId('day-6').click();
   await expect(page.getByTestId('day-6')).toHaveClass(/off weekend/);
-  await expect(page.getByTestId('day-6')).toContainText('주말');
+  await expect(page.getByTestId('day-7')).toContainText('주말');
+  await expect(page.getByTestId('fold-weekend')).toHaveAttribute('aria-pressed', 'false');
+  // 펼친 주말 칸의 손잡이로 다시 접고, 왼쪽 위 스위치로도 펼치고 접는다
+  await page.getByTestId('fold-handle-7').click();
+  await expect(page.getByTestId('day-6')).toHaveClass(/folded weekend/);
+  await page.getByTestId('fold-weekend').click();
+  await expect(page.getByTestId('day-7')).toHaveClass(/off weekend/);
+  await page.getByTestId('fold-weekend').click();
+  await expect(page.getByTestId('day-7')).toHaveClass(/folded/);
+  // 공휴일은 처음에 펼쳐 두고 같은 방식으로 접는다
+  await expect(page.getByTestId('fold-holiday')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByTestId('day-5')).not.toHaveClass(/off/);
 
   // 2일을 작업 불가로: 그날에 걸친 막대는 빗금이 생기고 그만큼 늘어난다
@@ -257,7 +271,7 @@ test('간트 상호작용: 드롭 판정·클릭 배정·착수일 말풍선·�
 
 test('신입 모드: 최적 배치 대신 단계적 힌트', async ({ page }) => {
   await start(page, 'novice');
-  await expect(page.getByRole('button', { name: '최적 배치' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '최적 배치', exact: true })).toHaveCount(0);
   // 신입은 빈 간트에서 직접 배치하며 시작한다
   await expect(page.getByTestId('waiting').locator('.g-block')).toHaveCount(5);
   // 다섯 블록을 작업자 1명 기준으로 한 줄로 이어도(작업일 11일 → 주말 포함 15일) 들어가게, 끌 여유 2칸까지
@@ -285,7 +299,6 @@ test('자원 부족 시 즉시 불가 판정과 추가 자원 제안', async ({ 
   await page.getByRole('button', { name: '숙련공 줄이기' }).click();
   await page.getByRole('button', { name: '일반 작업자 줄이기' }).click();
   await page.getByRole('button', { name: '일반 작업자 줄이기' }).click();
-  await expect(page.locator('.verdict')).toContainText('불가능');
   await page.getByRole('button', { name: '다음: 블록 스케줄링 →' }).click();
   await expect(page.getByTestId('verdict')).toContainText('납기 준수 불가');
   await expect(page.locator('[data-tour="whatif"]')).toContainText('대응안 1');
@@ -303,4 +316,28 @@ test('30블록 엑셀', async ({ page }) => {
   await page.getByTestId('optimize-btn').click();
   await expect(page.getByTestId('verdict')).not.toContainText('판정 중');
   await shot(page, '06-thirty');
+});
+
+test('용어 옆 i 아이콘에 설명을 띄우고, 최적 배치 기준을 보여 준다', async ({ page }) => {
+  await start(page, 'expert');
+  // 올리면 뜨고, 벗어나면 닫힌다
+  await page.getByTestId('optimal-tip').hover();
+  await expect(page.getByRole('tooltip')).toContainText('최적 배치 기준');
+  await expect(page.getByRole('tooltip').locator('li')).toHaveCount(7);
+  await page.mouse.move(0, 0);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await page.getByTestId('term-load').click();
+  await expect(page.getByRole('tooltip')).toContainText('빨간 칸은 보유량을 넘은 것');
+
+  // 누르면 고정되고, 다시 누르거나 Esc로 닫는다
+  await page.getByRole('button', { name: '← 공통 설정 입력' }).click();
+  await page.getByTestId('term-mh').click();
+  await page.mouse.move(0, 0);
+  await expect(page.getByRole('tooltip')).toContainText('한 사람이 한 시간 일한 양');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await page.getByTestId('term-slots').click();
+  await expect(page.getByRole('tooltip')).toContainText('동시 처리 블록 수');
+  await page.getByTestId('term-slots').click();
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
 });

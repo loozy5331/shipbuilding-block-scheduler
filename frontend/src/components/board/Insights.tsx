@@ -4,13 +4,18 @@ import { WHATIF_LABEL } from '../../solver/whatif';
 import { useStore } from '../../store/schedulerStore';
 import { StatCard } from '../common/StatCard';
 import { LineIcon } from '../icons/LineIcons';
+import { Term } from '../common/InfoTip';
 
 /** 블록 스케줄링의 납기 준수 카드 (나머지 지표는 결과 페이지의 평가에) */
 export function KpiCards({ ev }: { ev: Evaluation }) {
   const k = ev.kpi;
   return (
     <div className="stat-row kpis single" data-tour="kpi">
-      <StatCard icon="ship" label="블록 납기 준수" value={`${k.onTime} / ${k.total}`} unit="개" sub={`준수율 ${Math.round(k.onTimeRate * 100)}%`} tone={k.onTime === k.total ? 'good' : 'bad'} />
+      <StatCard icon="ship" label={
+          <>
+            블록 납기 준수 <Term k="onTime" />
+          </>
+        } value={`${k.onTime} / ${k.total}`} unit="개" sub={`준수율 ${Math.round(k.onTimeRate * 100)}%`} tone={k.onTime === k.total ? 'good' : 'bad'} />
     </div>
   );
 }

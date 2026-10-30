@@ -8,6 +8,20 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-30
+
+### 기능
+- 간트: 주말·공휴일 칸을 엑셀 숨긴 열처럼 접기(주말은 기본으로 접힘, 접힌 칸을 누르면 펼치고 펼친 칸의 손잡이로 다시 접음)
+- 공통 설정 입력·블록 스케줄링 화면을 좌 입력 / 우 상태 칸으로(상태 칸은 스크롤해도 따라오고 다음 버튼 포함, 모바일에서는 상태가 위)
+- 결과 화면도 좌 오늘 작업·TBM·배치표 / 우 상태 칸(납기 판정·최적 대비 평가·엑셀 저장), TBM 복사 버튼을 제목 옆으로, 모바일에서는 배치표를 블록별 카드로
+- 용어 옆 `i` 아이콘(올리거나 누르면 설명), 최적 배치 버튼·결과 평가 옆에 최적 배치가 안을 고르는 기준
+- 서버 배포: Dockerfile(화면+로그인 API 한 이미지)과 Fly.io 설정(도쿄 리전, 회원 DB는 /data 볼륨), README에 배포 절차
+- Fly 앱 자동 삭제 GitHub Actions(한국 시간 2026-12-01 00:00, 수동 실행 시 check로 토큰만 확인)
+
+### 변경
+- 납기 여유일·지연일·TBM의 남은 날을 작업일로 셈(주말·공휴일·작업 불가일 제외). 총 지연일이 최적화 기준이라 지연이 있는 경우 최적안이 달라질 수 있음
+- 공통 설정 입력에서 납기 준수 가능성 판정을 뺌(용량 어림이라 블록 스케줄링의 실제 배치 판정과 어긋남). 판정은 블록 스케줄링에서만
+
 ## [1.2.0] - 2026-10-20
 
 ### 기능
@@ -56,6 +70,8 @@
 - 리팩토링 R1~R7: 스토어 slice 분리, `useEvaluation` 단일 평가, 컴포넌트·CSS·e2e 분리, 백엔드를 Python FastAPI로 전환
 - 블록 작업 촬영(OCR) 계획 문서 `docs/ocr-plan.md`
 
-[Unreleased]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.1.0...develop
+[Unreleased]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.3.0...develop
+[1.3.0]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/loozy5331/shipbuilding-block-scheduler/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/loozy5331/shipbuilding-block-scheduler/releases/tag/v1.0.0

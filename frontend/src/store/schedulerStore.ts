@@ -45,6 +45,7 @@ export const useStore = create<State>()(
         assignments: s.assignments,
         tutorialSeen: s.tutorialSeen,
         showFull: s.showFull,
+        fold: s.fold,
       }),
     },
   ),

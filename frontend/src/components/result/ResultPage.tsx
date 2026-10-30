@@ -10,6 +10,7 @@ import { LineIcon } from '../icons/LineIcons';
 import { TodayPanel } from './TodayPanel';
 import { ReportCard } from './ReportCard';
 import { DueShift } from '../common/DueShift';
+import { SideLayout } from '../common/SideLayout';
 import { delayCauses } from '../../domain/causes';
 import { materialText } from '../../domain/labels';
 
@@ -41,18 +42,16 @@ export function ResultPage() {
     if (!solve && blocks.length > 0) runSolve(null).catch(() => undefined);
   }, [solve, blocks, resources]);
 
-  return (
-    <div className="board result">
-      <div className="board-head">
+  const allOk = ev.kpi.onTime === ev.kpi.total;
+  const side = (
+    <>
+      <div className={`side-verdict ${allOk ? 'good' : 'bad'}`} role="status">
+        <LineIcon name={allOk ? 'check' : 'alert'} size={22} />
         <div>
-          <span className="eyebrow-label">— 결과</span>
-          <h1>
-            블록 스케줄 결과 · 납기 준수{' '}
-            <em className={ev.kpi.onTime === ev.kpi.total ? '' : 'bad'}>
-              {ev.kpi.onTime}/{ev.kpi.total}
-            </em>
-          </h1>
-          <p className="result-sub muted" data-testid="result-sub">
+          <p>
+            납기 준수 <em>{ev.kpi.onTime}/{ev.kpi.total}</em>
+          </p>
+          <small className="muted" data-testid="result-sub">
             블록 {blocks.length}개
             {ev.kpi.makespan > 0 && (
               <>
@@ -61,12 +60,30 @@ export function ResultPage() {
               </>
             )}{' '}
             · 작업장 {usedWorkplaces}/{resources.workplaces}곳 사용
-          </p>
+          </small>
+        </div>
+      </div>
+      <ReportCard ev={ev} solve={solve} hintCount={expert ? null : hintCount} />
+    </>
+  );
+
+  return (
+    <div className="board result">
+      <div className="board-head">
+        <div>
+          <span className="eyebrow-label">— 결과</span>
+          <h1>오늘 작업과 배치표</h1>
         </div>
         <div className="board-actions">
           <button type="button" className="btn ghost" onClick={() => setPage('schedule')}>
             ← 블록 스케줄링
           </button>
+        </div>
+      </div>
+
+      <SideLayout
+        side={side}
+        foot={
           <button
             type="button"
             className="btn primary"
@@ -74,74 +91,74 @@ export function ResultPage() {
           >
             <LineIcon name="download" size={16} /> 엑셀 저장
           </button>
-        </div>
-      </div>
+        }
+      >
+        {/* 현장에서 매일 쓰는 TBM이 먼저, 전체 배치표는 그 아래 */}
+        <TodayPanel ev={ev} day={day} onDay={setDay} maxDay={ev.horizon} />
 
-      <ReportCard ev={ev} solve={solve} hintCount={expert ? null : hintCount} />
+        <section className="panel">
+          <h3>
+            <LineIcon name="clipboard" /> 배치표 <small className="muted">착수 순</small>
+          </h3>
+          <div className="table-scroll">
+            <table className="report-table plan-table" data-testid="plan-table">
+              <thead>
+                <tr>
+                  <th>블록</th>
+                  <th>판정</th>
+                  <th>작업장</th>
+                  <th>작업 기간</th>
+                  <th>납기</th>
+                  <th>투입 인원</th>
+                  <th>크레인·비상 자재</th>
+                  <th>지연 원인</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((b) => {
+                  const a = assignments[b.id];
+                  const x = ev.blocks[b.id];
+                  const wp = wpOf(b.id);
+                  const crew = [a?.general && `일반 ${a.general}`, a?.skilled && `숙련 ${a.skilled}`].filter(Boolean).join(' · ');
+                  const causes = delayCauses(b, ev, assignments, cal, (d) => date(d));
+                  return (
+                    <tr key={b.id}>
+                      <th scope="row">{b.id}</th>
+                      <td data-label="판정">
+                        <span className={`status-chip ${x.status}`}>{verdictText(x)}</span>
+                      </td>
+                      <td data-label="작업장">{wp === null ? '-' : `작업장 ${wp + 1}`}</td>
+                      <td data-label="작업 기간">
+                        {x.start === null ? '-' : x.start === x.end ? date(x.start) : `${date(x.start)} ~ ${date(x.end)}`}
+                        {x.duration ? <small className="muted"> ({x.duration}일)</small> : null}
+                      </td>
+                      <td data-label="납기">
+                        {date(x.due)}
+                        <DueShift block={b} due={x.due} />
+                        {x.status === 'ok' && <small className="muted"> ({x.slackDays > 0 ? `여유 ${x.slackDays}일` : '당일 완료'})</small>}
+                      </td>
+                      <td data-label="투입 인원">{crew || '-'}</td>
+                      <td data-label="크레인·비상 자재">{[a?.crane && '크레인', a?.emergency && '비상 자재'].filter(Boolean).join(' · ') || '-'}</td>
+                      <td className="causes" data-label="지연 원인">
+                        {causes.length ? (
+                          <ul>
+                            {causes.map((c) => (
+                              <li key={c}>{c}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="muted">{b.materialDay !== undefined ? materialText(b, (d) => date(d)) : '-'}</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-      <section className="panel">
-        <h3>
-          <LineIcon name="clipboard" /> 배치표 <small className="muted">착수 순</small>
-        </h3>
-        <div className="table-scroll">
-          <table className="report-table plan-table" data-testid="plan-table">
-            <thead>
-              <tr>
-                <th>블록</th>
-                <th>판정</th>
-                <th>작업장</th>
-                <th>작업 기간</th>
-                <th>납기</th>
-                <th>투입 인원</th>
-                <th>크레인·비상 자재</th>
-                <th>지연 원인</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((b) => {
-                const a = assignments[b.id];
-                const x = ev.blocks[b.id];
-                const wp = wpOf(b.id);
-                const crew = [a?.general && `일반 ${a.general}`, a?.skilled && `숙련 ${a.skilled}`].filter(Boolean).join(' · ');
-                const causes = delayCauses(b, ev, assignments, cal, (d) => date(d));
-                return (
-                  <tr key={b.id}>
-                    <th scope="row">{b.id}</th>
-                    <td>
-                      <span className={`status-chip ${x.status}`}>{verdictText(x)}</span>
-                    </td>
-                    <td>{wp === null ? '-' : `작업장 ${wp + 1}`}</td>
-                    <td>
-                      {x.start === null ? '-' : x.start === x.end ? date(x.start) : `${date(x.start)} ~ ${date(x.end)}`}
-                      {x.duration ? <small className="muted"> ({x.duration}일)</small> : null}
-                    </td>
-                    <td>
-                      {date(x.due)}
-                      <DueShift block={b} due={x.due} />
-                      {x.status === 'ok' && <small className="muted"> ({x.slackDays > 0 ? `여유 ${x.slackDays}일` : '당일 완료'})</small>}
-                    </td>
-                    <td>{crew || '-'}</td>
-                    <td>{[a?.crane && '크레인', a?.emergency && '비상 자재'].filter(Boolean).join(' · ') || '-'}</td>
-                    <td className="causes">
-                      {causes.length ? (
-                        <ul>
-                          {causes.map((c) => (
-                            <li key={c}>{c}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className="muted">{b.materialDay !== undefined ? materialText(b, (d) => date(d)) : '-'}</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <TodayPanel ev={ev} day={day} onDay={setDay} maxDay={ev.horizon} />
+      </SideLayout>
     </div>
   );
 }

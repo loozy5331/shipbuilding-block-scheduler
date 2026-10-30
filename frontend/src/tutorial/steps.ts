@@ -59,7 +59,7 @@ export const STEPS: TourStep[] = [
     page: 'schedule',
     target: 'verdict',
     eyebrow: '가능 여부',
-    title: '가용 자원으로 가능한지 맨 위에 표시',
+    title: '가용 자원으로 가능한지 상태 칸 맨 위에 표시',
     body: () =>
       '블록 스케줄링으로 넘어오면 현재 자원으로 전 블록 납기 준수가 가능한지 바로 판정합니다. 불가능하면 무엇을 몇 개 늘리면 해소되는지 아래에 제안합니다.',
     enter: () => useStore.getState().clearAssignments(),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCalendar, dayInfo, effectiveDue, isWorkDay, NO_OFF, workEnd, type CalendarOptions } from '../src/domain/calendar';
 import { evaluate } from '../src/domain/evaluate';
+import { tbmMessage } from '../src/domain/tbm';
 import { solvePolicy } from '../src/solver/search';
 import { checkCapacity } from '../src/solver/feasibility';
 import { DEFAULT_RESOURCES, type Block } from '../src/domain/types';
@@ -54,6 +55,28 @@ describe('작업하지 않는 날', () => {
     expect(ev.blocks.A).toMatchObject({ start: 5, end: 8, duration: 2, due: 8, status: 'ok', creditedMH: 16 });
     const general = ev.load.find((l) => l.kind === 'general')!.usage;
     expect(general.slice(4, 8)).toEqual([1, 0, 0, 1]);
+  });
+
+  it('납기 여유일·지연일은 작업일로 센다', () => {
+    const cal = buildCalendar(MON, opts({ extraOff: ['2026-10-29'] }));
+    const at = (startDay: number) => ({ blockId: 'A', startDay, general: 1, skilled: 0, crane: true, emergency: false, lane: 0 });
+    // 남은 7일 → 납기 10/27(화). 금요일(5일)에 끝나면 주말을 빼고 월·화 2일 여유
+    const blocks: Block[] = [{ id: 'A', dueDay: 7, requiredMH: 8, materialReady: true }];
+    expect(evaluate(blocks, DEFAULT_RESOURCES, { A: at(5) }, cal).blocks.A).toMatchObject({ end: 5, due: 9, slackDays: 2 });
+    expect(evaluate(blocks, DEFAULT_RESOURCES, { A: at(5) }, NO_OFF).blocks.A).toMatchObject({ end: 5, due: 7, slackDays: 2 });
+    // 남은 1일 → 납기 10/19(월). 금요일 끝이면 화~금 4일 지연, 작업 불가일(10/29 목)을 지나 10/30에 끝나면 8일 지연
+    const late: Block[] = [{ id: 'A', dueDay: 1, requiredMH: 8, materialReady: true }];
+    expect(evaluate(late, DEFAULT_RESOURCES, { A: at(5) }, cal).blocks.A).toMatchObject({ status: 'late', lateDays: 4 });
+    expect(evaluate(late, DEFAULT_RESOURCES, { A: at(12) }, cal).blocks.A).toMatchObject({ end: 12, lateDays: 8 });
+  });
+
+  it('TBM의 남은 날도 작업일로 센다', () => {
+    const cal = buildCalendar(MON, opts());
+    const blocks: Block[] = [{ id: 'A', dueDay: 7, requiredMH: 16, materialReady: true }];
+    const a = { A: { blockId: 'A', startDay: 5, general: 1, skilled: 0, crane: true, emergency: false, lane: 0 } };
+    const ev = evaluate(blocks, DEFAULT_RESOURCES, a, cal);
+    // 10/23(금) 기준 납기 10/27(화)까지 주말을 빼면 월·화 2일
+    expect(tbmMessage(5, blocks, a, ev, DEFAULT_RESOURCES, MON, cal)).toContain('납기 2일 남음');
   });
 
   it('최적화는 쉬는 날에 착수하지 않는다', () => {

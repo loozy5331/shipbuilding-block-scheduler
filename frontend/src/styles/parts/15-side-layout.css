@@ -1,0 +1,426 @@
+/* ---------- 좌: 입력 · 우: 상태 (공통 설정 입력·블록 스케줄링) ---------- */
+.side-layout {
+  --side-w: 320px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--side-w);
+  grid-template-areas: 'main side';
+  gap: 16px;
+  align-items: start;
+}
+
+.side-main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.side-main > .panel {
+  margin: 0;
+}
+
+/* 상단 바(57px) 아래에 붙어 따라온다. 내용이 길면 본문만 스크롤하고 다음 버튼은 늘 보인다 */
+.side {
+  grid-area: side;
+  position: sticky;
+  top: 73px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 89px);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.side-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.side-foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.side-foot .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.side-foot .error-text {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* 상태 칸 안의 카드·안내는 좁은 폭에 맞춘다 */
+.side .verdict {
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.side .verdict p {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.verdict.empty {
+  background: #f1f4f8;
+  color: var(--navy);
+}
+
+.side .stat-row.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.side .stat-card {
+  padding: 12px 14px;
+}
+
+.side .stat-value {
+  font-size: 24px;
+}
+
+.side .notice {
+  font-size: 13px;
+}
+
+.side .panel {
+  padding: 14px;
+}
+
+.side .panel h3 {
+  align-items: flex-start;
+  font-size: 15px;
+}
+
+/* 블록 스케줄링의 판정 (예전 페이지 제목 자리) */
+.side-verdict {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f1f4f8;
+  color: var(--navy);
+}
+
+/* 아이콘·강조만 판정 색, 문장은 본문 색 */
+.side-verdict p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.side-verdict em {
+  display: block;
+  font-style: normal;
+}
+
+.side-verdict.good {
+  background: var(--green-50);
+  color: var(--green);
+}
+
+.side-verdict.bad {
+  background: var(--red-50);
+  color: var(--red);
+}
+
+.side-verdict.good em {
+  color: var(--green);
+}
+
+.side-verdict.bad em {
+  color: var(--red);
+}
+
+/* 공통 설정 입력의 숫자: 필요 작업시간과 하루 가용 작업시간을 막대로 나란히 */
+.side-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.verdict + .side-stats {
+  margin-top: 12px;
+}
+
+.side-stats > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+.side-stats dt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.side-stats dd {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.side-stats dd small {
+  margin-left: 3px;
+  font-size: 13px;
+}
+
+.side-stats .mh-bar {
+  grid-column: 1 / -1;
+  height: 8px;
+  min-width: 2px;
+  border-radius: 4px;
+}
+
+.mh-bar.need {
+  background: var(--navy);
+}
+
+.mh-bar.cap {
+  background: var(--green);
+}
+
+.side-stats .mh > small {
+  grid-column: 1 / -1;
+  font-size: 12px;
+}
+
+/* 입력 섹션 번호: 채워야 할 칸이라는 표시 */
+.step-no {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* 가용 자원과 작업하지 않는 날을 넓은 폭에서는 나란히 */
+.resource-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 0 28px;
+  align-items: start;
+}
+
+@media (min-width: 1100px) {
+  .resource-cols .workdays {
+    margin-top: 0;
+    padding-top: 0;
+    padding-left: 28px;
+    border-top: 0;
+    border-left: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 1180px) {
+  .side-layout {
+    --side-w: 280px;
+  }
+}
+
+/* 좁은 화면: 한 칸으로, 상태가 위 · 입력이 아래 */
+@media (max-width: 860px) {
+  .side-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'side'
+      'main';
+  }
+
+  .side {
+    position: static;
+    max-height: none;
+  }
+
+  .side-body {
+    gap: 10px;
+    padding: 12px;
+    overflow: visible;
+  }
+
+  .side-foot {
+    padding: 10px 12px;
+  }
+
+  .side-stats {
+    gap: 8px;
+  }
+
+  .side-stats dd {
+    font-size: 18px;
+  }
+
+  .side-verdict p {
+    font-size: 15px;
+  }
+}
+
+/* ---------- 결과: 상태 칸의 최적 대비 평가는 지표마다 한 줄 ---------- */
+.side .panel.report {
+  padding: 12px;
+}
+
+.side .report-head {
+  margin-bottom: 8px;
+}
+
+.side .report-head h3 {
+  font-size: 15px;
+}
+
+.side .report-head p {
+  font-size: 13px;
+}
+
+.side .metric-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.side .metric {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0 8px;
+  padding: 8px 10px;
+}
+
+.side .metric:first-child {
+  grid-column: auto;
+}
+
+.side .metric-value {
+  font-size: 20px;
+}
+
+.side .metric-value small {
+  font-size: 12px;
+}
+
+.side .metric-cmp {
+  grid-column: 1 / -1;
+}
+
+.side .report-notes {
+  font-size: 12px;
+}
+
+.side-verdict small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tbm-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 8px;
+}
+
+.tbm-head h4 {
+  flex: 1;
+  margin: 0;
+}
+
+/* 좁은 화면: 배치표를 가로 스크롤 표 대신 블록마다 카드 한 장으로 (칸 이름은 data-label) */
+@media (max-width: 860px) {
+  .plan-table thead {
+    display: none;
+  }
+
+  .plan-table,
+  .plan-table tbody {
+    display: block;
+  }
+
+  .plan-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 6px 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .plan-table th[scope='row'],
+  .plan-table td {
+    position: static;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+  }
+
+  .plan-table th[scope='row'] {
+    font-size: 16px;
+  }
+
+  .plan-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* 판정 칩은 블록 이름 옆, 지연 원인은 한 줄 전체 */
+  .plan-table td[data-label='판정']::before {
+    display: none;
+  }
+
+  .plan-table td[data-label='판정'] {
+    justify-self: end;
+  }
+
+  .plan-table td.causes {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+}
+
+/* 결과의 판정은 "납기 준수 5/5" 한 줄 */
+.result .side-verdict em {
+  display: inline;
+}
+
+/* 좁은 화면: 상태가 TBM을 너무 밀어내지 않게 지표를 두 줄씩 (납기 만족은 한 줄 전체) */
+@media (max-width: 860px) {
+  .side .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .side .metric:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .side .metric {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side .metric-value {
+    font-size: 18px;
+  }
+}
