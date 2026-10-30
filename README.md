@@ -25,6 +25,13 @@ npm run samples   # 예시 엑셀 다시 만들기 (frontend/public/)
 
 API 문서(개발 서버): `http://localhost:5173/api/docs`
 
+### 서버 배포 (Docker)
+
+루트의 `Dockerfile`로 이미지 하나를 만들면 화면과 로그인 API가 함께 실행됩니다. 회원 DB는 `/data/users.db`에 저장되므로 `/data`에 영구 볼륨을 붙여야 재배포해도 회원 정보가 남습니다.
+
+- Railway: GitHub 저장소를 연결하면 `Dockerfile`로 자동 배포 → Volume을 `/data`에 연결 → Settings > Networking에서 도메인 생성(직접 가진 도메인은 CNAME 연결). `PORT`는 Railway가 넣어 줍니다.
+- 직접 실행: `docker build -t block-scheduler . && docker run -p 8787:8787 -v block-data:/data block-scheduler`
+
 ## 사용법
 
 화면은 다섯 페이지로 이어집니다 (상단 단계 표시로 이동). 공통 설정 입력·블록 스케줄링·결과는 왼쪽이 입력·내용, 오른쪽이 따라오는 상태 칸이고, 모바일에서는 상태가 위로 올라갑니다.

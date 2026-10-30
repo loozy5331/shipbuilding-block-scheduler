@@ -1,0 +1,12 @@
+node_modules
+.venv
+.git
+memo
+**/dist
+**/__pycache__
+.pytest_cache
+backend/data
+backend/tests
+frontend/tests
+playwright-report
+test-results
